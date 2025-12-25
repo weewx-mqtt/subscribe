@@ -17,7 +17,7 @@ from test_weewx_stubs import random_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.MQTTSubscribe import MQTTSubscriber, Logger
+from user.mqttsubscribe import MQTTSubscriber, Logger
 
 mock_client = None
 
@@ -66,12 +66,12 @@ class TestInitialization(unittest.TestCase):
 
         exception = Exception("Connect exception.")
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
             mock_client = mock.Mock()
             mock_client.return_value = mock_client
             mock_client.connect.side_effect = mock.Mock(side_effect=exception)
             with self.assertRaises(test_weewx_stubs.WeeWxIOError) as error:
-                with mock.patch('user.MQTTSubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.TopicManager'):
                     MQTTSubscriberTest(config, mock_logger)
 
             self.assertEqual(error.exception.args[0], exception)
@@ -102,7 +102,7 @@ class TestInitialization(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
         with self.assertRaises(ValueError) as error:
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 MQTTSubscriber(config, mock_logger)
 
         self.assertEqual(error.exception.args[0], (f"Archive topic {archive_topic} must be in [[topics]]"))
@@ -130,8 +130,8 @@ class TestInitialization(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 SUT = MQTTSubscriberTest(config, mock_logger)
 
@@ -161,8 +161,8 @@ class TestInitialization(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 SUT = MQTTSubscriberTest(config, mock_logger)
 
@@ -192,8 +192,8 @@ class TestInitialization(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 SUT = MQTTSubscriberTest(config, mock_logger)
 
@@ -225,8 +225,8 @@ class TestInitialization(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 SUT = MQTTSubscriberTest(config, mock_logger)
 
@@ -247,8 +247,8 @@ class TestInitialization(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 with self.assertRaises(ValueError) as error:
 
@@ -289,8 +289,8 @@ class Testtls_configuration(unittest.TestCase):
         config = configobj.ConfigObj(config_dict)
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 SUT = MQTTSubscriberTest(config, mock_logger)
                 SUT.client.tls_set.assert_called_once_with(ca_certs=ca_certs,
@@ -316,8 +316,8 @@ class Testtls_configuration(unittest.TestCase):
         config = configobj.ConfigObj(config_dict)
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 try:
                     saved_version = ssl.PROTOCOL_TLS
@@ -346,8 +346,8 @@ class Testtls_configuration(unittest.TestCase):
         config = configobj.ConfigObj(config_dict)
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 try:
                     saved_version = ssl.PROTOCOL_TLSv1
@@ -376,8 +376,8 @@ class Testtls_configuration(unittest.TestCase):
         config = configobj.ConfigObj(config_dict)
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 try:
                     saved_version = ssl.PROTOCOL_TLSv1_1
@@ -406,8 +406,8 @@ class Testtls_configuration(unittest.TestCase):
         config = configobj.ConfigObj(config_dict)
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 try:
                     saved_version = ssl.PROTOCOL_TLSv1_2
@@ -436,8 +436,8 @@ class Testtls_configuration(unittest.TestCase):
         config = configobj.ConfigObj(config_dict)
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 try:
                     saved_version = ssl.PROTOCOL_SSLv2
@@ -466,8 +466,8 @@ class Testtls_configuration(unittest.TestCase):
         config = configobj.ConfigObj(config_dict)
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 try:
                     saved_version = ssl.PROTOCOL_SSLv23
@@ -497,8 +497,8 @@ class Testtls_configuration(unittest.TestCase):
         config = configobj.ConfigObj(config_dict)
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 try:
                     saved_version = ssl.PROTOCOL_SSLv3
@@ -527,8 +527,8 @@ class Testtls_configuration(unittest.TestCase):
         config = configobj.ConfigObj(config_dict)
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 try:
                     saved_version = ssl.PROTOCOL_SSLv3
@@ -569,9 +569,9 @@ class TestDeprecatedOptions(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
-                with mock.patch('user.MQTTSubscribe.Logger', spec=Logger) as mock_logger:
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.Logger', spec=Logger) as mock_logger:
                     MQTTSubscriberTest(config, mock_logger)
 
                 self.assertEqual(mock_logger.info.call_count, 15)
@@ -587,8 +587,8 @@ class TestDeprecatedOptions(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 with self.assertRaises(ValueError) as error:
                     MQTTSubscriber(config, mock_logger)
 
@@ -604,8 +604,8 @@ class TestDeprecatedOptions(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 with self.assertRaises(ValueError) as error:
                     MQTTSubscriber(config, mock_logger)
                 self.assertEqual(error.exception.args[0], "'overlap' is deprecated, use 'adjust_start_time'")
@@ -620,8 +620,8 @@ class TestDeprecatedOptions(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 with self.assertRaises(ValueError) as error:
                     MQTTSubscriber(config, mock_logger)
                 self.assertEqual(error.exception.args[0],
@@ -637,8 +637,8 @@ class TestDeprecatedOptions(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 with self.assertRaises(ValueError) as error:
                     MQTTSubscriber(config, mock_logger)
                 self.assertEqual(error.exception.args[0],
@@ -654,8 +654,8 @@ class TestDeprecatedOptions(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 with self.assertRaises(ValueError) as error:
                     MQTTSubscriber(config, mock_logger)
                 self.assertEqual(error.exception.args[0],
@@ -671,8 +671,8 @@ class TestDeprecatedOptions(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 with self.assertRaises(ValueError) as error:
                     MQTTSubscriber(config, mock_logger)
                 self.assertEqual(error.exception.args[0],
@@ -688,8 +688,8 @@ class TestDeprecatedOptions(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 with self.assertRaises(ValueError) as error:
                     MQTTSubscriber(config, mock_logger)
                 self.assertEqual(error.exception.args[0],
@@ -704,8 +704,8 @@ class TestDeprecatedOptions(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 SUT = MQTTSubscriberTest(config, mock_logger)
 
@@ -751,9 +751,9 @@ class TestStart(unittest.TestCase):
         flags = random.randint(0, 255)
         rc_string = rc_strings.get(connect_rc, "Connection Refused: unknown reason.")
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
-                with mock.patch('user.MQTTSubscribe.time'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.time'):
                     with self.assertRaises(test_weewx_stubs.WeeWxIOError) as error:
                         mock_client = mock.Mock()
                         SUT = MQTTSubscriberTest(config, mock_logger)
@@ -779,9 +779,9 @@ class TestStart(unittest.TestCase):
         config_dict['topics'] = {}
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
-                with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.time') as mock_time:
                     mock_client = mock.Mock()
                     SUT = MQTTSubscriberTest(config, mock_logger)
 
@@ -802,9 +802,9 @@ class TestStart(unittest.TestCase):
         config_dict['topics'] = {}
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
-                with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.time') as mock_time:
                     mock_client = mock.Mock()
                     SUT = MQTTSubscriberTest(config, mock_logger)
 
@@ -844,8 +844,8 @@ class Test_disconnect(unittest.TestCase):
         config_dict['topics'] = {}
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
                 mock_client = mock.Mock()
                 SUT = MQTTSubscriberTest(config, mock_logger)
 
@@ -915,8 +915,8 @@ class Teston_connect(unittest.TestCase):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager') as mock_manager:
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager') as mock_manager:
                 mock_client = mock.Mock()
                 type(mock_manager.return_value).subscribed_topics = mock.PropertyMock(return_value=subscribed_topics)
                 type(mock_manager.return_value).get_qos = mock.Mock(return_value=qos)

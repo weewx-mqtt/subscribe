@@ -16,7 +16,7 @@ CONFIG_SPEC_TEXT = """ \
 [MQTTSubscribe]
     # The driver to use.
     # Only used by the driver.
-    driver = user.MQTTSubscribe
+    driver = user.mqttsubscribe
 
     # Turn the service on and off.
     # Default is true.
@@ -2127,7 +2127,7 @@ class MQTTSubscriber():
         self.logger.info(32001, MQTTSubscriber.msgX[32001].format(archive_topic=self.archive_topic))
 
         message_callback_provider_name = service_dict.get('message_callback_provider',
-                                                          'user.MQTTSubscribe.MessageCallbackProvider')
+                                                          'user.mqttsubscribe.MessageCallbackProvider')
         self.logger.info(32002, MQTTSubscriber.msgX[32002].format(message_callback_provider_name=message_callback_provider_name))
 
         self._check_deprecated_options(service_dict)

@@ -21,7 +21,7 @@ import test_weewx_stubs
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.MQTTSubscribe import CollectData
+from user.mqttsubscribe import CollectData
 
 class Test_add_data(unittest.TestCase):
     wind_fields = ['windGust', 'windGustDir', 'windDir', 'windSpeed']
@@ -50,7 +50,7 @@ class Test_add_data(unittest.TestCase):
             'dateTime': int(time.time() + 0.5)
         }
 
-        with mock.patch('user.MQTTSubscribe.weewx.units.to_std_system') as mock_to_std_system:
+        with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
             SUT = CollectData(self.wind_fields, units)
             mock_to_std_system.return_value = dict(data)
             added_data = SUT.add_data(self.wind_field, data)
@@ -71,7 +71,7 @@ class Test_add_data(unittest.TestCase):
             'dateTime': int(time.time() + 0.5)
         }
 
-        with mock.patch('user.MQTTSubscribe.weewx.units.to_std_system') as mock_to_std_system:
+        with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
             SUT = CollectData(self.wind_fields, units)
             mock_to_std_system.return_value = dict(first_data)
             SUT.add_data(self.wind_field, first_data)
@@ -100,7 +100,7 @@ class Test_add_data(unittest.TestCase):
         del total_data['usUnits']
         del total_data['dateTime']
 
-        with mock.patch('user.MQTTSubscribe.weewx.units.to_std_system') as mock_to_std_system:
+        with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
 
             SUT = CollectData(self.wind_fields, units)
             mock_to_std_system.return_value = dict(first_data)
@@ -138,7 +138,7 @@ class Test_add_dict(unittest.TestCase):
             'dateTime': int(time.time() + 0.5)
         }
 
-        with mock.patch('user.MQTTSubscribe.weewx.units.to_std_system') as mock_to_std_system:
+        with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
             SUT = CollectData(None, units)
             mock_to_std_system.return_value = dict(data)
             added_data = SUT.add_dict(data)
@@ -159,7 +159,7 @@ class Test_add_dict(unittest.TestCase):
             'dateTime': int(time.time() + 0.5)
         }
 
-        with mock.patch('user.MQTTSubscribe.weewx.units.to_std_system') as mock_to_std_system:
+        with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
             SUT = CollectData(None, units)
             mock_to_std_system.return_value = dict(first_data)
             SUT.add_dict(first_data)
@@ -188,7 +188,7 @@ class Test_add_dict(unittest.TestCase):
         del total_data['usUnits']
         del total_data['dateTime']
 
-        with mock.patch('user.MQTTSubscribe.weewx.units.to_std_system') as mock_to_std_system:
+        with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
 
             SUT = CollectData(None, units)
             mock_to_std_system.return_value = dict(first_data)
@@ -226,7 +226,7 @@ class Test_get_data(unittest.TestCase):
         del sys.modules['weewx.engine']
 
     def test_get_data(self):
-        with mock.patch('user.MQTTSubscribe.weewx.units.to_std_system') as mock_to_std_system:
+        with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
 
             SUT = CollectData(self.wind_fields, self.units)
             mock_to_std_system.return_value = dict(self.data)

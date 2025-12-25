@@ -16,7 +16,7 @@ from test_weewx_stubs import random_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.MQTTSubscribe import MQTTSubscriberV1, Logger
+from user.mqttsubscribe import MQTTSubscriberV1, Logger
 
 mock_client = None
 
@@ -77,8 +77,8 @@ class TestCallbacks(unittest.TestCase):
         flags = random_string()
         rc = random.randint(1, 10)
 
-        with mock.patch('user.MQTTSubscribe.TopicManager'):
-            with mock.patch('user.MQTTSubscribe.mqtt.Client'):
+        with mock.patch('user.mqttsubscribe.TopicManager'):
+            with mock.patch('user.mqttsubscribe.mqtt.Client'):
 
                 SUT = MQTTSubscriberV1(config, mock_logger)
 
@@ -99,9 +99,9 @@ class TestCallbacks(unittest.TestCase):
 
         rc = random.randint(1, 10)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
-                with mock.patch('user.MQTTSubscribe.mqtt.Client'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
                     SUT = MQTTSubscriberV1(config, mock_logger)
 
                     SUT._on_disconnect(None, None, rc)
@@ -120,9 +120,9 @@ class TestCallbacks(unittest.TestCase):
         mid = random.randint(1, 10)
         granted_qos = [random.randint(1, 10)]
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
-                with mock.patch('user.MQTTSubscribe.mqtt.Client'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
                     SUT = MQTTSubscriberV1(config, mock_logger)
 
                     SUT._on_subscribe(None, None, mid, granted_qos)
@@ -142,9 +142,9 @@ class TestCallbacks(unittest.TestCase):
         level = 1
         msg = random_string()
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
-                with mock.patch('user.MQTTSubscribe.mqtt.Client'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
                     SUT = MQTTSubscriberV1(config, mock_logger)
 
                     SUT._on_log(None, None, level, msg)
@@ -164,9 +164,9 @@ class TestCallbacks(unittest.TestCase):
 
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
-                with mock.patch('user.MQTTSubscribe.mqtt.Client'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
                     SUT = MQTTSubscriberV1(config, mock_logger)
 
                     self.assertEqual(SUT.client.on_log, SUT._on_log)
@@ -184,9 +184,9 @@ class TestCallbacks(unittest.TestCase):
 
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
-                with mock.patch('user.MQTTSubscribe.mqtt.Client'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
                     SUT = MQTTSubscriberV1(config, mock_logger)
 
                     self.assertNotEqual(SUT.client.on_log, SUT._on_log)

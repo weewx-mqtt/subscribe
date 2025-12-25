@@ -16,7 +16,7 @@ from test_weewx_stubs import random_ascii_letters
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.MQTTSubscribe import Logger
+from user.mqttsubscribe import Logger
 from user.ExampleMessageCallbackProvider import MessageCallbackProvider
 
 class Msg:

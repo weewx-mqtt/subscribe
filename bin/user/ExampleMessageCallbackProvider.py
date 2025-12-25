@@ -14,11 +14,11 @@ Configuration:
 """
 
 import xml.etree.ElementTree
-import user.MQTTSubscribe
+import user.mqttsubscribe
 
 from weeutil.weeutil import to_float  # noqa: F401 - used in eval statement
 
-class MessageCallbackProvider(user.MQTTSubscribe.AbstractMessageCallbackProvider):
+class MessageCallbackProvider(user.mqttsubscribe.AbstractMessageCallbackProvider):
     # pylint: disable=too-few-public-methods
     """ Provide the MQTT callback. """
     def __init__(self, _config, logger, topic_manager):

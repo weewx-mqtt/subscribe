@@ -19,7 +19,7 @@ from test_weewx_stubs import random_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.MQTTSubscribe import Configurator
+from user.mqttsubscribe import Configurator
 
 class TestEnableArgParse(unittest.TestCase):
     def test_driver_enable(self):

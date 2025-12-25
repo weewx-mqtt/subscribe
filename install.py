@@ -20,7 +20,7 @@ MQTTSUBSCRIBE_CONFIG = """
 
     # The driver to use.
     # Only used by the driver.
-    driver = user.MQTTSubscribe
+    driver = user.mqttsubscribe
 
     # Controls if validation errors raise an exception (stopping WeeWX from starting) or only logged.
     # Default is false
@@ -54,11 +54,11 @@ class MQTTSubscribeServiceInstaller(ExtensionInstaller):
             'description': 'Source WeeWX data from MQTT.',
             'author': "Rich Bell",
             'author_email': "bellrichm@gmail.com",
-            'files': [('bin/user', ['bin/user/MQTTSubscribe.py'])]
+            'files': [('bin/user', ['bin/user/mqttsubscribe.py'])]
         }
 
         MQTTSubscribe_dict = configobj.ConfigObj(StringIO(MQTTSUBSCRIBE_CONFIG))  # pylint: disable = invalid-name
         install_dict['config'] = MQTTSubscribe_dict
-        install_dict['data_services'] = 'user.MQTTSubscribe.MQTTSubscribeService'
+        install_dict['data_services'] = 'user.mqttsubscribe.MQTTSubscribeService'
 
         super().__init__(install_dict)

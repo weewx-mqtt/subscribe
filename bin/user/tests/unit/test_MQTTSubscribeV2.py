@@ -18,7 +18,7 @@ from test_weewx_stubs import random_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.MQTTSubscribe import MQTTSubscriberV2, Logger
+from user.mqttsubscribe import MQTTSubscriberV2, Logger
 
 @unittest.skipIf(not hasattr(paho.mqtt.client, 'CallbackAPIVersion'), "paho-mqtt is v1, skipping tests.")
 class TestCallbacks(unittest.TestCase):
@@ -49,7 +49,7 @@ class TestCallbacks(unittest.TestCase):
         reason_code = paho.mqtt.reasoncodes.ReasonCode(paho.mqtt.packettypes.PacketTypes.CONNACK,
                                                        identifier=random.randint(131, 138))
 
-        with mock.patch('user.MQTTSubscribe.TopicManager'):
+        with mock.patch('user.mqttsubscribe.TopicManager'):
             SUT = MQTTSubscriberV2(config, mock_logger)
 
             SUT._on_connect(None, {}, flags, reason_code, None)
@@ -70,9 +70,9 @@ class TestCallbacks(unittest.TestCase):
         reason_code = paho.mqtt.reasoncodes.ReasonCode(paho.mqtt.packettypes.PacketTypes.CONNACK,
                                                        identifier=random.randint(131, 138))
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
-                with mock.patch('user.MQTTSubscribe.mqtt.Client'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
                     SUT = MQTTSubscriberV2(config, mock_logger)
 
                     SUT._on_disconnect(None, None, None, reason_code, None)
@@ -93,9 +93,9 @@ class TestCallbacks(unittest.TestCase):
                                                        identifier=random.randint(131, 138))
         reason_codes = [reason_code]
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
-                with mock.patch('user.MQTTSubscribe.mqtt.Client'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
                     SUT = MQTTSubscriberV2(config, mock_logger)
 
                     SUT._on_subscribe(None, None, mid, reason_codes, None)
@@ -116,9 +116,9 @@ class TestCallbacks(unittest.TestCase):
         level = 1
         msg = random_string()
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
-                with mock.patch('user.MQTTSubscribe.mqtt.Client'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
                     SUT = MQTTSubscriberV2(config, mock_logger)
 
                     SUT._on_log(None, None, level, msg)
@@ -138,9 +138,9 @@ class TestCallbacks(unittest.TestCase):
 
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
-                with mock.patch('user.MQTTSubscribe.mqtt.Client'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
                     SUT = MQTTSubscriberV2(config, mock_logger)
 
                     self.assertEqual(SUT.client.on_log, SUT._on_log)
@@ -158,9 +158,9 @@ class TestCallbacks(unittest.TestCase):
 
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.MessageCallbackProvider'):
-            with mock.patch('user.MQTTSubscribe.TopicManager'):
-                with mock.patch('user.MQTTSubscribe.mqtt.Client'):
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
                     SUT = MQTTSubscriberV2(config, mock_logger)
 
                     self.assertNotEqual(SUT.client.on_log, SUT._on_log)

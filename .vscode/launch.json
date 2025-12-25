@@ -28,7 +28,7 @@
             "name": "Sim Service: Loop",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/user/MQTTSubscribe.py",
+            "program": "${workspaceFolder}/bin/user/mqttsubscribe.py",
             "args": [
                 "simulate",
                 "service",
@@ -45,7 +45,7 @@
             "name": "Sim Service: Archive",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/user/MQTTSubscribe.py",
+            "program": "${workspaceFolder}/bin/user/mqttsubscribe.py",
             "args": [
                 "simulate",
                 "service",            
@@ -62,7 +62,7 @@
             "type": "debugpy",
             "request": "launch",
             "justMyCode": false,
-            "program": "${workspaceFolder}/bin/user/MQTTSubscribe.py",
+            "program": "${workspaceFolder}/bin/user/mqttsubscribe.py",
             "args": [
                 "simulate",
                 "driver",            
@@ -79,7 +79,7 @@
             "name": "Sim Driver: Archive",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/user/MQTTSubscribe.py",
+            "program": "${workspaceFolder}/bin/user/mqttsubscribe.py",
             "args": [
                 "simulate",
                 "driver",     
@@ -95,7 +95,7 @@
             "name": "Config",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/user/MQTTSubscribe.py",
+            "program": "${workspaceFolder}/bin/user/mqttsubscribe.py",
             "args": [
                 "configure",
                 "driver",
@@ -124,7 +124,7 @@
             "name": "Parse",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/user/MQTTSubscribe.py",
+            "program": "${workspaceFolder}/bin/user/mqttsubscribe.py",
             "args": [
                 "parse",
                 //"driver",
@@ -145,7 +145,7 @@
             "name": "Create Example",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/user/MQTTSubscribe.py",
+            "program": "${workspaceFolder}/bin/user/mqttsubscribe.py",
             "args": [
                 "configure",
                 "--create-example", "mqttsubscribe.example.conf",
@@ -170,7 +170,7 @@
             "console": "integratedTerminal"
         },
         {
-            // Requires MQTTSubscribe.py to be in 'weewx/bin/user' directory
+            // Requires mqttsubscribe.py to be in 'weewx/bin/user' directory
             // Because python prepends the scripts directory, 'weewx/bin' to sys.path
             // So when weewx does an __import__('user') it uses 'weewx/bin/user'
             "name": "weewxd: Service",
@@ -186,7 +186,7 @@
             "console": "externalTerminal"
         },   
         {
-            // Requires MQTTSubscribe.py to be in 'weewx/bin/user' directory
+            // Requires mqttsubscribe.py to be in 'weewx/bin/user' directory
             // Because python prepends the scripts directory, 'weewx/bin' to sys.path
             // So when weewx does an __import__('user') it uses 'weewx/bin/user'
             "name": "weewxd: Driver",

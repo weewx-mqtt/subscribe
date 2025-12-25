@@ -8,7 +8,7 @@ import unittest
 
 import argparse
 
-from user.MQTTSubscribe import Configurator
+from user.mqttsubscribe import Configurator
 
 class TestUpdateConfig(unittest.TestCase):
     # @unittest.skip("This is really not a unit test, it is testing weeutil.config.conditional_merge")

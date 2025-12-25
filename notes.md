@@ -51,13 +51,13 @@ use pubmqtt.py to publish the payload
 - debug MQTTSubscribe using 'Driver: Loop'
 
 ==========================================================================
-PYTHONPATH=bin:../weewx/bin coverage2 run  -m unittest discover bin/user/tests; coverage html --include bin/user/MQTTSubscribe.py
+PYTHONPATH=bin:../weewx/bin coverage2 run  -m unittest discover bin/user/tests; coverage html --include bin/user/mqttsubscribe.py
 
 coverage3 - for python 3
 
 PYTHONPATH=bin:../weewx/bin python -m unittest discover bin/user/tests
 
-PYTHONPATH=bin:../weewx/bin python bin/user/tests/test_MQTTSubscribe.py
+PYTHONPATH=bin:../weewx/bin python bin/user/tests/test_mqttsubscribe.py
 
 python3 - for python 3
 

@@ -19,7 +19,7 @@ import test_weewx_stubs
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.MQTTSubscribe import Simulator
+from user.mqttsubscribe import Simulator
 
 class TestRunSimulator(unittest.TestCase):
     def test_simulate_service_archive(self):
@@ -45,8 +45,8 @@ class TestRunSimulator(unittest.TestCase):
         options.units = 'US'
         options.frequency = frequency
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscribeService'):
-            with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.MQTTSubscribeService'):
+            with mock.patch('user.mqttsubscribe.time') as mock_time:
                 with mock.patch('builtins.print'):
                     mock_time.time.return_value = now
 
@@ -83,8 +83,8 @@ class TestRunSimulator(unittest.TestCase):
         options.units = 'US'
         options.frequency = frequency
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscribeService'):
-            with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.MQTTSubscribeService'):
+            with mock.patch('user.mqttsubscribe.time') as mock_time:
                 with mock.patch('builtins.print'):
                     mock_time.time.return_value = now
 
@@ -125,7 +125,7 @@ class TestRunSimulator(unittest.TestCase):
 
         SUT = Simulator(None, options)
 
-        with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.time') as mock_time:
             with mock.patch('builtins.print'):
                 mock_time.time.return_value = now
 

@@ -16,7 +16,7 @@ import utils
 
 import weewx
 
-from user.MQTTSubscribe import MQTTSubscribeDriver
+from user.mqttsubscribe import MQTTSubscribeDriver
 
 class TestDriver(unittest.TestCase):
     def runit(self, payload, file_pointer, check_results=True):

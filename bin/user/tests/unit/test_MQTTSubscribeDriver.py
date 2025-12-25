@@ -18,7 +18,7 @@ from test_weewx_stubs import random_string, startOfInterval, timestamp_to_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.MQTTSubscribe import MQTTSubscribeDriver, Logger
+from user.mqttsubscribe import MQTTSubscribeDriver, Logger
 
 class TestclosePort(unittest.TestCase):
     def setUp(self):
@@ -44,7 +44,7 @@ class TestclosePort(unittest.TestCase):
         config_dict = {}
         config_dict['MQTTSubscribeDriver'] = stn_dict
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber'):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
             SUT = MQTTSubscribeDriver(config_dict, mock_engine)
             SUT.closePort()
             SUT.subscriber.disconnect.assert_called_once()
@@ -63,8 +63,8 @@ class TestclosePort(unittest.TestCase):
                                 'interval': 5,
                             })
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber'):
-            with mock.patch('user.MQTTSubscribe.Logger', spec=Logger):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
+            with mock.patch('user.mqttsubscribe.Logger', spec=Logger):
                 SUT = MQTTSubscribeDriver(config_dict, mock_engine)
                 SUT.new_archive_record(event)
 
@@ -95,7 +95,7 @@ class TestArchiveInterval(unittest.TestCase):
         config_dict = {}
         config_dict['MQTTSubscribeDriver'] = stn_dict
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber'):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
             with self.assertRaises(NotImplementedError) as error:
                 SUT = MQTTSubscribeDriver(config_dict, mock_engine)
                 SUT.archive_interval
@@ -113,7 +113,7 @@ class TestArchiveInterval(unittest.TestCase):
         config_dict = {}
         config_dict['MQTTSubscribeDriver'] = stn_dict
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber'):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
             SUT = MQTTSubscribeDriver(config_dict, mock_engine)
             archive_interval = SUT.archive_interval
             self.assertEqual(archive_interval, default_archive_interval)
@@ -175,8 +175,8 @@ class TestgenLoopPackets(unittest.TestCase):
             {'name': topic}
         )
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_manager_class:
-            with mock.patch('user.MQTTSubscribe.Logger'):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager_class:
+            with mock.patch('user.mqttsubscribe.Logger'):
                 mock_manager = mock.Mock()
                 mock_manager_class.get_subscriber = mock_manager
                 type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
@@ -205,8 +205,8 @@ class TestgenLoopPackets(unittest.TestCase):
             {'name': topic}
         )
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_manager_class:
-            with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager_class:
+            with mock.patch('user.mqttsubscribe.time') as mock_time:
                 mock_manager = mock.Mock()
                 mock_manager_class.get_subscriber = mock_manager
                 type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
@@ -231,9 +231,9 @@ class TestgenLoopPackets(unittest.TestCase):
 
         start_loop_period_ts = int(time.time() + 0.5)
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_manager_class:
-            with mock.patch('user.MQTTSubscribe.time'):
-                with mock.patch('user.MQTTSubscribe.Logger'):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager_class:
+            with mock.patch('user.mqttsubscribe.time'):
+                with mock.patch('user.mqttsubscribe.Logger'):
                     mock_manager = mock.Mock()
                     mock_manager_class.get_subscriber = mock_manager
                     type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
@@ -260,8 +260,8 @@ class TestgenLoopPackets(unittest.TestCase):
             {'name': topic}
         )
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_manager_class:
-            with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager_class:
+            with mock.patch('user.mqttsubscribe.time') as mock_time:
                 mock_manager = mock.Mock()
                 mock_manager_class.get_subscriber = mock_manager
                 type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
@@ -291,8 +291,8 @@ class TestgenLoopPackets(unittest.TestCase):
 
         packet = None
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_manager:
-            with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
+            with mock.patch('user.mqttsubscribe.time') as mock_time:
                 type(mock_manager.return_value).subscribed_topics = mock.PropertyMock(return_value=[topic])
                 mock_time.sleep.side_effect = mock.Mock(side_effect=SystemExit())  # Hack one, use this to escape the infinit loop
                 with self.assertRaises(SystemExit):
@@ -312,8 +312,8 @@ class TestgenLoopPackets(unittest.TestCase):
             {'name': topic}
         )
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_manager_class:
-            with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager_class:
+            with mock.patch('user.mqttsubscribe.time') as mock_time:
                 mock_manager = mock.Mock()
                 mock_manager_class.get_subscriber = mock_manager
                 type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
@@ -384,7 +384,7 @@ class TestgenArchiveRecords(unittest.TestCase):
         archive_topic = 'archive'
         self.setup_archive_queue_tests(archive_topic)
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_manager:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             type(mock_manager.return_value).get_data = mock.Mock(return_value=self.empty_generator())
 
             SUT = MQTTSubscribeDriver(self.config_dict, mock_engine)
@@ -398,7 +398,7 @@ class TestgenArchiveRecords(unittest.TestCase):
         archive_topic = 'archive'
         self.setup_archive_queue_tests(archive_topic)
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_manager:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             type(mock_manager.return_value).get_data = mock.Mock(return_value=self.generator([None]))
 
             SUT = MQTTSubscribeDriver(self.config_dict, mock_engine)
@@ -416,7 +416,7 @@ class TestgenArchiveRecords(unittest.TestCase):
 
         records = []
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber'):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
             with self.assertRaises(NotImplementedError) as error:
                 SUT = MQTTSubscribeDriver(config_dict, mock_engine)
 
@@ -434,7 +434,7 @@ class TestgenArchiveRecords(unittest.TestCase):
             {'name': archive_topic}
         )
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_manager_class:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager_class:
             mock_manager = mock.Mock()
             mock_manager_class.get_subscriber = mock_manager
             type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
