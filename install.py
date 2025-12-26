@@ -1,5 +1,5 @@
 #
-#    Copyright (c) 2020-2024 Rich Bell <bellrichm@gmail.com>
+#    Copyright (c) 2020-2025 Rich Bell <bellrichm@gmail.com>
 #
 #    See the file LICENSE.txt for your full rights.
 #
@@ -8,6 +8,8 @@
 from io import StringIO
 
 import configobj
+
+import weeutil
 
 from weecfg.extension import ExtensionInstaller
 
@@ -62,3 +64,20 @@ class MQTTSubscribeServiceInstaller(ExtensionInstaller):
         install_dict['data_services'] = 'user.mqttsubscribe.MQTTSubscribeService'
 
         super().__init__(install_dict)
+
+    def configure(self, engine):
+        self.fix_deprecated_file_name(engine)
+        return True
+
+    def fix_deprecated_file_name(self, engine):
+        """ Update old configuration data from the olde filename, MQTTSubscribe.py, to the new name, mqttsubscribe.py."""
+        deprecated_service_name = 'user.MQTTSubscribe.MQTTSubscribeService'
+        deprecated_driver_name = 'user.MQTTSubscribe'
+
+        if deprecated_service_name in weeutil.weeutil.option_as_list(engine.config_dict['Engine']['Services']['data_services']):
+            engine.printer.out(f"Removing deprecated service name, {deprecated_service_name}.")
+            engine.config_dict['Engine']['Services']['data_services'].remove(deprecated_service_name)
+
+        if 'MQTTSubscribeDriver' in engine.config_dict and engine.config_dict['MQTTSubscribeDriver'].get('driver') == deprecated_driver_name:
+            engine.printer.out(f"Renaming deprecated driver name, {deprecated_driver_name} to user.mqttsubscribe.")
+            engine.config_dict['MQTTSubscribeDriver']['driver'] = 'user.mqttsubscribe'
