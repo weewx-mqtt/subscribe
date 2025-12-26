@@ -163,9 +163,9 @@
                 "install",
                 "${workspaceFolder}",
                 "--verbosity=3",
-                "--dry-run",
+                //"--dry-run",
                 "--yes",
-                "--config", "${workspaceFolder}/tmp/install.conf",
+                "--config", "${workspaceFolder}/tmp/weewx.conf",
             ],            
             "console": "integratedTerminal"
         },
