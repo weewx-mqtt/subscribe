@@ -13,7 +13,7 @@ import weeutil
 
 from weecfg.extension import ExtensionInstaller
 
-VERSION = '3.1.1-rc01'
+VERSION = '3.2.0-rc01a'
 
 MQTTSUBSCRIBE_CONFIG = """
 

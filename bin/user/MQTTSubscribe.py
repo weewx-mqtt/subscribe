@@ -23,3 +23,7 @@ class MQTTSubscribeService(user.mqttsubscribe.MQTTSubscribeService):
         super().__init__(engine, config_dict)
 
         self.logger.info(None, 'Deprecated: MQTTSubscribe.py has been renamed to mqttsubscribe.py')
+
+def loader(config_dict, engine):
+    """ Load and return the driver. """
+    return MQTTSubscribeDriver(config_dict, engine)  # pragma: no cover
