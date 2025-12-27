@@ -821,14 +821,14 @@ class Logger():
         archive_dict = config_dict.get('StdArchive', {})
         record_augmentation = archive_dict.get('record_augmentation', None)
         record_generation = archive_dict.get('record_generation', None)
-        self.debug(0, f"Record Augmentation is: {record_augmentation}")
-        self.debug(0, f"Record Generation is: {record_generation}")
-        self.info(0, f"Using paho.mqtt {paho.mqtt.__version__}")
         self.info(0, f"Version is {VERSION}")
+        self.info(0, f"Using paho.mqtt {paho.mqtt.__version__}")
         self.info(0, f"Log level: {int(self.level)}")
         self.info(0, f"Log debug setting: {int(self.weewx_debug)}")
         self.info(0, f"Log console: {self.console}")
         self.info(0, f"Log file: {self.filename}")
+        self.debug(0, f"Record Augmentation is: {record_augmentation}")
+        self.debug(0, f"Record Generation is: {record_generation}")
 
     def trace(self, msg_id, msg_text):
         """ Log trace messages. """
