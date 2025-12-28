@@ -17,7 +17,7 @@ import test_weewx_stubs
 from test_weewx_stubs import random_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
-import user.MQTTSubscribe
+import user.mqttsubscribe
 
 class atestInitialization(unittest.TestCase):
     def setUp(self):
@@ -45,9 +45,9 @@ class atestInitialization(unittest.TestCase):
             }
         }
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber'):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
             with self.assertRaises(ValueError) as error:
-                user.MQTTSubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
+                user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
 
             self.assertEqual(error.exception.args[0], f"MQTTSubscribeService: Unknown binding: {binding}")
 
@@ -61,9 +61,9 @@ class atestInitialization(unittest.TestCase):
             }
         }
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber'):
-            with mock.patch('user.MQTTSubscribe.Logger'):
-                SUT = user.MQTTSubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
+            with mock.patch('user.mqttsubscribe.Logger'):
+                SUT = user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
                 SUT.logger.info.assert_called_once()
                 SUT.logger.info.assert_called_once_with(22001, "Not enabled, exiting.")
 
@@ -72,10 +72,10 @@ class atestInitialization(unittest.TestCase):
 
         config_dict = {}
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber'):
-            with mock.patch('user.MQTTSubscribe.Logger'):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
+            with mock.patch('user.mqttsubscribe.Logger'):
                 with self.assertRaises(ValueError) as error:
-                    user.MQTTSubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
+                    user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
 
         self.assertEqual(error.exception.args[0], "No 'MQTTSubscribeService'/'MQTTSubscribe' configuration section found.")
 
@@ -88,9 +88,9 @@ class atestInitialization(unittest.TestCase):
             'MQTTSubscribeService': {}
         }
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber'):
-            with mock.patch('user.MQTTSubscribe.Logger'):
-                SUT = user.MQTTSubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
+            with mock.patch('user.mqttsubscribe.Logger'):
+                SUT = user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
                 self.assertEqual(SUT.logger.info.call_count, 2)
                 SUT.logger.info.assert_any_call(22002, 'Running as both a driver and a service.')
 
@@ -104,10 +104,10 @@ class atestInitialization(unittest.TestCase):
             }
         }
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber'):
-            with mock.patch('user.MQTTSubscribe.Logger'):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
+            with mock.patch('user.mqttsubscribe.Logger'):
                 with self.assertRaises(ValueError) as error:
-                    user.MQTTSubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
+                    user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
 
             self.assertEqual(error.exception.args[0], f"archive_topic, {archive_topic}, is invalid when running as a service")
 
@@ -122,12 +122,12 @@ class atestInitialization(unittest.TestCase):
             }
         }
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_MQTTSubscribe:
-            with mock.patch('user.MQTTSubscribe.Logger'):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe:
+            with mock.patch('user.mqttsubscribe.Logger'):
                 type(mock_MQTTSubscribe.return_value).cached_fields = \
                     mock.PropertyMock(return_value={fieldname: {'expires_after': random.randint(1, 10)}})
 
-                user.MQTTSubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
+                user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
 
     def test_caching_valid_software_generation(self):
         mock_StdEngine = mock.Mock()
@@ -143,12 +143,12 @@ class atestInitialization(unittest.TestCase):
             }
         }
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_MQTTSubscribe:
-            with mock.patch('user.MQTTSubscribe.Logger'):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe:
+            with mock.patch('user.mqttsubscribe.Logger'):
                 type(mock_MQTTSubscribe.return_value).cached_fields = \
                     mock.PropertyMock(return_value={fieldname: {'expires_after': random.randint(1, 10)}})
 
-                user.MQTTSubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
+                user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
 
 class Testnew_loop_packet(unittest.TestCase):
     mock_StdEngine = mock.Mock()
@@ -228,14 +228,14 @@ class Testnew_loop_packet(unittest.TestCase):
         mock_new_loop_packet_event = mock.NonCallableMagicMock()
         mock_new_loop_packet_event.packet = self.packet_data
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
             mock_MQTTSubscribe = mock.Mock()
             mock_MQTTSubscribe_class.get_subscriber = mock_MQTTSubscribe
             type(mock_MQTTSubscribe.return_value).queues = mock.PropertyMock(return_value=[queue])
             type(mock_MQTTSubscribe.return_value).get_accumulated_data = mock.Mock(return_value=self.target_data)
             type(mock_MQTTSubscribe.return_value).cached_fields = mock.PropertyMock(return_value=None)
 
-            SUT = user.MQTTSubscribe.MQTTSubscribeService(self.mock_StdEngine, self.config_dict)
+            SUT = user.mqttsubscribe.MQTTSubscribeService(self.mock_StdEngine, self.config_dict)
             SUT.end_ts = start_ts
 
             SUT.new_loop_packet(mock_new_loop_packet_event)
@@ -254,14 +254,14 @@ class Testnew_loop_packet(unittest.TestCase):
         mock_new_loop_packet_event = mock.MagicMock()
         mock_new_loop_packet_event.packet = self.packet_data
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
-            with mock.patch('user.MQTTSubscribe.Logger'):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
+            with mock.patch('user.mqttsubscribe.Logger'):
                 mock_MQTTSubscribe = mock.Mock()
                 mock_MQTTSubscribe_class.get_subscriber = mock_MQTTSubscribe
                 type(mock_MQTTSubscribe.return_value).get_accumulated_data = mock.Mock(return_value=self.target_data)
                 type(mock_MQTTSubscribe.return_value).cached_fields = mock.PropertyMock(return_value=None)
 
-                SUT = user.MQTTSubscribe.MQTTSubscribeService(self.mock_StdEngine, self.config_dict)
+                SUT = user.mqttsubscribe.MQTTSubscribeService(self.mock_StdEngine, self.config_dict)
                 SUT.end_ts = end_period_ts + 10
 
                 SUT.new_loop_packet(mock_new_loop_packet_event)
@@ -291,15 +291,15 @@ class Testnew_loop_packet(unittest.TestCase):
         mock_new_loop_packet_event = mock.NonCallableMagicMock()
         mock_new_loop_packet_event.packet = packet
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
-            with mock.patch('user.MQTTSubscribe.RecordCache'):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
+            with mock.patch('user.mqttsubscribe.RecordCache'):
                 mock_MQTTSubscribe = mock.Mock()
                 mock_MQTTSubscribe_class.get_subscriber = mock_MQTTSubscribe
                 type(mock_MQTTSubscribe.return_value).queues = mock.PropertyMock(return_value=[queue])
                 type(mock_MQTTSubscribe.return_value).get_accumulated_data = mock.Mock(return_value=self.target_data)
                 type(mock_MQTTSubscribe.return_value).cached_fields = mock.PropertyMock(return_value={'outTemp': {}})
 
-                SUT = user.MQTTSubscribe.MQTTSubscribeService(self.mock_StdEngine, self.config_dict)
+                SUT = user.mqttsubscribe.MQTTSubscribeService(self.mock_StdEngine, self.config_dict)
                 SUT.end_ts = start_ts
 
                 SUT.new_loop_packet(mock_new_loop_packet_event)
@@ -386,14 +386,14 @@ class Testnew_archive_record(unittest.TestCase):
         mock_new_archive_record_event = mock.MagicMock()
         mock_new_archive_record_event.record = self.record_data
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_manager_class:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager_class:
             mock_manager = mock.Mock()
             mock_manager_class.get_subscriber = mock_manager
             type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
             type(mock_manager.return_value).get_accumulated_data = mock.Mock(return_value=self.target_data)
             type(mock_manager.return_value).cached_fields = mock.PropertyMock(return_value=None)
 
-            SUT = user.MQTTSubscribe.MQTTSubscribeService(self.mock_StdEngine, self.config_dict)
+            SUT = user.mqttsubscribe.MQTTSubscribeService(self.mock_StdEngine, self.config_dict)
             SUT.end_ts = start_ts
 
             SUT.new_archive_record(mock_new_archive_record_event)
@@ -411,15 +411,15 @@ class Testnew_archive_record(unittest.TestCase):
 
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
-            with mock.patch('user.MQTTSubscribe.RecordCache') as mock_cache:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
+            with mock.patch('user.mqttsubscribe.RecordCache') as mock_cache:
                 mock_MQTTSubscribe = mock.Mock()
                 mock_MQTTSubscribe_class.get_subscriber = mock_MQTTSubscribe
                 type(mock_MQTTSubscribe.return_value).cached_fields = \
                     mock.PropertyMock(return_value={fieldname: {'expires_after': random.randint(1, 10)}})
                 value = round(random.uniform(10, 100), 2)
                 type(mock_cache.return_value).get_value = mock.Mock(return_value=value)
-                SUT = user.MQTTSubscribe.MQTTSubscribeService(self.mock_StdEngine, config)
+                SUT = user.mqttsubscribe.MQTTSubscribeService(self.mock_StdEngine, config)
 
                 record = {
                     'usUnits': unit_system,
@@ -448,12 +448,12 @@ class Testnew_archive_record(unittest.TestCase):
 
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
-            with mock.patch('user.MQTTSubscribe.RecordCache'):
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
+            with mock.patch('user.mqttsubscribe.RecordCache'):
                 mock_MQTTSubscribe = mock.Mock()
                 mock_MQTTSubscribe_class.get_subscriber = mock_MQTTSubscribe
                 type(mock_MQTTSubscribe.return_value).cached_fields = mock.PropertyMock(return_value={fieldname: {}})
-                SUT = user.MQTTSubscribe.MQTTSubscribeService(mock_StdEngine, config)
+                SUT = user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config)
 
                 record = {
                     'usUnits': unit_system,

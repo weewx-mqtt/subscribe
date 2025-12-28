@@ -57,7 +57,7 @@ WEEWX_ROOT = tmp
 [Engine]
     [[Services]]
         prep_services = weewx.engine.StdTimeSynch
-        data_services = user.MQTTSubscribe.MQTTSubscribeService
+        data_services = user.mqttsubscribe.MQTTSubscribeService
         process_services = weewx.engine.StdConvert, weewx.engine.StdCalibrate, weewx.engine.StdQC, weewx.wxservices.StdWXCalculate
         xtype_services = weewx.wxxtypes.StdWXXTypes, weewx.wxxtypes.StdPressureCooker, weewx.wxxtypes.StdRainRater, weewx.wxxtypes.StdDelta
         archive_services = weewx.engine.StdArchive
@@ -80,7 +80,7 @@ WEEWX_ROOT = tmp
 
 class test_record_cache(unittest.TestCase):
     def test_new_loop_packet(self):
-        with mock.patch('user.MQTTSubscribe.RecordCache') as mock_cache:
+        with mock.patch('user.mqttsubscribe.RecordCache') as mock_cache:
             max_archive_records = 0
             config = configobj.ConfigObj(StringIO(config_dict))
             config['Simulator']['max_archive_records'] = max_archive_records
@@ -97,7 +97,7 @@ class test_record_cache(unittest.TestCase):
             self.assertEqual(mock_cache_instance.invalidate_value.call_count, SUT.console.count_loop_packets)
 
     def test_observation_not_in_archive_record(self):
-        with mock.patch('user.MQTTSubscribe.RecordCache') as mock_cache:
+        with mock.patch('user.mqttsubscribe.RecordCache') as mock_cache:
             max_archive_records = 1
             config = configobj.ConfigObj(StringIO(config_dict))
             config['Simulator']['max_archive_records'] = max_archive_records
@@ -120,7 +120,7 @@ class test_record_cache(unittest.TestCase):
             self.assertEqual(mock_cache_instance.get_value.call_count, max_archive_records)
 
     def test_observation_in_archive_record(self):
-        with mock.patch('user.MQTTSubscribe.RecordCache') as mock_cache:
+        with mock.patch('user.mqttsubscribe.RecordCache') as mock_cache:
             max_archive_records = 1
             config = configobj.ConfigObj(StringIO(config_dict))
             config['Simulator']['max_archive_records'] = max_archive_records

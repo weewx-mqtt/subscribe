@@ -3,7 +3,7 @@
 # Weather services MQTT protocol is expected to be added to more Ecowitt gateway and console devices in the future
 
 [MQTTSubscribeDriver]
-    driver = user.MQTTSubscribe
+    driver = user.mqttsubscribe
     # your MQTT server/broker address
     host = <replace.me>
     port = 1883

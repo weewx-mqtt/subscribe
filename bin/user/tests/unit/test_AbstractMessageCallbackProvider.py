@@ -15,7 +15,7 @@ from test_weewx_stubs import random_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.MQTTSubscribe import AbstractMessageCallbackProvider, Logger, TopicManager
+from user.mqttsubscribe import AbstractMessageCallbackProvider, Logger, TopicManager
 
 # todo - mock?
 def to_float(x):
@@ -171,7 +171,7 @@ class TestTest(unittest.TestCase):
         mock_logger = mock.Mock(spec=Logger)
         mock_manager = mock.Mock(spec=TopicManager)
 
-        with mock.patch('user.MQTTSubscribe.weewx.units') as mock_weewx_units:
+        with mock.patch('user.mqttsubscribe.weewx.units') as mock_weewx_units:
             SUT = AbstractMessageCallbackProvider(mock_logger, mock_manager)
 
             default_field_conversion_func = {

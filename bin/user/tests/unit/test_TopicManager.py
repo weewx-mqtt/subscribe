@@ -20,7 +20,7 @@ import test_weewx_stubs
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.MQTTSubscribe import TopicManager, Logger
+from user.mqttsubscribe import TopicManager, Logger
 
 class TestInit(unittest.TestCase):
     def setUp(self):
@@ -895,7 +895,7 @@ class TestGetQueueData(unittest.TestCase):
     def test_queue_empty(self):
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.CollectData') as mock_CollectData:
+        with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             type(mock_CollectData.return_value).get_data = mock.Mock(return_value={})
             SUT = TopicManager(None, self.config, mock_logger)
 
@@ -907,7 +907,7 @@ class TestGetQueueData(unittest.TestCase):
     def test_queue_datetime_in_future(self):
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.CollectData') as mock_CollectData:
+        with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             type(mock_CollectData.return_value).get_data = mock.Mock(return_value={})
             SUT = TopicManager(None, self.config, mock_logger)
             SUT.append_data(self.topic, self.create_queue_data())
@@ -919,7 +919,7 @@ class TestGetQueueData(unittest.TestCase):
     def test_queue_good(self):
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.CollectData') as mock_CollectData:
+        with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             type(mock_CollectData.return_value).get_data = mock.Mock(return_value={})
             SUT = TopicManager(None, self.config, mock_logger)
             elem_one = self.create_queue_data()
@@ -941,7 +941,7 @@ class TestGetQueueData(unittest.TestCase):
     def test_wind_queue_good(self):
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.CollectData') as mock_CollectData:
+        with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             type(mock_CollectData.return_value).add_data = mock.Mock(return_value={})
             type(mock_CollectData.return_value).get_data = mock.Mock(return_value={})
 
@@ -1002,7 +1002,7 @@ class TestGetWindQueueData(unittest.TestCase):
     def test_queue_datetime_in_future(self):
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.CollectData') as mock_CollectData:
+        with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             type(mock_CollectData.return_value).get_data = mock.Mock(return_value={})
             SUT = TopicManager(None, self.config, mock_logger)
             SUT.append_data(self.topic, self.create_queue_data(), fieldname=self.fieldname)
@@ -1016,7 +1016,7 @@ class TestGetWindQueueData(unittest.TestCase):
         mock_logger = mock.Mock(spec=Logger)
 
         collected_data = self.create_queue_data()
-        with mock.patch('user.MQTTSubscribe.CollectData') as mock_CollectData:
+        with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             type(mock_CollectData.return_value).get_data = mock.Mock(return_value={})
             type(mock_CollectData.return_value).add_data = mock.Mock(return_value=collected_data)
             SUT = TopicManager(None, self.config, mock_logger)
@@ -1035,7 +1035,7 @@ class TestGetWindQueueData(unittest.TestCase):
         mock_logger = mock.Mock(spec=Logger)
 
         collected_data = self.create_queue_data()
-        with mock.patch('user.MQTTSubscribe.CollectData') as mock_CollectData:
+        with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             type(mock_CollectData.return_value).get_data = mock.Mock(return_value=collected_data)
             SUT = TopicManager(None, self.config, mock_logger)
 
@@ -1056,7 +1056,7 @@ class TestGetWindQueueData(unittest.TestCase):
         config_dict[topic] = {}
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.CollectData') as mock_CollectData:
+        with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             SUT = TopicManager(None, config, mock_logger)
 
             gen = SUT.get_data(SUT.subscribed_topics[topic]['queue'], 0)
@@ -1102,7 +1102,7 @@ class TestGetCollectedData(unittest.TestCase):
         config['collect_observations'] = True
 
         collected_data = self.create_queue_data()
-        with mock.patch('user.MQTTSubscribe.CollectData') as mock_CollectData:
+        with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             type(mock_CollectData.return_value).get_data = mock.Mock(return_value=collected_data)
             SUT = TopicManager(None, config, mock_logger)
 
@@ -1163,8 +1163,8 @@ class TestAccumulatedData(unittest.TestCase):
         config = copy.deepcopy(self.config)
         config['ignore_start_time'] = True
 
-        with mock.patch('user.MQTTSubscribe.weewx.accum.Accum') as mock_Accum:
-            with mock.patch('user.MQTTSubscribe.weewx.units.to_std_system') as mock_to_std_system:
+        with mock.patch('user.mqttsubscribe.weewx.accum.Accum') as mock_Accum:
+            with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
                 type(mock_Accum.return_value).isEmpty = mock.PropertyMock(return_value=False)
                 mock_to_std_system.return_value = final_record_data
 
@@ -1195,8 +1195,8 @@ class TestAccumulatedData(unittest.TestCase):
         config['ignore_start_time'] = True
         config['adjust_start_time'] = adjust_start_time
 
-        with mock.patch('user.MQTTSubscribe.weewx.accum.Accum') as mock_Accum:
-            with mock.patch('user.MQTTSubscribe.weewx.units.to_std_system') as mock_to_std_system:
+        with mock.patch('user.mqttsubscribe.weewx.accum.Accum') as mock_Accum:
+            with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
                 type(mock_Accum.return_value).isEmpty = mock.PropertyMock(return_value=False)
                 mock_to_std_system.return_value = final_record_data
 
@@ -1224,8 +1224,8 @@ class TestAccumulatedData(unittest.TestCase):
         config = copy.deepcopy(self.config)
         config['ignore_end_time'] = True
 
-        with mock.patch('user.MQTTSubscribe.weewx.accum.Accum') as mock_Accum:
-            with mock.patch('user.MQTTSubscribe.weewx.units.to_std_system') as mock_to_std_system:
+        with mock.patch('user.mqttsubscribe.weewx.accum.Accum') as mock_Accum:
+            with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
                 type(mock_Accum.return_value).isEmpty = mock.PropertyMock(return_value=False)
                 mock_to_std_system.return_value = final_record_data
 
@@ -1241,8 +1241,8 @@ class TestAccumulatedData(unittest.TestCase):
         mock_logger = mock.Mock(spec=Logger)
         queue_data = self.create_queue_data()
 
-        with mock.patch('user.MQTTSubscribe.weewx.accum.Accum') as mock_Accum:
-            with mock.patch('user.MQTTSubscribe.weewx.units.to_std_system') as mock_to_std_system:
+        with mock.patch('user.mqttsubscribe.weewx.accum.Accum') as mock_Accum:
+            with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
                 type(mock_Accum.return_value).addRecord = \
                     mock.Mock(side_effect=test_weewx_stubs.accum.OutOfSpan("Attempt to add out-of-interval record"))
 
@@ -1260,8 +1260,8 @@ class TestAccumulatedData(unittest.TestCase):
     def test_queue_empty(self):
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.MQTTSubscribe.weewx.accum.Accum') as mock_Accum:
-            with mock.patch('user.MQTTSubscribe.weewx.units.to_std_system') as mock_to_std_system:
+        with mock.patch('user.mqttsubscribe.weewx.accum.Accum') as mock_Accum:
+            with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
                 type(mock_Accum.return_value).isEmpty = mock.PropertyMock(return_value=True)
 
                 SUT = TopicManager(None, self.config, mock_logger)
@@ -1285,8 +1285,8 @@ class TestAccumulatedData(unittest.TestCase):
             'dateTime': time.time()
         }
 
-        with mock.patch('user.MQTTSubscribe.weewx.accum.Accum') as mock_Accum:
-            with mock.patch('user.MQTTSubscribe.weewx.units.to_std_system') as mock_to_std_system:
+        with mock.patch('user.mqttsubscribe.weewx.accum.Accum') as mock_Accum:
+            with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
                 type(mock_Accum.return_value).isEmpty = mock.PropertyMock(return_value=False)
                 mock_to_std_system.return_value = final_record_data
 

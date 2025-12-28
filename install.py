@@ -1,5 +1,5 @@
 #
-#    Copyright (c) 2020-2024 Rich Bell <bellrichm@gmail.com>
+#    Copyright (c) 2020-2025 Rich Bell <bellrichm@gmail.com>
 #
 #    See the file LICENSE.txt for your full rights.
 #
@@ -9,9 +9,11 @@ from io import StringIO
 
 import configobj
 
+import weeutil
+
 from weecfg.extension import ExtensionInstaller
 
-VERSION = '3.1.1-rc01'
+VERSION = '3.2.0-rc01a'
 
 MQTTSUBSCRIBE_CONFIG = """
 
@@ -20,7 +22,7 @@ MQTTSUBSCRIBE_CONFIG = """
 
     # The driver to use.
     # Only used by the driver.
-    driver = user.MQTTSubscribe
+    driver = user.mqttsubscribe
 
     # Controls if validation errors raise an exception (stopping WeeWX from starting) or only logged.
     # Default is false
@@ -54,11 +56,28 @@ class MQTTSubscribeServiceInstaller(ExtensionInstaller):
             'description': 'Source WeeWX data from MQTT.',
             'author': "Rich Bell",
             'author_email': "bellrichm@gmail.com",
-            'files': [('bin/user', ['bin/user/MQTTSubscribe.py'])]
+            'files': [('bin/user', ['bin/user/mqttsubscribe.py'])]
         }
 
         MQTTSubscribe_dict = configobj.ConfigObj(StringIO(MQTTSUBSCRIBE_CONFIG))  # pylint: disable = invalid-name
         install_dict['config'] = MQTTSubscribe_dict
-        install_dict['data_services'] = 'user.MQTTSubscribe.MQTTSubscribeService'
+        install_dict['data_services'] = 'user.mqttsubscribe.MQTTSubscribeService'
 
         super().__init__(install_dict)
+
+    def configure(self, engine):
+        self.fix_deprecated_file_name(engine)
+        return True
+
+    def fix_deprecated_file_name(self, engine):
+        """ Update old configuration data from the olde filename, MQTTSubscribe.py, to the new name, mqttsubscribe.py."""
+        deprecated_service_name = 'user.MQTTSubscribe.MQTTSubscribeService'
+        deprecated_driver_name = 'user.MQTTSubscribe'
+
+        if deprecated_service_name in weeutil.weeutil.option_as_list(engine.config_dict['Engine']['Services']['data_services']):
+            engine.printer.out(f"Removing deprecated service name, {deprecated_service_name}.")
+            engine.config_dict['Engine']['Services']['data_services'].remove(deprecated_service_name)
+
+        if 'MQTTSubscribeDriver' in engine.config_dict and engine.config_dict['MQTTSubscribeDriver'].get('driver') == deprecated_driver_name:
+            engine.printer.out(f"Renaming deprecated driver name, {deprecated_driver_name} to user.mqttsubscribe.")
+            engine.config_dict['MQTTSubscribeDriver']['driver'] = 'user.mqttsubscribe'

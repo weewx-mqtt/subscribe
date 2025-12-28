@@ -11,7 +11,7 @@ import configobj
 
 import utils
 
-from user.MQTTSubscribe import TopicManager, Logger
+from user.mqttsubscribe import TopicManager, Logger
 
 class TestGetData(unittest.TestCase):
     def runit(self, payload, file_pointer, check_results=True):

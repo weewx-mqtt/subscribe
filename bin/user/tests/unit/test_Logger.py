@@ -18,13 +18,13 @@ from test_weewx_stubs import BaseTestClass, random_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.MQTTSubscribe import Logger
+from user.mqttsubscribe import Logger
 
 class TestInintialization(BaseTestClass):
     def test_init_set_trace_log_level(self):
         log_level = 5
 
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
 
             mock_logging._checkLevel.return_value = log_level
             mock_logging.getLevelName.return_value = f'Level {int(log_level)}'
@@ -55,7 +55,7 @@ class TestInintialization(BaseTestClass):
 
     @staticmethod
     def test_init_filename_set():
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
 
             mock_logging._checkLevel.return_value = 0
 
@@ -74,7 +74,7 @@ class TestInintialization(BaseTestClass):
 
     @staticmethod
     def test_init_console_set():
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
 
             mock_logging._checkLevel.return_value = 0
             mode = random_string()
@@ -524,8 +524,8 @@ class TestInintialization(BaseTestClass):
 class TestLogging(BaseTestClass):
     @staticmethod
     def test_error_logged():
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
-            with mock.patch('user.MQTTSubscribe.threading') as mock_threading:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
                 mock_logging._checkLevel.return_value = 0
                 thread_id = random.randint(10000, 99999)
                 mock_threading.get_native_id.return_value = thread_id
@@ -540,8 +540,8 @@ class TestLogging(BaseTestClass):
 
     @staticmethod
     def test_info_logged():
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
-            with mock.patch('user.MQTTSubscribe.threading') as mock_threading:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
                 mock_logging._checkLevel.return_value = 0
                 thread_id = random.randint(10000, 99999)
                 mock_threading.get_native_id.return_value = thread_id
@@ -556,8 +556,8 @@ class TestLogging(BaseTestClass):
 
     @staticmethod
     def test_debug_logged():
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
-            with mock.patch('user.MQTTSubscribe.threading') as mock_threading:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
                 mock_logging._checkLevel.return_value = 0
                 thread_id = random.randint(10000, 99999)
                 mock_threading.get_native_id.return_value = thread_id
@@ -572,8 +572,8 @@ class TestLogging(BaseTestClass):
 
     @staticmethod
     def test_trace_logged_with_debug_set():
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
-            with mock.patch('user.MQTTSubscribe.threading') as mock_threading:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
                 sys.modules['weewx'].debug = 2
                 mock_logging._checkLevel.return_value = 0
                 thread_id = random.randint(10000, 99999)
@@ -589,8 +589,8 @@ class TestLogging(BaseTestClass):
 
     @staticmethod
     def test_trace_logged_with_debug_not_set():
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
-            with mock.patch('user.MQTTSubscribe.threading') as mock_threading:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
                 mock_logging._checkLevel.return_value = 0
                 thread_id = random.randint(10000, 99999)
                 mock_threading.get_native_id.return_value = thread_id
@@ -624,8 +624,8 @@ class TestThrottling(BaseTestClass):
         }
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
-            with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            with mock.patch('user.mqttsubscribe.time') as mock_time:
                 mock_logging._checkLevel.return_value = 0
 
                 SUT = Logger(config)
@@ -661,8 +661,8 @@ class TestThrottling(BaseTestClass):
         }
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
-            with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            with mock.patch('user.mqttsubscribe.time') as mock_time:
                 mock_logging._checkLevel.return_value = 0
 
                 SUT = Logger(config)
@@ -692,8 +692,8 @@ class TestThrottling(BaseTestClass):
         }
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
-            with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            with mock.patch('user.mqttsubscribe.time') as mock_time:
                 mock_logging._checkLevel.return_value = 0
 
                 SUT = Logger(config)
@@ -724,8 +724,8 @@ class TestThrottling(BaseTestClass):
         }
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
-            with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            with mock.patch('user.mqttsubscribe.time') as mock_time:
                 mock_logging._checkLevel.return_value = 0
                 mock_time.time.return_value = now
 
@@ -766,8 +766,8 @@ class TestThrottling(BaseTestClass):
         }
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
-            with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            with mock.patch('user.mqttsubscribe.time') as mock_time:
                 mock_logging._checkLevel.return_value = 0
                 mock_time.time.return_value = now
 
@@ -814,8 +814,8 @@ class TestThrottling(BaseTestClass):
         }
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
-            with mock.patch('user.MQTTSubscribe.time') as mock_time:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            with mock.patch('user.mqttsubscribe.time') as mock_time:
                 mock_logging._checkLevel.return_value = 0
                 mock_time.time.return_value = now
 
@@ -865,9 +865,9 @@ class TestThrottling(BaseTestClass):
         }
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
-            with mock.patch('user.MQTTSubscribe.time') as mock_time:
-                with mock.patch('user.MQTTSubscribe.threading') as mock_threading:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            with mock.patch('user.mqttsubscribe.time') as mock_time:
+                with mock.patch('user.mqttsubscribe.threading') as mock_threading:
                     mock_logging._checkLevel.return_value = 0
                     mock_time.time.return_value = now
                     thread_id = random.randint(10000, 99999)
@@ -920,9 +920,9 @@ class TestThrottling(BaseTestClass):
         }
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.MQTTSubscribe.logging') as mock_logging:
-            with mock.patch('user.MQTTSubscribe.time') as mock_time:
-                with mock.patch('user.MQTTSubscribe.threading') as mock_threading:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            with mock.patch('user.mqttsubscribe.time') as mock_time:
+                with mock.patch('user.mqttsubscribe.threading') as mock_threading:
                     mock_logging._checkLevel.return_value = 0
                     mock_time.time.return_value = now
                     thread_id = random.randint(10000, 99999)

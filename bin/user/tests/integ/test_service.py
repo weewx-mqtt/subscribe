@@ -15,7 +15,7 @@ import utils
 
 import weewx
 from weewx.engine import StdEngine
-from user.MQTTSubscribe import MQTTSubscribeService
+from user.mqttsubscribe import MQTTSubscribeService
 
 class TestService(unittest.TestCase):
     def runit(self, payload, file_pointer, check_results=True):

@@ -8,8 +8,8 @@ import unittest
 
 import configobj
 
-import user.MQTTSubscribe
-from user.MQTTSubscribe import MQTTSubscribeConfiguration, CONFIG_SPEC_TEXT
+import user.mqttsubscribe
+from user.mqttsubscribe import MQTTSubscribeConfiguration, CONFIG_SPEC_TEXT
 
 class TestDefaultConfiguration(unittest.TestCase):
     def test_default_configuration(self):
@@ -21,7 +21,7 @@ class TestDefaultConfiguration(unittest.TestCase):
 [MQTTSubscribe]
     # The driver to use.
     # Only used by the driver.
-    driver = user.MQTTSubscribe
+    driver = user.mqttsubscribe
     
     # Turn the service on and off.
     # Default is true.
@@ -156,11 +156,11 @@ class TestDefaultConfiguration(unittest.TestCase):
         item_removed = 'archive_interval'
 
         def set_up(self):
-            self.save_config_spec_text = user.MQTTSubscribe.CONFIG_SPEC_TEXT
-            user.MQTTSubscribe.CONFIG_SPEC_TEXT = ''
+            self.save_config_spec_text = user.mqttsubscribe.CONFIG_SPEC_TEXT
+            user.mqttsubscribe.CONFIG_SPEC_TEXT = ''
 
         def tear_down(self):
-            user.MQTTSubscribe.CONFIG_SPEC_TEXT = self.save_config_spec_text
+            user.mqttsubscribe.CONFIG_SPEC_TEXT = self.save_config_spec_text
 
         SUT = MQTTSubscribeConfiguration(None)
 
