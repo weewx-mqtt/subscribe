@@ -8,4 +8,4 @@ on:
 
 jobs:
   stale:
-    uses: weewx-extensions/development_tools/.github/workflows/stale.yml@v1.0.0
+    uses: weewx-extensions/development_tools/.github/workflows/stale.yml@latest

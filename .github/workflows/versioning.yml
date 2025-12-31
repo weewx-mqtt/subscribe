@@ -7,4 +7,4 @@ on:
 
 jobs:
   version:
-    uses: weewx-extensions/development_tools/.github/workflows/versioning.yml@v3
+    uses: weewx-extensions/development_tools/.github/workflows/versioning.yml@latest
