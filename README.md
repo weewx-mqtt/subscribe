@@ -38,10 +38,10 @@ It can be controlled more granularly by setting adjust_end_time to the number of
 ## Installation notes
 
 **To install version 2.x and prior see,
-[Installing and Updating Version 2.X and Earlier](https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Installing-and-updating-version-2.x-and-earlier).**
+[Installing and Updating Version 2.X and Earlier](https://github.com/weewx-mqtt/subscribe/wiki/Installing-and-updating-version-2.x-and-earlier).**
 
 **To install version 3.x with WeeWX 4.x see,
-[Installing and updating version 3.x with WeeWX 4.x](https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Installing-and-updating-version-3.x--with-WeeWX-4.x)**
+[Installing and updating version 3.x with WeeWX 4.x](https://github.com/weewx-mqtt/subscribe/wiki/Installing-and-updating-version-3.x--with-WeeWX-4.x)**
 
 **Note:** It is rare that MQTTSubscribe should be configured to run as both a `service` and `driver`.
 If you are augmenting an existing driver's data, run MQTTSubscribe as a `service`. Otherwise, run it as a `driver`.
@@ -140,7 +140,7 @@ MQTTSUBSCRIBE_VERSION=2.3.1
 #### Perform the installation
 
 ```
-$WEECTL extension install https://github.com/bellrichm/WeeWX-MQTTSubscribe/archive/refs/tags/v${MQTTSUBSCRIBE_VERSION}.zip
+$WEECTL extension install https://github.com/weewx-mqtt/subscribe/archive/refs/tags/v${MQTTSUBSCRIBE_VERSION}.zip
 ```
 
 ### Create an example configuration
@@ -173,9 +173,9 @@ Edit the `mqttsubscribe.template.conf` file
     python3 $USER_ROOT/mqttsubscribe.py simulate $RUN_MODE --conf mqttsubscribe.template.conf
     ```
 
-  Additional information on running MQTTSubscribe in configuration mode can be found at this [wiki page](https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Configurator-Mode).
+  Additional information on running MQTTSubscribe in configuration mode can be found at this [wiki page](https://github.com/weewx-mqtt/subscribe/wiki/Configurator-Mode).
   
-  Additional information on running MQTTSubscribe in simulation mode can be found at this [wiki page](https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Simulator-mode).
+  Additional information on running MQTTSubscribe in simulation mode can be found at this [wiki page](https://github.com/weewx-mqtt/subscribe/wiki/Simulator-mode).
   
 ### Stop WeeWX
 
@@ -201,9 +201,9 @@ python3 $USER_ROOT/mqttsubscribe.py configure service --enable true --conf mqtts
 
 ## Updating MQTTSubscribe
 
-1. [Initialize MQTTSubscribe's runtime](https://github.com/bellrichm/WeeWX-MQTTSubscribe?tab=readme-ov-file#initialize-mqttsubscribes-runtime)
+1. [Initialize MQTTSubscribe's runtime](https://github.com/weewx-mqtt/subscribe?tab=readme-ov-file#initialize-mqttsubscribes-runtime)
 2. Stop WeeWX
-3. [Install MQTTSubscribe](https://github.com/bellrichm/WeeWX-MQTTSubscribe#install-mqttsubscribe)
+3. [Install MQTTSubscribe](https://github.com/weewx-mqtt/subscribe#install-mqttsubscribe)
 4. Validate and test the new against current configuration
 
     ```
@@ -218,7 +218,7 @@ python3 $USER_ROOT/mqttsubscribe.py configure service --enable true --conf mqtts
 
 ## Reconfiguring MQTTSubscribe
 
-1. [Initialize MQTTSubscribe's runtime](https://github.com/bellrichm/WeeWX-MQTTSubscribe?tab=readme-ov-file#initialize-mqttsubscribes-runtime).
+1. [Initialize MQTTSubscribe's runtime](https://github.com/weewx-mqtt/subscribe?tab=readme-ov-file#initialize-mqttsubscribes-runtime).
 2. Export the current configuration settings.
 
     ```
@@ -226,20 +226,20 @@ python3 $USER_ROOT/mqttsubscribe.py configure service --enable true --conf mqtts
     ```
 
 3. Follow the diections to
-    * [Configure MQTTSunscribe](https://github.com/bellrichm/WeeWX-MQTTSubscribe#configure-mqttsubscribe)
-    * [Validate and test the configuration](https://github.com/bellrichm/WeeWX-MQTTSubscribe?tab=readme-ov-file#Validate-and-test-the-configuration)
+    * [Configure MQTTSunscribe](https://github.com/weewx-mqtt/subscribe#configure-mqttsubscribe)
+    * [Validate and test the configuration](https://github.com/weewx-mqtt/subscribe?tab=readme-ov-file#Validate-and-test-the-configuration)
 4. Stop WeeWX
-5. [Update WeeWX](https://github.com/bellrichm/WeeWX-MQTTSubscribe?tab=readme-ov-file#update-weewxconf)
+5. [Update WeeWX](https://github.com/weewx-mqtt/subscribe?tab=readme-ov-file#update-weewxconf)
 6. Restart WeeWX
 
 ## Debugging
 
-See, [debugging](https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Debugging).
+See, [debugging](https://github.com/weewx-mqtt/subscribe/wiki/Debugging).
 
 ## Getting Help
 
-Feel free to [open an issue](https://github.com/bellrichm/WeeWX-MQTTSubscribe/issues/new),
-[start a discussion in github](https://github.com/bellrichm/WeeWX-MQTTSubscribe/discussions/new),
+Feel free to [open an issue](https://github.com/weewx-mqtt/subscribe/issues/new),
+[start a discussion in github](https://github.com/weewx-mqtt/subscribe/discussions/new),
 or [post on WeeWX google group](https://groups.google.com/g/weewx-user).
 When doing so, see [Help! Posting to weewx user](https://github.com/weewx/weewx/wiki/Help!-Posting-to-weewx-user)
 for information on capturing the log.

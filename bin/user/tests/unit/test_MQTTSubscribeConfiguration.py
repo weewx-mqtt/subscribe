@@ -17,7 +17,7 @@ class TestDefaultConfiguration(unittest.TestCase):
         self.maxDiff = None
 
         expected_config = '''# Replace '[MQTTSubscribe]' with '[MQTTSubscribeService]' or '[MQTTSubscribeDriver]'
-# For additional information see, https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Common-Options
+# For additional information see, https://github.com/weewx-mqtt/subscribe/wiki/Common-Options
 [MQTTSubscribe]
     # The driver to use.
     # Only used by the driver.
@@ -89,7 +89,7 @@ class TestDefaultConfiguration(unittest.TestCase):
         # Default is tlsv12.
         tls_version = tlsv12
     
-    # For additional information see, https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Configuring#the-topic-name-sections
+    # For additional information see, https://github.com/weewx-mqtt/subscribe/wiki/Common-Options#the-topic-name-sections
     [[topics]]
         # Units for MQTT payloads without unit value.
         # Valid values: US, METRIC, METRICWX.
@@ -98,7 +98,7 @@ class TestDefaultConfiguration(unittest.TestCase):
         unit_system = US
         
         # The first topic to subscribe to
-        # For additional information see, https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Configuring#the-topic-name-sections
+        # For additional information see, https://github.com/weewx-mqtt/subscribe/wiki/Common-Options#the-topics-section
         [[[REPLACE_ME]]]
             # When set to false, the topic is not subscribed to.
             # Valid values: True, False
@@ -119,7 +119,7 @@ class TestDefaultConfiguration(unittest.TestCase):
                 type = REPLACE_ME
             
             # The incoming field name from MQTT.
-            # For additional information see, https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Configuring#the-field-name-sections
+            # For additional information see, https://github.com/weewx-mqtt/subscribe/wiki/Common-Options#the-field-name-sections
             # Use this template for any fields that need to be configured.
             # If no fields need to be configured, remove this section.
             [[[[REPLACE_ME]]]]
