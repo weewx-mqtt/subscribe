@@ -1,0 +1,12 @@
+ToDo
+
+Install curl
+sudo apt install curl
+
+sudo apt install git
+
+Install pyenv
+https://github.com/pyenv/pyenv#automatic-installer
+
+Install VS Code
+https://code.visualstudio.com/docs/?dv=linux64_deb

@@ -2,6 +2,10 @@
     "python.linting.pycodestyleEnabled": false,
     "python.envFile": "${workspaceFolder}/.env",
     "python.linting.enabled": true,
+    "python.analysis.extraPaths": [
+        "../weewx/src",
+        "bin"
+    ],
     "sqltools.sessionFilesFolder": "sql",
     "sqltools.connections": [
         {
