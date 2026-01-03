@@ -66,3 +66,22 @@ python3 - for python 3
 
 ./mqtt_test.py weewx.archive.conf --type=driver  --records=1
 ./mqtt_test.py weewx.archive.conf --type=service --records=1
+
+## Setting up github pages
+
+### Setup/Install jekyll
+
+See, https://jekyllrb.com/docs/installation/ubuntu/
+
+### Configure the repository to publish (from a branch)
+
+https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-from-a-branch
+
+### setup repository 
+
+https://docs.github.com/en/pages/setting-up-a-github-pages-site-with-jekyll/creating-a-github-pages-site-with-jekyll#creating-your-sitestart 
+
+around step 6
+
+https://docs.github.com/en/pages/setting-up-a-github-pages-site-with-jekyll/testing-your-github-pages-site-locally-with-jekyll
+
