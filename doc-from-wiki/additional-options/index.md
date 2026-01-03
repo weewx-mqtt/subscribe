@@ -1,8 +1,8 @@
 ---
-title: Common Options
+title: Additional Options
 has_children: true
 has_toc: true
-nav_order: 2
+nav_order: 3
 ---
 ## The `[MQTTSubscribeDriver]/[MQTTSubscribeSection]` section
 
