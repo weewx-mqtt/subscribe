@@ -12,4 +12,4 @@ Following these steps configures MQTTSubscribe and tests the configuration witho
 
 ## Debugging
 
-See, [debugging](https://github.com/weewx-mqtt/subscribe/wiki/Debugging).
+See, [debugging]({{site.baseurl}}/debugging).

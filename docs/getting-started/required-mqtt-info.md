@@ -20,11 +20,11 @@ First up is to ensure that you can subscribe to the MQTT topics independent of W
 
         The advantage of using mosquitto_sub, it is a widely used utility and therefore a lot of information can be found on the web.
 
-    2. [MQTTSubscribe Simulator](https://github.com/weewx-mqtt/subscribe/wiki/MQTTSubscribe-Simulator-mode)
+    2. [MQTTSubscribe Simulator]({{site.baseurl}}/simulator-mode)
 
         The advantage of using MQTTSubscribe Simulator is that it can be used to also test the MQTTSubscribe section of the WeeWX configuration.
 
-        This does require MQTTSubscribe to be [installed](https://github.com/weewx-mqtt/subscribe/wiki#installing-mqttsubscribe) and [configured](https://github.com/weewx-mqtt/subscribe/wiki#installing-mqttsubscribe).
+        This does require MQTTSubscribe to be [installed]({{site.baseurl}}/getting-started/installing) and [configured]({{site.baseurl}}/getting-started/configuring).
 
 3. Determine the MQTT message 'type'.
 

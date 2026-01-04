@@ -22,7 +22,7 @@ This example leverages MQTTSubscribe's default values.
 To see a more complete template see,
 [https://github.com/weewx-mqtt/subscribe/blob/master/mqttsubscribe.example.conf](https://github.com/weewx-mqtt/subscribe/blob/master/mqttsubscribe.example.conf).
 
-[Common options](https://github.com/weewx-mqtt/subscribe/wiki/Common-Options)
+[Common options]({{site.baseurl}}/common-options)
 is a reference of the most common options.
 
 ```

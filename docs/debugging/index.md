@@ -3,7 +3,7 @@ title: Debugging
 nav_order: 15
 ---
 
-It is highly recommended that when debugging, MQTTSubscribe is run in [simulator mode](https://github.com/weewx-mqtt/subscribe/wiki/Simulator-mode).
+It is highly recommended that when debugging, MQTTSubscribe is run in [simulator mode]({{site.baseurl}}/simulator-mode).
 This has the following advantages.
 
 - It does not impact a running WeeWX installation.
@@ -51,13 +51,13 @@ MQTTSubscribeDriver primary thread
 Most of the information logged for this processing will not be ueful to the average use of MQTTSubscribe.
 But this information can be **very** useful to the developers of MQTTSubscribe.
 Information related to configuring the MQTT connection is logged and should be reviewed for correctness.
-Example of information logged is [here](https://github.com/weewx-mqtt/subscribe/wiki/Understanding-the-log#mqtt-parameters).
+Example of information logged is [here]({{site.baseurl}}/understanding-the-log#mqtt-parameters).
 
 ### Initialize MQTT
 
 This has information about establishing the MQTT connection and subscriptions.
 It should be reviewed to ensure the connection was established and the expected topics were subscribed to.
-Example of information logged is [here](https://github.com/weewx-mqtt/subscribe/wiki/Understanding-the-log#mqtt-initialization)
+Example of information logged is [here]({{site.baseurl}}/understanding-the-log#mqtt-initialization)
 
 ### MQTTSubscribeDriver secondary thread processing
 
@@ -66,7 +66,7 @@ Searching on`MessageCallbackProvider data-> incoming`, will display the raw data
 It should be reviewed to ensure the expected data is being received.
 Searching on `TopicManager data-> incoming`, will display the data after the configured transformations have happened.
 It is the data that will be in the WeeWX loop packet.
-Example of information logged is [here](https://github.com/weewx-mqtt/subscribe/wiki/Understanding-the-log#mqttsubscribedriver-secondary-thread-processing)
+Example of information logged is [here]({{site.baseurl}}/understanding-the-log#mqttsubscribedriver-secondary-thread-processing)
 
 ### MQTTSubscribeDriver primary thread
 
@@ -78,7 +78,7 @@ Searching on `data-> final loop packet is` is the data that is 'sent' to WeeWx.
 If this data is correct, any problems are most likely not with WeeWX.
 Otherwise, it is most likely a MQTTSubscribe problem and rhe previous processing logs need to be looked at closer.
 It might even be necessary to set `debug = 2` and generate new logs.
-Example of information logged is [here](https://github.com/weewx-mqtt/subscribe/wiki/Understanding-the-log#mqttsubscribedriver-primary-thread-processing)
+Example of information logged is [here]({{site.baseurl}}/understanding-the-log#mqttsubscribedriver-primary-thread-processing)
 
 ## MQTTSubscribeService
 
@@ -109,7 +109,7 @@ Searching on`MessageCallbackProvider data-> incoming`, will display the raw data
 It should be reviewed to ensure the expected data is being received.
 Searching on `TopicManager data-> incoming`, will display the data after the configured transformations have happened.
 If necessary, this data will be 'accumulated' in the primary thread.
-Example of information logged is [here](https://github.com/weewx-mqtt/subscribe/wiki/Understanding-the-log#mqttsubscribeservice-secondary-thread-processing)
+Example of information logged is [here]({{site.baseurl}}/understanding-the-log#mqttsubscribeservice-secondary-thread-processing)
 
 ### MQTTSubscribeService  primary thread
 
@@ -123,4 +123,4 @@ Searching on `data-> final loop packet is` is the data that is 'sent' to WeeWx.
 If this data is correct, any problems are most likely not with WeeWX.
 Otherwise, it is most likely a MQTTSubscribe problem and rhe previous processing logs need to be looked at closer.
 It might even be necessary to set `debug = 2` and generate new logs.
-Example of information logged is [here](https://github.com/weewx-mqtt/subscribe/wiki/Understanding-the-log#mqttsubscribeservice-primary-thread-processing)
+Example of information logged is [here]({{site.baseurl}}/understanding-the-log#mqttsubscribeservice-primary-thread-processing)

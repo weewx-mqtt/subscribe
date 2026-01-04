@@ -16,5 +16,5 @@ Set to `true` if the field should be ignored. The default is `false`.
 
 ### The `[[[[message]]]]` sections
 
-Overrides the [`[[topics]] [[[message]]]`](https://github.com/weewx-mqtt/subscribe/wiki/Common-Options#message) settings for this specific topic.
+Overrides the [`[[topics]] [[[message]]]`]({{site.baseurl}}/common-options/message) settings for this specific topic.
 

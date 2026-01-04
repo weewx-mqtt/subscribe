@@ -61,4 +61,4 @@ Each subsection 'names' the element in the array.
 
 ###### For each `[[[[SubFieldname]]]`
 
-Each subfield can be configured like a [field]({{site.baseurl}}/common-options/field-name.html) in the json.
+Each subfield can be configured like a [field]({{site.baseurl}}/common-options/field-name) in the json.

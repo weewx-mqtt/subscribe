@@ -4,7 +4,7 @@ parent: Deprecated Documentation
 nav_order: 3
 ---
 
-**Deprecated in version 3.0, use [simulation mode](https://github.com/weewx-mqtt/subscribe/wiki/MQTTSubscribe-Simulator-mode).**
+**Deprecated in version 3.0, use [simulation mode]({{site.baseurl}}/simulator-mode).**
 
 This can be retrieved via the command, `wget https://github.com/weewx-mqtt/subscribe/blob/master/mqtt_test.py`
 
