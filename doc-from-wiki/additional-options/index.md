@@ -4,47 +4,56 @@ has_children: true
 has_toc: true
 nav_order: 3
 ---
+
 ## The `[MQTTSubscribeDriver]/[MQTTSubscribeSection]` section
 
 This configures the MQTT connection and any necessary WeeWX options.
 
-### enable
+### archive_interval
 
-Set to `false` to disable the service. This is only used by the service. The default is `true`.
+The WeeWX archive interval.
 
-### host
+Note, this really should be retrieved from the WeeWX configuration...
 
-The MQTT server. The default is `localhost`.
+*Experimental*:
+    When the `archive_topic` is set and MQTTSubscribe is running in 'hardware generation' mode, this is the WeeWX archive interval.
 
-### keepalive
+The default is ‘300’.
 
-Maximum period in seconds allowed between communications with the broker. The default is `60`.
+### binding
 
-### max_delay
+Whether to bind to the `loop` or the `archive`.
+This is only used by the service.
+The default is `loop`.
 
-**Coming soon.**
-The maximum time in seconds that the client will wait before trying to reconnect.
-The default is 120.
+### clean_session
 
-### min_delay
+The clean_session parameter that is passed into the creation of the MQTT client. The default is `true`.
 
-**Coming soon.**
-The minimum time in seconds that the client will wait before trying to reconnect.
-The default is 1.
+### clean_start
 
-### password
+The clean_start parameter that is passed into the creation of the MQTT client.
+Valid values are `true`, `false`, and `MQTT_CLEAN_START_FIRST_ONLY`.
+The default is `MQTT_CLEAN_START_FIRST_ONLY`.
+This option is only valid with a the `protocol` option set to `MQTTv5`.
 
-password for broker authentication. The default is `None`.
+### clientid
 
-### port
+The client id to use when connecting.
+When running as a service, the default is MQTTSubscribeService-xxxx.
+When running as a driver, the default is MQTTSubscribeDriver-xxxx.
+Where xxxx is a random number between 1000 and 9999.
 
-The port to connect to. The default  is `1883`.
+### log
 
-### stop_on_validation_errors
+Set to `true` to turn on MQTT logging. The default is `false`.
 
-Controls if validation errors raise an exception (stopping WeeWX from starting) or only logged.
-Default is `false`.
+### protocol
 
-### username
+The MQTT protocol version.
+Valid values are `MQTTv31`, `MQTTv311`, and `MQTTv5`.
+The default is `MQTTv311`.
 
-username for broker authentication. The default is `None`.
+### wait_before_retry
+
+When the MQTT queue becomes empty, how long in seconds before checking it. This is only used by the driver. The default is `2`.
