@@ -61,4 +61,4 @@ Each subsection 'names' the element in the array.
 
 ###### For each `[[[[SubFieldname]]]`
 
-Each subfield can be configured like a [field](https://github.com/weewx-mqtt/subscribe/wiki/Configuring#the-field-name-sections) in the json.
+Each subfield can be configured like a [field]({% link common-options/field-name.md %}) in the json.
