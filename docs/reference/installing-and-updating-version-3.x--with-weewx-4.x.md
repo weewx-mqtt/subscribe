@@ -1,4 +1,7 @@
-# Installing version 3.x withh WeeWX version 4.x
+---
+title: Installing version 3.x with WeeWX version 4.x
+nav_exclude: true
+---
 
 **Note:**, without workarounds WeeWX 4.x does not support python 3.12 and higher.
 See this [discussion](https://groups.google.com/g/weewx-user/c/PLYefyx2Pnw) for additional information.

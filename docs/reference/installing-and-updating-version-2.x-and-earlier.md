@@ -1,7 +1,6 @@
 ---
 title: Installing and Updating Version 2.x and Earlier
-#parent: Getting Started
-#nav_order: 4
+nav_exclude: true
 ---
 
 **Note:** It is rare that MQTTSubscribe should be configured to run as both a `service` and `driver`.
