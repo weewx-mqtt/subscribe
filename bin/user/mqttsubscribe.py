@@ -7,7 +7,7 @@
 WeeWX driver and service that subscribes to MQTT topics and
 creates/updates loop packets/archive records.
 
-See, https://github.com/weewx-mqtt/subscribe/wiki
+See, https://weewx-mqtt.github.io/subscribe
 
 """
 
@@ -241,7 +241,7 @@ CONFIG_SPEC_TEXT = """ \
         # Default is "=".
         keyword_separator = "="
 
-    # For additional information see, https://github.com/weewx-mqtt/subscribe/wiki/Common-Options#the-topic-name-sections
+    # For additional information see, https://weewx-mqtt.github.io/subscribe/common-options/topic-name
     [[topics]]
         # Units for MQTT payloads without unit value.
         # Valid values: US, METRIC, METRICWX.
@@ -365,7 +365,7 @@ CONFIG_SPEC_TEXT = """ \
             keyword_separator = "="
 
         # The first topic to subscribe to
-        # For additional information see, https://github.com/weewx-mqtt/subscribe/wiki/Common-Options#the-topics-section
+        # For additional information see, https://weewx-mqtt.github.io/subscribe/common-options/topic-name
         [[[REPLACE_ME]]]
             # When set to false, the topic is not subscribed to.
             # Valid values: True, False
@@ -426,7 +426,7 @@ CONFIG_SPEC_TEXT = """ \
                 keyword_separator = "="
 
             # The incoming field name from MQTT.
-            # For additional information see, https://github.com/weewx-mqtt/subscribe/wiki/Common-Options#the-field-name-sections
+            # For additional information see, https://weewx-mqtt.github.io/subscribe/common-options/field-name
             # Use this template for any fields that need to be configured.
             # If no fields need to be configured, remove this section.
             [[[[REPLACE_ME]]]]
@@ -2962,7 +2962,7 @@ class MQTTSubscribeConfiguration():
             # Deprecated in 2.1.0
             'deprecated_severity': 'WARN',
             'deprecated_msg': "\n".join(["Deprecated: '[[mesage_callback]]' is replaced with '[[topics]][[[message]]]'",
-                                         "See, https://github.com/weewx-mqtt/subscribe/wiki/Common-Options#the-topics-section"]),
+                                         "See, https://weewx-mqtt.github.io/subscribe/common-options/topics"]),
             'contains_total': {
                 # Removed in 2.0.0
                 'deprecated_severity': 'ERROR',
@@ -3104,7 +3104,7 @@ class MQTTSubscribeConfiguration():
             config_spec.initial_comment.append("# Replace '[MQTTSubscribe]' with '[MQTTSubscribeService]' or '[MQTTSubscribeDriver]'")
         config_spec.initial_comment.append((
             "# For additional information see, "
-            "https://github.com/weewx-mqtt/subscribe/wiki/Common-Options"))
+            "https://weewx-mqtt.github.io/subscribe/common-options"))
 
         return config_spec
 
@@ -3374,7 +3374,7 @@ class Simulator():
 Run MQTTSubscribe in simulate mode.
 One can simulate either the driver or service.
 Simulate mode allows one to test and/or debug MQTTSubscribe without interfering with a running WeeWX instance.
-For more inforation see, https://github.com/weewx-mqtt/subscribe/wiki/Simulator-mode
+For more inforation see, https://weewx-mqtt.github.io/subscribe/simulator-mode/
 '''
 
     @classmethod
@@ -3647,7 +3647,7 @@ class Configurator():
     description = '''
 Run MQTTSubscribe in configure mode. One can configure either the driver or service.
 Configure mode provides utilities to make it easier to configure MQTTSubscribe.
-For more information see, https://github.com/weewx-mqtt/subscribe/wiki/Configurator-Mode
+For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mode
 '''
 
     @classmethod
