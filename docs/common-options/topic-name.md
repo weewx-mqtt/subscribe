@@ -13,7 +13,6 @@ Each topic to subscribe to has its own section that is the name of the topic to 
 
 Set to `true` if the field should be ignored. The default is `false`.
 
-
 ### The `[[[[message]]]]` sections
 
 Overrides the [`[[topics]] [[[message]]]`]({{site.baseurl}}/common-options/message) settings for this specific topic.
