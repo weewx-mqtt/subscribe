@@ -157,21 +157,21 @@ Using `weectl station` a limited number of options that can be configured.
 
 Edit the `mqttsubscribe.template.conf` file
 
-    For example,
+* For example,
 
-    ```
+```
     nano mqttsubscribe.template.conf
-    ```
+```
 
 ### Validate and test the configuration
 
-    ```
+```
     python3 $USER_ROOT/mqttsubscribe.py configure $RUN_MODE --validate --conf mqttsubscribe.template.conf
-    ```
+```
 
-    ```
+ ```
     python3 $USER_ROOT/mqttsubscribe.py simulate $RUN_MODE --conf mqttsubscribe.template.conf
-    ```
+ ```
 
   Additional information on running MQTTSubscribe in configuration mode can be found at this [page](https://weewx-mqtt.github.io/subscribe/configurator-mode/).
   
