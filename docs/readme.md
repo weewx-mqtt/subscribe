@@ -134,7 +134,7 @@ WEECTL=$WEEWX_REPO/bin/weectl
 For example, if the desired version is 2.3.1.
 
 ```
-MQTTSUBSCRIBE_VERSION=2.3.1
+MQTTSUBSCRIBE_VERSION=3.1.1
 ```
 
 #### Perform the installation
@@ -146,7 +146,7 @@ $WEECTL extension install https://github.com/weewx-mqtt/subscribe/archive/refs/t
 ### Create an example configuration
 
 ```
-python3 $USER_ROOT/mqttsubscribe.py configure --create-example mqttsubscribe.template.conf
+python3 $USER_ROOT/MQTTSubscribe.py configure --create-example mqttsubscribe.template.conf
 ```
 
 ### Configure MQTTSubscribe
