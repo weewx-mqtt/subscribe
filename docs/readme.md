@@ -146,7 +146,7 @@ $WEECTL extension install https://github.com/weewx-mqtt/subscribe/archive/refs/t
 ### Create an example configuration
 
 ```
-python3 $USER_ROOT/mqttsubscribe.py configure --create-example mqttsubscribe.template.conf
+python3 $USER_ROOT/MQTTSubscribe.py configure --create-example mqttsubscribe.template.conf
 ```
 
 ### Configure MQTTSubscribe
@@ -166,11 +166,11 @@ Edit the `mqttsubscribe.template.conf` file
 ### Validate and test the configuration
 
 ```
-    python3 $USER_ROOT/mqttsubscribe.py configure $RUN_MODE --validate --conf mqttsubscribe.template.conf
+    python3 $USER_ROOT/MQTTSubscribe.py configure $RUN_MODE --validate --conf mqttsubscribe.template.conf
 ```
 
  ```
-    python3 $USER_ROOT/mqttsubscribe.py simulate $RUN_MODE --conf mqttsubscribe.template.conf
+    python3 $USER_ROOT/MQTTSubscribe.py simulate $RUN_MODE --conf mqttsubscribe.template.conf
  ```
 
   Additional information on running MQTTSubscribe in configuration mode can be found at this [page](https://weewx-mqtt.github.io/subscribe/configurator-mode/).
@@ -188,13 +188,13 @@ $WEECTL station reconfigure --driver=user.mqttsubscribe --no-prompt
 ### If running as a service, enable it
 
 ```
-python3 $USER_ROOT/mqttsubscribe.py configure service --enable true --conf mqttsubscribe.template.conf
+python3 $USER_ROOT/MQTTSubscribe.py configure service --enable true --conf mqttsubscribe.template.conf
 ```
 
 ### Update `weewx.conf`
 
     ```
-    python3 $USER_ROOT/mqttsubscribe.py configure $RUN_MODE --replace-with mqttsubscribe.template.conf --conf $CONFIG_FILE
+    python3 $USER_ROOT/MQTTSubscribe.py configure $RUN_MODE --replace-with mqttsubscribe.template.conf --conf $CONFIG_FILE
     ```
 
 ### Restart WeeWX
@@ -207,11 +207,11 @@ python3 $USER_ROOT/mqttsubscribe.py configure service --enable true --conf mqtts
 4. Validate and test the new against current configuration
 
     ```
-    python3 $USER_ROOT/mqttsubscribe.py configure $RUN_MODE --validate --conf $CONFIG_FILE
+    python3 $USER_ROOT/MQTTSubscribe.py configure $RUN_MODE --validate --conf $CONFIG_FILE
     ```
 
     ```
-    python3 $USER_ROOT/mqttsubscribe.py simulate $RUN_MODE --conf $CONFIG_FILE
+    python3 $USER_ROOT/MQTTSubscribe.py simulate $RUN_MODE --conf $CONFIG_FILE
     ```
 
 5. Restart WeeWX
@@ -222,7 +222,7 @@ python3 $USER_ROOT/mqttsubscribe.py configure service --enable true --conf mqtts
 2. Export the current configuration settings.
 
     ```
-    python3 $USER_ROOT/mqttsubscribe.py configure $RUN_MODE --export mqttsubscribe.template.conf --conf $CONFIG_FILE
+    python3 $USER_ROOT/MQTTSubscribe.py configure $RUN_MODE --export mqttsubscribe.template.conf --conf $CONFIG_FILE
     ```
 
 3. Follow the diections to
