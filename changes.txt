@@ -1,3 +1,16 @@
+V3.2.0
+Enhancements:
+- Rename MQTTSubscribe.py to mqttsubscribe.py (improved maintainability).
+- Name the threads that are created.
+- Move wiki to github pages.
+
+Fixes:
+- Interactive reconfigure of MQTTSubscribeDriver (#13).
+
+Build Improvements:
+- Remove old build code.
+- Add codacy to pipeline.
+
 V3.1.0
 Enhancements:
 - Caching now supported when binding to loop packets and generation of archive records is set to hardware (#178).

@@ -585,7 +585,7 @@ import weewx.drivers
 from weewx.engine import StdEngine, StdService
 # pylint: enable=wrong-import-position
 
-VERSION = '3.2.0-rc01a'
+VERSION = '3.2.0-rc01b'
 DRIVER_NAME = 'MQTTSubscribeDriver'
 DRIVER_VERSION = VERSION
 
@@ -2904,7 +2904,7 @@ class MQTTSubscribeDriverConfEditor(weewx.drivers.AbstractConfEditor):  # pragma
         settings = {}
         self._configure(default_config['MQTTSubscribeDriver'], settings)
 
-        if len(self.existing_options['topics']) > 1:
+        if 'topics' in self.existing_options and len(self.existing_options['topics']) > 0:
             print("Topics have been configured, currently these cannot be changed interactively.")
         else:
             settings['topics'] = {}
@@ -2917,9 +2917,6 @@ class MQTTSubscribeDriverConfEditor(weewx.drivers.AbstractConfEditor):  # pragma
                     settings['topics'][topic]['message'] = {}
                     print("Enter the MQTT paylod type: individual|json|keyword")
                     settings['topics'][topic]['message']['type'] = self._prompt('type', 'json', ['individual', 'json', 'keyword'])
-                else:
-                    if len(settings['topics']) == 1:
-                        topic = 'REPLACE_ME'
 
         return settings
 
