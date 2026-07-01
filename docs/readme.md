@@ -134,7 +134,7 @@ WEECTL=$WEEWX_REPO/bin/weectl
 For example, if the desired version is 2.3.1.
 
 ```
-MQTTSUBSCRIBE_VERSION=2.3.1
+MQTTSUBSCRIBE_VERSION=3.1.1
 ```
 
 #### Perform the installation
