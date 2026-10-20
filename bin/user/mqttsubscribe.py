@@ -42,7 +42,12 @@ CONFIG_SPEC_TEXT = """ \
 
     # Controls the MQTT logging.
     # Default is false.
+    # DEPRECATED - use log_mqtt.
     log = false
+
+    # Controls the MQTT logging.
+    # Default is false.
+    log_mqtt = false
 
     # password for broker authentication.
     # Default is None.
@@ -2240,7 +2245,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
             'password': service_dict.get('password', None),
             'min_delay': to_int(service_dict.get('min_delay', 1)),
             'max_delay': to_int(service_dict.get('max_delay', 120)),
-            'log_mqtt': to_bool(service_dict.get('log', False)),
+            'log_mqtt': to_bool(service_dict.get('log_mqtt', service_dict.get('log', False))),
             'tls_dict': service_dict.get('tls'),
         }
 
@@ -2876,6 +2881,11 @@ class MQTTSubscribeConfiguration():
             'deprecated_severity': 'ERROR',
             'deprecated_msg': "'archive_field_cache' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'",
         },
+        'log': {
+            # Deprecated in 3.2.1
+            'deprecated_severity': 'WARN',
+            'deprecated_msg': "'log' is deprecated, use 'log_mqtt'",
+        },
         'message_callback': {
             # Deprecated in 2.1.0
             'deprecated_severity': 'WARN',
@@ -2954,6 +2964,7 @@ class MQTTSubscribeConfiguration():
             'clientid': ['MQTTSubscribe'],
             'console': ['MQTTSubscribe'],
             'keepalive': ['MQTTSubscribe'],
+            'log': ['MQTTSubscribe'],
             'protocol': ['MQTTSubscribe'],
             'logging': ['MQTTSubscribe'],
             'logging_filename': ['MQTTSubscribe'],

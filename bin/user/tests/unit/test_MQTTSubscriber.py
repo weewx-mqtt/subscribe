@@ -712,6 +712,23 @@ class TestDeprecatedOptions(unittest.TestCase):
                 self.assertEqual(SUT.logger.info.call_count, 14)
                 mock_logger.info.assert_any_call(32015, "'use_topic_as_fieldname' option is no longer needed and can be removed.")
 
+    def test_log_is_deprecated(self):
+        global mock_client
+        config_dict = {}
+        config_dict['message_callback'] = {}
+        config_dict['topics'] = {}
+        config_dict['log'] = 'true'
+        config = configobj.ConfigObj(config_dict)
+
+        mock_logger = mock.Mock(spec=Logger)
+
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                mock_client = mock.Mock()
+                MQTTSubscriberTest(config, mock_logger)
+
+                mock_logger.info.assert_any_call(32015, "'log' is deprecated, use 'log_mqtt'")
+
 class TestStart(unittest.TestCase):
     def setUp(self):
         # reset stubs for every test

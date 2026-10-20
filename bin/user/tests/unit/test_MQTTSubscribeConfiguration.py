@@ -43,7 +43,7 @@ class TestDefaultConfiguration(unittest.TestCase):
     
     # Controls the MQTT logging.
     # Default is false.
-    log = false
+    log_mqtt = false
     
     # password for broker authentication.
     # Default is None.

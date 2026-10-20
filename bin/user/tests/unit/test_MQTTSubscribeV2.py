@@ -162,6 +162,47 @@ class TestCallbacks(unittest.TestCase):
 
                     self.assertNotEqual(SUT.client.on_log, SUT._on_log)
 
+    def test_mqtt_log_mqtt_set(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        config_dict = {
+            'message_callback': {},
+            'topics': {
+                random_string(): {}
+            },
+            'log_mqtt': True
+        }
+
+        config = configobj.ConfigObj(config_dict)
+
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
+                    SUT = MQTTSubscriber(config, mock_logger, api=user.mqttcommon.API_V2_MQTT5)
+
+                    self.assertEqual(SUT.client.on_log, SUT._on_log)
+
+    def test_mqtt_log_mqtt_takes_precedence_over_log(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        config_dict = {
+            'message_callback': {},
+            'topics': {
+                random_string(): {}
+            },
+            'log': True,
+            'log_mqtt': False
+        }
+
+        config = configobj.ConfigObj(config_dict)
+
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
+                    SUT = MQTTSubscriber(config, mock_logger, api=user.mqttcommon.API_V2_MQTT5)
+
+                    self.assertNotEqual(SUT.client.on_log, SUT._on_log)
+
 if __name__ == '__main__':
     # test_suite = unittest.TestSuite()
     # test_suite.addTest(TestInitialization('test_connect_exception'))
