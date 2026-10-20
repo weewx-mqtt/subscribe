@@ -124,6 +124,139 @@ class TestCreateClient(unittest.TestCase):
         self.assertEqual(error.exception.args[0], 'Invalid api, invalid.')
 
 
+class TestConnect(unittest.TestCase):
+    @staticmethod
+    def test_v1():
+        client = mock.Mock()
+
+        user.mqttcommon.connect(client, user.mqttcommon.API_V1, host='host', port=1883, keepalive=60)
+
+        client.connect.assert_called_once_with('host', 1883, 60)
+
+    @staticmethod
+    def test_v2_mqtt3():
+        client = mock.Mock()
+
+        user.mqttcommon.connect(client, user.mqttcommon.API_V2_MQTT3, host='host', port=1883, keepalive=60)
+
+        client.connect.assert_called_once_with('host', 1883, 60)
+
+    @staticmethod
+    def test_v2_mqtt5():
+        client = mock.Mock()
+
+        user.mqttcommon.connect(client, user.mqttcommon.API_V2_MQTT5, host='host', port=1883,
+                                keepalive=60, clean_start=True)
+
+        client.connect.assert_called_once_with(host='host', port=1883, keepalive=60, clean_start=True)
+
+    @staticmethod
+    def test_v2_mqtt5_without_clean_start():
+        client = mock.Mock()
+
+        user.mqttcommon.connect(client, user.mqttcommon.API_V2_MQTT5, host='host', port=1883, keepalive=60)
+
+        client.connect.assert_called_once_with(host='host', port=1883, keepalive=60, clean_start=None)
+
+    def test_invalid_api(self):
+        with self.assertRaises(ValueError) as error:
+            user.mqttcommon.connect(mock.Mock(), 'invalid', host='host', port=1883, keepalive=60)
+
+        self.assertEqual(error.exception.args[0], 'Invalid api, invalid.')
+
+
+class ReasonCodeStub:
+    """ Mimics paho mqtt v2's ReasonCode, which is all the adapters rely on. """
+    def __init__(self, value):
+        self.value = value
+
+
+class TestAdaptCallback(unittest.TestCase):
+    @staticmethod
+    def test_v1_on_connect():
+        callback = mock.Mock()
+
+        adapted = user.mqttcommon.adapt_callback(user.mqttcommon.API_V1, 'on_connect', callback)
+        adapted('client', 'userdata', 'flags', 5)
+
+        callback.assert_called_once_with('client', 'userdata', 'flags', 5, None)
+
+    @staticmethod
+    def test_v2_on_connect():
+        callback = mock.Mock()
+
+        adapted = user.mqttcommon.adapt_callback(user.mqttcommon.API_V2_MQTT5, 'on_connect', callback)
+        adapted('client', 'userdata', 'flags', ReasonCodeStub(5), 'properties')
+
+        callback.assert_called_once_with('client', 'userdata', 'flags', 5, 'properties')
+
+    @staticmethod
+    def test_v1_on_disconnect():
+        callback = mock.Mock()
+
+        adapted = user.mqttcommon.adapt_callback(user.mqttcommon.API_V1, 'on_disconnect', callback)
+        adapted('client', 'userdata', 5)
+
+        callback.assert_called_once_with('client', 'userdata', 5, None)
+
+    @staticmethod
+    def test_v2_on_disconnect_drops_disconnect_flags():
+        callback = mock.Mock()
+
+        adapted = user.mqttcommon.adapt_callback(user.mqttcommon.API_V2_MQTT3, 'on_disconnect', callback)
+        adapted('client', 'userdata', 'disconnect_flags', ReasonCodeStub(5), 'properties')
+
+        callback.assert_called_once_with('client', 'userdata', 5, 'properties')
+
+    @staticmethod
+    def test_v1_on_subscribe():
+        callback = mock.Mock()
+
+        adapted = user.mqttcommon.adapt_callback(user.mqttcommon.API_V1, 'on_subscribe', callback)
+        adapted('client', 'userdata', 7, [0, 1])
+
+        callback.assert_called_once_with('client', 'userdata', 7, [0, 1], None)
+
+    @staticmethod
+    def test_v2_on_subscribe():
+        callback = mock.Mock()
+
+        adapted = user.mqttcommon.adapt_callback(user.mqttcommon.API_V2_MQTT5, 'on_subscribe', callback)
+        adapted('client', 'userdata', 7, [ReasonCodeStub(0), ReasonCodeStub(1)], 'properties')
+
+        callback.assert_called_once_with('client', 'userdata', 7, [0, 1], 'properties')
+
+    @staticmethod
+    def test_v1_on_publish():
+        callback = mock.Mock()
+
+        adapted = user.mqttcommon.adapt_callback(user.mqttcommon.API_V1, 'on_publish', callback)
+        adapted('client', 'userdata', 7)
+
+        callback.assert_called_once_with('client', 'userdata', 7, None)
+
+    @staticmethod
+    def test_v2_on_publish_drops_reason_code():
+        callback = mock.Mock()
+
+        adapted = user.mqttcommon.adapt_callback(user.mqttcommon.API_V2_MQTT5, 'on_publish', callback)
+        adapted('client', 'userdata', 7, ReasonCodeStub(0), 'properties')
+
+        callback.assert_called_once_with('client', 'userdata', 7, 'properties')
+
+    def test_invalid_event(self):
+        with self.assertRaises(ValueError) as error:
+            user.mqttcommon.adapt_callback(user.mqttcommon.API_V1, 'invalid', mock.Mock())
+
+        self.assertEqual(error.exception.args[0], 'Invalid event, invalid.')
+
+    def test_invalid_api(self):
+        with self.assertRaises(ValueError) as error:
+            user.mqttcommon.adapt_callback('invalid', 'on_connect', mock.Mock())
+
+        self.assertEqual(error.exception.args[0], 'Invalid api, invalid.')
+
+
 class TestApplyCredentials(unittest.TestCase):
     @staticmethod
     def test_credentials_set():
@@ -202,6 +335,20 @@ class TestConfigureTLS(unittest.TestCase):
         client = mock.Mock()
 
         user.mqttcommon.configure_tls(client, {'ca_certs': ''}, format_error=TestConfigureTLS.format_error)
+
+        client.tls_set.assert_called_once_with(ca_certs=None,
+                                               certfile=None,
+                                               keyfile=None,
+                                               cert_reqs=ssl.CERT_REQUIRED,
+                                               tls_version=ssl.PROTOCOL_TLSv1_2,
+                                               ciphers=None)
+
+    @staticmethod
+    def test_none_options_are_unset():
+        client = mock.Mock()
+
+        user.mqttcommon.configure_tls(client, {'certfile': 'none', 'keyfile': 'None', 'ciphers': 'NONE'},
+                                      format_error=TestConfigureTLS.format_error)
 
         client.tls_set.assert_called_once_with(ca_certs=None,
                                                certfile=None,

@@ -81,6 +81,45 @@ def create_client(api, *, client_id, protocol, userdata=None, clean_session=None
     return mqtt.Client(**kwargs)
 
 
+def connect(client, api, *, host, port, keepalive, clean_start=None):  # pylint: disable=too-many-arguments
+    """ Connect to the broker. clean_start is only used by the v2-mqtt5 api variant. """
+    if api == API_V2_MQTT5:
+        client.connect(host=host, port=port, keepalive=keepalive, clean_start=clean_start)
+        return
+
+    if api not in (API_V1, API_V2_MQTT3):
+        raise ValueError(f"Invalid api, {api}.")
+
+    client.connect(host, port, keepalive)
+
+
+def adapt_callback(api, event, callback):
+    """ Adapt a canonical callback to the calling convention of an api variant.
+
+        The paho mqtt api variants call some callbacks with different signatures.
+        A canonical callback is written with the signature of the v2 api variants,
+        with 'rc' normalized to an int, 'codes' to a list of ints, and 'properties'
+        to None when the api variant does not supply it:
+
+            on_connect(client, userdata, flags, rc, properties)
+            on_disconnect(client, userdata, rc, properties)
+            on_subscribe(client, userdata, mid, codes, properties)
+            on_publish(client, userdata, mid, properties)
+    """
+    try:
+        v1_adapter, v2_adapter = _ADAPTERS[event]
+    except KeyError:
+        raise ValueError(f"Invalid event, {event}.") from None
+
+    if api == API_V1:
+        return v1_adapter(callback)
+
+    if api in (API_V2_MQTT3, API_V2_MQTT5):
+        return v2_adapter(callback)
+
+    raise ValueError(f"Invalid api, {api}.")
+
+
 def apply_credentials(client, username, password):
     """ Set the client credentials when both are configured. """
     if username is not None and password is not None:
@@ -102,11 +141,59 @@ def configure_tls(client, tls_dict, *, format_error):
         raise ValueError(format_error('tls_version', tls_dict['tls_version']))
 
     client.tls_set(ca_certs=_empty_as_unset(tls_dict.get('ca_certs')),
-                   certfile=tls_dict.get('certfile'),
-                   keyfile=tls_dict.get('keyfile'),
+                   certfile=_none_as_unset(tls_dict.get('certfile')),
+                   keyfile=_none_as_unset(tls_dict.get('keyfile')),
                    cert_reqs=cert_reqs,
                    tls_version=tls_version,
-                   ciphers=tls_dict.get('ciphers'))
+                   ciphers=_none_as_unset(tls_dict.get('ciphers')))
+
+
+def _adapt_on_connect_v1(callback):
+    def adapted(client, userdata, flags, rc):
+        callback(client, userdata, flags, int(rc), None)
+    return adapted
+
+def _adapt_on_connect_v2(callback):
+    def adapted(client, userdata, flags, reason_code, properties):
+        callback(client, userdata, flags, int(reason_code.value), properties)
+    return adapted
+
+def _adapt_on_disconnect_v1(callback):
+    def adapted(client, userdata, rc):
+        callback(client, userdata, int(rc), None)
+    return adapted
+
+def _adapt_on_disconnect_v2(callback):
+    def adapted(client, userdata, _disconnect_flags, reason_code, properties):
+        callback(client, userdata, int(reason_code.value), properties)
+    return adapted
+
+def _adapt_on_subscribe_v1(callback):
+    def adapted(client, userdata, mid, codes):
+        callback(client, userdata, mid, codes, None)
+    return adapted
+
+def _adapt_on_subscribe_v2(callback):
+    def adapted(client, userdata, mid, reason_codes, properties):
+        callback(client, userdata, mid, [int(reason_code.value) for reason_code in reason_codes], properties)
+    return adapted
+
+def _adapt_on_publish_v1(callback):
+    def adapted(client, userdata, mid):
+        callback(client, userdata, mid, None)
+    return adapted
+
+def _adapt_on_publish_v2(callback):
+    def adapted(client, userdata, mid, _reason_code, properties):
+        callback(client, userdata, mid, properties)
+    return adapted
+
+_ADAPTERS = {
+    'on_connect': (_adapt_on_connect_v1, _adapt_on_connect_v2),
+    'on_disconnect': (_adapt_on_disconnect_v1, _adapt_on_disconnect_v2),
+    'on_subscribe': (_adapt_on_subscribe_v1, _adapt_on_subscribe_v2),
+    'on_publish': (_adapt_on_publish_v1, _adapt_on_publish_v2)
+}
 
 
 def _available_tls_versions():
@@ -123,3 +210,15 @@ def _available_tls_versions():
 def _empty_as_unset(value):
     """ Treat an empty string as not configured. """
     return None if value == '' else value
+
+
+def _none_as_unset(value):
+    """ Treat the literal 'none', in any case, as not configured.
+
+        ca_certs is read with _empty_as_unset, while certfile, keyfile and
+        ciphers use the literal 'none', so the two normalizations are
+        deliberately distinct.
+    """
+    if value and value.lower() == 'none':
+        return None
+    return value

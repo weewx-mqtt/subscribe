@@ -82,7 +82,7 @@ class TestCallbacks(unittest.TestCase):
 
                 SUT = MQTTSubscriberV1(config, mock_logger)
 
-                SUT._on_connect(None, {}, flags, rc)
+                SUT._on_connect(None, {}, flags, rc, None)
 
                 self.assertEqual(SUT.logger.info.call_count, 16)
                 mock_logger.info.assert_any_call(62001, f"Connected with result code {rc}")
@@ -104,7 +104,7 @@ class TestCallbacks(unittest.TestCase):
                 with mock.patch('user.mqttsubscribe.mqtt.Client'):
                     SUT = MQTTSubscriberV1(config, mock_logger)
 
-                    SUT._on_disconnect(None, None, rc)
+                    SUT._on_disconnect(None, None, rc, None)
 
                     SUT.logger.info.assert_called_with(62003, f"Disconnected with result code {int(rc)}")
 
@@ -125,7 +125,7 @@ class TestCallbacks(unittest.TestCase):
                 with mock.patch('user.mqttsubscribe.mqtt.Client'):
                     SUT = MQTTSubscriberV1(config, mock_logger)
 
-                    SUT._on_subscribe(None, None, mid, granted_qos)
+                    SUT._on_subscribe(None, None, mid, granted_qos, None)
 
                     SUT.logger.info.assert_called_with(62004,
                                                        f"Subscribed to mid: {mid} is size {len(granted_qos)} has a QOS of {granted_qos[0]}")

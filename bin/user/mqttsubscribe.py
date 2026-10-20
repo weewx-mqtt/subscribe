@@ -547,7 +547,6 @@ import os
 import platform
 import random
 import re
-import ssl
 import sys
 import threading
 import time
@@ -568,6 +567,8 @@ if bin_root is not None:
 user_root = os.getenv('USER_ROOT')
 if user_root is not None:
     sys.path.append(user_root + '/..')
+
+from user import mqttcommon
 
 import weeutil
 import weeutil.logger
@@ -2132,6 +2133,15 @@ class ManageWeewxConfig():
 
 class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
     """ Manage MQTT sunscriptions. """
+    # The paho mqtt api variant to communicate with. It is set by the subclasses.
+    api = None
+
+    # The message ids of the paho callback log messages. They are set by the subclasses.
+    on_connect_rc_message_id = None
+    on_connect_flags_message_id = None
+    on_disconnect_message_id = None
+    on_subscribe_message_id = None
+
     log_messages = {
         # trace message
         # debug messages
@@ -2168,9 +2178,6 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         39005: "Invalid 'certs_required'., {certs_required}",
         39006: "Invalid 'tls_version'., {tls_version}",
         39007: "Unable to connect. Return code is {connect_rc}, '{connack_string_rc}', flags are {connect_flags}.",
-        39008: "Method 'get_client' is not implemented",
-        39009: "Method 'set_callbacks' is not implemented",
-        39010: "Method 'connect' is not implemented",
     }
 
     def __init__(self, service_dict, logger):
@@ -2200,7 +2207,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         self._check_deprecated_options(service_dict)
 
         protocol_string = service_dict.get('protocol', 'MQTTv311')
-        protocol = getattr(mqtt, protocol_string, 0)
+        protocol = mqttcommon.parse_protocol(protocol_string)
 
         clean_start = self._parse_clean_start(service_dict.get('clean_start', 'MQTT_CLEAN_START_FIRST_ONLY'))
 
@@ -2262,24 +2269,20 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
     @classmethod
     def get_subscriber(cls, service_dict, logger):
         ''' Factory method to get appropriate MQTTSubscriber for paho mqtt version. '''
-        if hasattr(mqtt, 'CallbackAPIVersion'):
-            protocol_string = service_dict.get('protocol', 'MQTTv311')
-            protocol = getattr(mqtt, protocol_string, 0)
-            if protocol in [mqtt.MQTTv31, mqtt.MQTTv311]:
-                return MQTTSubscriberV2MQTT3(service_dict, logger)
+        protocol = mqttcommon.parse_protocol(service_dict.get('protocol', 'MQTTv311'))
+        api = mqttcommon.select_api(protocol)
 
-            return MQTTSubscriberV2(service_dict, logger)
+        if api == mqttcommon.API_V1:
+            return MQTTSubscriberV1(service_dict, logger)
 
-        return MQTTSubscriberV1(service_dict, logger)
+        if api == mqttcommon.API_V2_MQTT3:
+            return MQTTSubscriberV2MQTT3(service_dict, logger)
+
+        return MQTTSubscriberV2(service_dict, logger)
 
     def _setup_mqtt(self, mqtt_options, message_callback_provider_name, message_callback_config):
-        self.mqtt_logger = {
-            mqtt.MQTT_LOG_INFO: self.logger.info,
-            mqtt.MQTT_LOG_NOTICE: self.logger.info,
-            mqtt.MQTT_LOG_WARNING: self.logger.info,
-            mqtt.MQTT_LOG_ERR: self.logger.error,
-            mqtt.MQTT_LOG_DEBUG: self.logger.debug
-        }
+        self.mqtt_logger = {level: getattr(self.logger, level_name.lower())
+                            for level, level_name in mqttcommon.PAHO_LOG_LEVELS.items()}
 
         self.userdata = {}
         self.userdata['connect'] = False
@@ -2299,8 +2302,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
         self.set_callbacks(mqtt_options)
 
-        if mqtt_options['username'] is not None and mqtt_options['password'] is not None:
-            self.client.username_pw_set(mqtt_options['username'], mqtt_options['password'])
+        mqttcommon.apply_credentials(self.client, mqtt_options['username'], mqtt_options['password'])
 
         self.client.reconnect_delay_set(min_delay=mqtt_options['min_delay'], max_delay=mqtt_options['max_delay'])
 
@@ -2341,59 +2343,12 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
     def config_tls(self, tls_dict):
         """ Configure TLS."""
-        valid_cert_reqs = {
-            'none': ssl.CERT_NONE,
-            'optional': ssl.CERT_OPTIONAL,
-            'required': ssl.CERT_REQUIRED
-        }
+        def format_error(option, value):
+            message_id = 39005 if option == 'certs_required' else 39006
+            message = MQTTSubscriber.log_messages[message_id]
+            return message.format(**{option: value})
 
-        # Some versions are dependent on the OpenSSL install
-        valid_tls_versions = {}
-        try:
-            valid_tls_versions['tls'] = ssl.PROTOCOL_TLS
-        except AttributeError:
-            pass
-        try:
-            valid_tls_versions['tlsv1'] = ssl.PROTOCOL_TLSv1
-        except AttributeError:
-            pass
-        try:
-            valid_tls_versions['tlsv11'] = ssl.PROTOCOL_TLSv1_1
-        except AttributeError:
-            pass
-        try:
-            valid_tls_versions['tlsv12'] = ssl.PROTOCOL_TLSv1_2
-        except AttributeError:
-            pass
-        try:
-            valid_tls_versions['sslv2'] = ssl.PROTOCOL_SSLv2
-        except AttributeError:
-            pass
-        try:
-            valid_tls_versions['sslv23'] = ssl.PROTOCOL_SSLv23
-        except AttributeError:
-            pass
-        try:
-            valid_tls_versions['sslv3'] = ssl.PROTOCOL_SSLv3
-        except AttributeError:
-            pass
-
-        ca_certs = tls_dict.get('ca_certs')
-
-        valid_cert_reqs = valid_cert_reqs.get(tls_dict.get('certs_required', 'required'))
-        if valid_cert_reqs is None:
-            raise ValueError(MQTTSubscriber.log_messages[39005].format(certs_required=tls_dict['certs_required']))
-
-        tls_version = valid_tls_versions.get(tls_dict.get('tls_version', 'tlsv12'))
-        if tls_version is None:
-            raise ValueError(MQTTSubscriber.log_messages[39006].format(tls_version=tls_dict['tls_version']))
-
-        self.client.tls_set(ca_certs=ca_certs,
-                            certfile=tls_dict.get('certfile'),
-                            keyfile=tls_dict.get('keyfile'),
-                            cert_reqs=valid_cert_reqs,
-                            tls_version=tls_version,
-                            ciphers=tls_dict.get('ciphers'))
+        mqttcommon.configure_tls(self.client, tls_dict, format_error=format_error)
 
     def get_data(self, queue, end_ts=sys.maxsize):
         """ Get data off the queue of MQTT data. """
@@ -2433,58 +2388,31 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
     def get_client(self, mqtt_options):
         ''' Get the MQTT client. '''
-        raise NotImplementedError(MQTTSubscriber.log_messages[39008])
+        return mqttcommon.create_client(self.api,
+                                        client_id=mqtt_options['clientid'],
+                                        protocol=mqtt_options['protocol'],
+                                        userdata=self.userdata,
+                                        clean_session=mqtt_options['clean_session'])
 
     def set_callbacks(self, mqtt_options):
         ''' Setup the MQTT callbacks. '''
-        raise NotImplementedError(MQTTSubscriber.log_messages[39009])
-
-    def connect(self, mqtt_options):
-        ''' Connect to the MQTT server. '''
-        raise NotImplementedError(MQTTSubscriber.log_messages[39010])
-
-class MQTTSubscriberV1(MQTTSubscriber):
-    ''' MQTTSubscriber that communicates with paho mqtt v1. '''
-    log_messages = {
-        # trace message
-        # debug messages
-        # informational messages
-        62001: "Connected with result code {rc}",
-        62002: "Connected flags {flags}",
-        62003: "Disconnected with result code {rc}",
-        62004: "Subscribed to mid: {mid} is size {size} has a QOS of {qos}",
-        # error messages
-        # exception messages
-        69001: "Invalid protocol, {protocol_string}.",
-    }
-
-    def __init__(self, service_dict, logger):
-        protocol_string = service_dict.get('protocol', 'MQTTv311')
-        protocol = getattr(mqtt, protocol_string, 0)
-        if protocol not in [mqtt.MQTTv31, mqtt.MQTTv311]:
-            raise ValueError(MQTTSubscriberV1.log_messages[69001].format(protocol_string=protocol_string))
-
-        super().__init__(service_dict, logger)
-
-    def get_client(self, mqtt_options):
-        return mqtt.Client(protocol=mqtt_options['protocol'],  # (v1 signature)
-                           client_id=mqtt_options['clientid'],
-                           userdata=self.userdata,
-                           clean_session=mqtt_options['clean_session'])
-
-    def set_callbacks(self, mqtt_options):
-        self.client.on_subscribe = self._on_subscribe
-        self.client.on_connect = self._on_connect
-        self.client.on_disconnect = self._on_disconnect
+        self.client.on_connect = mqttcommon.adapt_callback(self.api, 'on_connect', self._on_connect)
+        self.client.on_disconnect = mqttcommon.adapt_callback(self.api, 'on_disconnect', self._on_disconnect)
+        self.client.on_subscribe = mqttcommon.adapt_callback(self.api, 'on_subscribe', self._on_subscribe)
         self.client.on_message = self._on_message
 
         if mqtt_options['log_mqtt']:
             self.client.on_log = self._on_log
 
     def connect(self, mqtt_options):
-        self.client.connect(mqtt_options['host'], mqtt_options['port'], mqtt_options['keepalive'])
+        ''' Connect to the MQTT server. '''
+        mqttcommon.connect(self.client, self.api,
+                           host=mqtt_options['host'],
+                           port=mqtt_options['port'],
+                           keepalive=mqtt_options['keepalive'],
+                           clean_start=mqtt_options['clean_start'])
 
-    def _on_connect(self, client, userdata, flags, rc):
+    def _on_connect(self, client, userdata, flags, rc, _properties):
         # https://pypi.org/project/paho-mqtt/#on-connect
         # rc:
         # 0: Connection successful
@@ -2494,8 +2422,10 @@ class MQTTSubscriberV1(MQTTSubscriber):
         # 4: Connection refused - bad username or password
         # 5: Connection refused - not authorised
         # 6-255: Currently unused.
-        self.logger.info(62001, MQTTSubscriberV1.log_messages[62001].format(rc=rc))
-        self.logger.info(62002, MQTTSubscriberV1.log_messages[62002].format(flags=str(flags)))
+        self.logger.info(self.on_connect_rc_message_id,
+                         self.log_messages[self.on_connect_rc_message_id].format(rc=rc))
+        self.logger.info(self.on_connect_flags_message_id,
+                         self.log_messages[self.on_connect_flags_message_id].format(flags=str(flags)))
 
         userdata['connect'] = True
         userdata['connect_rc'] = rc
@@ -2503,11 +2433,13 @@ class MQTTSubscriberV1(MQTTSubscriber):
 
         self._subscribe(client)
 
-    def _on_disconnect(self, _client, _userdata, rc):
-        self.logger.info(62003, MQTTSubscriberV1.log_messages[62003].format(rc=rc))
+    def _on_disconnect(self, _client, _userdata, rc, _properties):
+        self.logger.info(self.on_disconnect_message_id,
+                         self.log_messages[self.on_disconnect_message_id].format(rc=rc))
 
-    def _on_subscribe(self, _client, _userdata, mid, granted_qos):
-        self.logger.info(62004, MQTTSubscriberV1.log_messages[62004].format(mid=mid, size=len(granted_qos), qos=granted_qos[0]))
+    def _on_subscribe(self, _client, _userdata, mid, codes, _properties):
+        self.logger.info(self.on_subscribe_message_id,
+                         self.log_messages[self.on_subscribe_message_id].format(mid=mid, size=len(codes), code=codes[0]))
 
     def _on_log(self, _client, _userdata, level, msg):
         self.mqtt_logger[level](None, f"MQTTSubscribe MQTT: {msg}")
@@ -2515,8 +2447,44 @@ class MQTTSubscriberV1(MQTTSubscriber):
     def _on_message(self, _client, _userdata, msg):
         self.callback(msg)
 
+class MQTTSubscriberV1(MQTTSubscriber):
+    ''' MQTTSubscriber that communicates with paho mqtt v1. '''
+    api = mqttcommon.API_V1
+
+    on_connect_rc_message_id = 62001
+    on_connect_flags_message_id = 62002
+    on_disconnect_message_id = 62003
+    on_subscribe_message_id = 62004
+
+    log_messages = {
+        # trace message
+        # debug messages
+        # informational messages
+        62001: "Connected with result code {rc}",
+        62002: "Connected flags {flags}",
+        62003: "Disconnected with result code {rc}",
+        62004: "Subscribed to mid: {mid} is size {size} has a QOS of {code}",
+        # error messages
+        # exception messages
+        69001: "Invalid protocol, {protocol_string}.",
+    }
+
+    def __init__(self, service_dict, logger):
+        protocol_string = service_dict.get('protocol', 'MQTTv311')
+        if mqttcommon.parse_protocol(protocol_string) not in mqttcommon.MQTT3_PROTOCOLS:
+            raise ValueError(MQTTSubscriberV1.log_messages[69001].format(protocol_string=protocol_string))
+
+        super().__init__(service_dict, logger)
+
 class MQTTSubscriberV2MQTT3(MQTTSubscriber):
     ''' MQTTSubscriber that communicates with paho mqtt v2. '''
+    api = mqttcommon.API_V2_MQTT3
+
+    on_connect_rc_message_id = 72001
+    on_connect_flags_message_id = 72002
+    on_disconnect_message_id = 72003
+    on_subscribe_message_id = 72004
+
     log_messages = {
         # trace message
         # debug messages
@@ -2524,55 +2492,23 @@ class MQTTSubscriberV2MQTT3(MQTTSubscriber):
         72001: "Connected with result code {rc}",
         72002: "Connected flags {flags}",
         72003: "Disconnected with result code {rc}",
-        72004: "Subscribed to mid: {mid} is size {size} has a reason_code of {reason_code}",
+        72004: "Subscribed to mid: {mid} is size {size} has a reason_code of {code}",
         # error messages
     }
 
-    def get_client(self, mqtt_options):
-        return mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2,  # (only available in v2)
-                           protocol=mqtt_options['protocol'],
-                           client_id=mqtt_options['clientid'],
-                           userdata=self.userdata,
-                           clean_session=mqtt_options['clean_session'])
-
-    def set_callbacks(self, mqtt_options):
-        self.client.on_subscribe = self._on_subscribe
-        self.client.on_connect = self._on_connect
-        self.client.on_disconnect = self._on_disconnect
-        self.client.on_message = self._on_message
-
-        if mqtt_options['log_mqtt']:
-            self.client.on_log = self._on_log
-
-    def connect(self, mqtt_options):
-        self.client.connect(mqtt_options['host'], mqtt_options['port'], mqtt_options['keepalive'])
-
-    def _on_connect(self, client, userdata, flags, reason_code, _properties):
-        self.logger.info(72001, MQTTSubscriberV2MQTT3.log_messages[72001].format(rc=reason_code.value))
-        self.logger.info(72002, MQTTSubscriberV2MQTT3.log_messages[72002].format(flags=str(flags)))
+    def _on_connect(self, client, userdata, flags, rc, properties):
         threading.current_thread().name = f"MQTTSubscribe-{threading.get_native_id()}"
-
-        userdata['connect'] = True
-        userdata['connect_rc'] = reason_code.value
-        userdata['connect_flags'] = flags
-
-        self._subscribe(client)
-
-    def _on_disconnect(self, _client, _userdata, _flags, reason_code, _properties):
-        self.logger.info(72003, MQTTSubscriberV2MQTT3.log_messages[72003].format(rc=reason_code.value))
-
-    def _on_subscribe(self, _client, _userdata, mid, reason_codes, _properties):
-        self.logger.info(72004, MQTTSubscriberV2MQTT3.log_messages[72004].format(
-            mid=mid, size=len(reason_codes), reason_code=reason_codes[0].value))
-
-    def _on_log(self, _client, _userdata, level, msg):
-        self.mqtt_logger[level](None, f"MQTTSubscribe MQTT: {msg}")
-
-    def _on_message(self, _client, _userdata, msg):
-        self.callback(msg)
+        super()._on_connect(client, userdata, flags, rc, properties)
 
 class MQTTSubscriberV2(MQTTSubscriber):
     ''' MQTTSubscriber that communicates with paho mqtt v2. '''
+    api = mqttcommon.API_V2_MQTT5
+
+    on_connect_rc_message_id = 82001
+    on_connect_flags_message_id = 82002
+    on_disconnect_message_id = 82003
+    on_subscribe_message_id = 82004
+
     log_messages = {
         # trace message
         # debug messages
@@ -2580,52 +2516,9 @@ class MQTTSubscriberV2(MQTTSubscriber):
         82001: "Connected with result code {rc}",
         82002: "Connected flags {flags}",
         82003: "Disconnected with result code {rc}",
-        82004: "Subscribed to mid: {mid} is size {size} has a reason_code of {rc}",
+        82004: "Subscribed to mid: {mid} is size {size} has a reason_code of {code}",
         # error messages
     }
-
-    def get_client(self, mqtt_options):
-        return mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2,  # (only available in v2)
-                           protocol=mqtt_options['protocol'],
-                           client_id=mqtt_options['clientid'],
-                           userdata=self.userdata)
-
-    def set_callbacks(self, mqtt_options):
-        self.client.on_subscribe = self._on_subscribe
-        self.client.on_connect = self._on_connect
-        self.client.on_disconnect = self._on_disconnect
-        self.client.on_message = self._on_message
-
-        if mqtt_options['log_mqtt']:
-            self.client.on_log = self._on_log
-
-    def connect(self, mqtt_options):
-        self.client.connect(host=mqtt_options['host'],
-                            port=mqtt_options['port'],
-                            keepalive=mqtt_options['keepalive'],
-                            clean_start=mqtt_options['clean_start'])
-
-    def _on_connect(self, client, userdata, flags, reason_code, _properties):
-        self.logger.info(82001, MQTTSubscriberV2.log_messages[82001].format(rc=reason_code.value))
-        self.logger.info(82002, MQTTSubscriberV2.log_messages[82002].format(flags=str(flags)))
-
-        userdata['connect'] = True
-        userdata['connect_rc'] = reason_code.value
-        userdata['connect_flags'] = flags
-
-        self._subscribe(client)
-
-    def _on_disconnect(self, _client, _userdata, _flags, reason_code, _properties):
-        self.logger.info(82003, MQTTSubscriberV2.log_messages[82003].format(rc=reason_code.value))
-
-    def _on_subscribe(self, _client, _userdata, mid, reason_codes, _properties):
-        self.logger.info(82004, MQTTSubscriberV2.log_messages[82004].format(mid=mid, size=len(reason_codes), rc=reason_codes[0].value))
-
-    def _on_log(self, _client, _userdata, level, msg):
-        self.mqtt_logger[level](None, f"MQTTSubscribe MQTT: {msg}")
-
-    def _on_message(self, _client, _userdata, msg):
-        self.callback(msg)
 
 class MQTTSubscribeService(StdService):
     """ The MQTT subscribe service. """
