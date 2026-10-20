@@ -165,6 +165,16 @@ class TestConnect(unittest.TestCase):
         self.assertEqual(error.exception.args[0], 'Invalid api, invalid.')
 
 
+class TestConfigureReconnectDelay(unittest.TestCase):
+    @staticmethod
+    def test_configure_reconnect_delay():
+        client = mock.Mock()
+
+        user.mqttcommon.configure_reconnect_delay(client, min_delay=1, max_delay=120)
+
+        client.reconnect_delay_set.assert_called_once_with(min_delay=1, max_delay=120)
+
+
 class ReasonCodeStub:
     """ Mimics paho mqtt v2's ReasonCode, which is all the adapters rely on. """
     def __init__(self, value):
