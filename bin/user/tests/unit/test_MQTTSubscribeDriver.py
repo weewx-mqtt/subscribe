@@ -175,10 +175,8 @@ class TestgenLoopPackets(unittest.TestCase):
             {'name': topic}
         )
 
-        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager_class:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             with mock.patch('user.mqttsubscribe.Logger'):
-                mock_manager = mock.Mock()
-                mock_manager_class.get_subscriber = mock_manager
                 type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
                 queue_data = copy.deepcopy(self.queue_data)
                 queue_data['dateTime'] = queue_data['dateTime'] + 2000
@@ -205,10 +203,8 @@ class TestgenLoopPackets(unittest.TestCase):
             {'name': topic}
         )
 
-        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager_class:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             with mock.patch('user.mqttsubscribe.time') as mock_time:
-                mock_manager = mock.Mock()
-                mock_manager_class.get_subscriber = mock_manager
                 type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
                 type(mock_manager.return_value).get_data = mock.Mock(side_effect=[self.empty_generator(), self.generator([self.queue_data])])
 
@@ -231,11 +227,9 @@ class TestgenLoopPackets(unittest.TestCase):
 
         start_loop_period_ts = int(time.time() + 0.5)
 
-        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager_class:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             with mock.patch('user.mqttsubscribe.time'):
                 with mock.patch('user.mqttsubscribe.Logger'):
-                    mock_manager = mock.Mock()
-                    mock_manager_class.get_subscriber = mock_manager
                     type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
                     type(mock_manager.return_value).get_data = mock.Mock(side_effect=[self.empty_generator(), self.generator([self.queue_data])])
 
@@ -260,10 +254,8 @@ class TestgenLoopPackets(unittest.TestCase):
             {'name': topic}
         )
 
-        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager_class:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             with mock.patch('user.mqttsubscribe.time') as mock_time:
-                mock_manager = mock.Mock()
-                mock_manager_class.get_subscriber = mock_manager
                 type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
                 type(mock_manager.return_value).get_data = mock.Mock(side_effect=[self.generator([None]), self.generator([self.queue_data])])
 
@@ -312,10 +304,8 @@ class TestgenLoopPackets(unittest.TestCase):
             {'name': topic}
         )
 
-        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager_class:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             with mock.patch('user.mqttsubscribe.time') as mock_time:
-                mock_manager = mock.Mock()
-                mock_manager_class.get_subscriber = mock_manager
                 type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
                 type(mock_manager.return_value).get_data = mock.Mock(return_value=self.generator([self.queue_data]))
 
@@ -434,9 +424,7 @@ class TestgenArchiveRecords(unittest.TestCase):
             {'name': archive_topic}
         )
 
-        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager_class:
-            mock_manager = mock.Mock()
-            mock_manager_class.get_subscriber = mock_manager
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
             type(mock_manager.return_value).get_data = mock.Mock(return_value=self.generator([self.queue_data, self.queue_data, None]))
             records = []

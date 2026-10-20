@@ -2133,14 +2133,12 @@ class ManageWeewxConfig():
 
 class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
     """ Manage MQTT sunscriptions. """
-    # The paho mqtt api variant to communicate with. It is set by the subclasses.
-    api = None
-
-    # The message ids of the paho callback log messages. They are set by the subclasses.
-    on_connect_rc_message_id = None
-    on_connect_flags_message_id = None
-    on_disconnect_message_id = None
-    on_subscribe_message_id = None
+    # The message ids of the paho callback log messages, per api variant.
+    callback_message_ids = {
+        mqttcommon.API_V1: (62001, 62002, 62003, 62004),
+        mqttcommon.API_V2_MQTT3: (72001, 72002, 72003, 72004),
+        mqttcommon.API_V2_MQTT5: (82001, 82002, 82003, 82004),
+    }
 
     log_messages = {
         # trace message
@@ -2168,6 +2166,19 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         32017: "Waiting for MQTT connection.",
         32018: "MQTT initialization complete.",
         32019: "Subscribing to {topic} has a mid {mid} and rc {result}",
+        # paho callback messages, the message ids are per api variant
+        62001: "Connected with result code {rc}",
+        62002: "Connected flags {flags}",
+        62003: "Disconnected with result code {rc}",
+        62004: "Subscribed to mid: {mid} is size {size} has a QOS of {code}",
+        72001: "Connected with result code {rc}",
+        72002: "Connected flags {flags}",
+        72003: "Disconnected with result code {rc}",
+        72004: "Subscribed to mid: {mid} is size {size} has a reason_code of {code}",
+        82001: "Connected with result code {rc}",
+        82002: "Connected flags {flags}",
+        82003: "Disconnected with result code {rc}",
+        82004: "Subscribed to mid: {mid} is size {size} has a reason_code of {code}",
         # error messages
         34001: "Failed to connect to {host} at {port}. '{exception}'",
         # exception messages
@@ -2178,10 +2189,19 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         39005: "Invalid 'certs_required'., {certs_required}",
         39006: "Invalid 'tls_version'., {tls_version}",
         39007: "Unable to connect. Return code is {connect_rc}, '{connack_string_rc}', flags are {connect_flags}.",
+        69001: "Invalid protocol, {protocol_string}.",
     }
 
-    def __init__(self, service_dict, logger):
+    def __init__(self, service_dict, logger, *, api=None):
         self.logger = logger
+
+        protocol_string = service_dict.get('protocol', 'MQTTv311')
+        protocol = mqttcommon.parse_protocol(protocol_string)
+        self.api = self._resolve_api(protocol, protocol_string, api)
+        (self.on_connect_rc_message_id,
+         self.on_connect_flags_message_id,
+         self.on_disconnect_message_id,
+         self.on_subscribe_message_id) = self.callback_message_ids[self.api]
 
         exclude_keys = ['password']
         sanitized_service_dict = {k: service_dict[k] for k in set(list(service_dict.keys())) - set(exclude_keys)}
@@ -2205,9 +2225,6 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         self.logger.info(32002, MQTTSubscriber.log_messages[32002].format(message_callback_provider_name=message_callback_provider_name))
 
         self._check_deprecated_options(service_dict)
-
-        protocol_string = service_dict.get('protocol', 'MQTTv311')
-        protocol = mqttcommon.parse_protocol(protocol_string)
 
         clean_start = self._parse_clean_start(service_dict.get('clean_start', 'MQTT_CLEAN_START_FIRST_ONLY'))
 
@@ -2256,6 +2273,16 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         self._setup_mqtt(mqtt_options, message_callback_provider_name, message_callback_config)
 
     @staticmethod
+    def _resolve_api(protocol, protocol_string, api):
+        ''' Resolve the paho mqtt api variant to communicate with, defaulting to the selection for the protocol. '''
+        if api is None:
+            api = mqttcommon.select_api(protocol)
+        if api == mqttcommon.API_V1 and protocol not in mqttcommon.MQTT3_PROTOCOLS:
+            raise ValueError(MQTTSubscriber.log_messages[69001].format(protocol_string=protocol_string))
+
+        return api
+
+    @staticmethod
     def _parse_clean_start(clean_start_string):
         ''' Resolve the clean_start option to a boolean or an MQTT constant. '''
         try:
@@ -2265,20 +2292,6 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
                 return getattr(mqtt, clean_start_string)
             except AttributeError:
                 raise ValueError(MQTTSubscriber.log_messages[39003].format(clean_start_string=clean_start_string)) from None
-
-    @classmethod
-    def get_subscriber(cls, service_dict, logger):
-        ''' Factory method to get appropriate MQTTSubscriber for paho mqtt version. '''
-        protocol = mqttcommon.parse_protocol(service_dict.get('protocol', 'MQTTv311'))
-        api = mqttcommon.select_api(protocol)
-
-        if api == mqttcommon.API_V1:
-            return MQTTSubscriberV1(service_dict, logger)
-
-        if api == mqttcommon.API_V2_MQTT3:
-            return MQTTSubscriberV2MQTT3(service_dict, logger)
-
-        return MQTTSubscriberV2(service_dict, logger)
 
     def _setup_mqtt(self, mqtt_options, message_callback_provider_name, message_callback_config):
         self.mqtt_logger = {level: getattr(self.logger, level_name.lower())
@@ -2422,6 +2435,9 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         # 4: Connection refused - bad username or password
         # 5: Connection refused - not authorised
         # 6-255: Currently unused.
+        if self.api == mqttcommon.API_V2_MQTT3:
+            threading.current_thread().name = f"MQTTSubscribe-{threading.get_native_id()}"
+
         self.logger.info(self.on_connect_rc_message_id,
                          self.log_messages[self.on_connect_rc_message_id].format(rc=rc))
         self.logger.info(self.on_connect_flags_message_id,
@@ -2446,79 +2462,6 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
     def _on_message(self, _client, _userdata, msg):
         self.callback(msg)
-
-class MQTTSubscriberV1(MQTTSubscriber):
-    ''' MQTTSubscriber that communicates with paho mqtt v1. '''
-    api = mqttcommon.API_V1
-
-    on_connect_rc_message_id = 62001
-    on_connect_flags_message_id = 62002
-    on_disconnect_message_id = 62003
-    on_subscribe_message_id = 62004
-
-    log_messages = {
-        # trace message
-        # debug messages
-        # informational messages
-        62001: "Connected with result code {rc}",
-        62002: "Connected flags {flags}",
-        62003: "Disconnected with result code {rc}",
-        62004: "Subscribed to mid: {mid} is size {size} has a QOS of {code}",
-        # error messages
-        # exception messages
-        69001: "Invalid protocol, {protocol_string}.",
-    }
-
-    def __init__(self, service_dict, logger):
-        protocol_string = service_dict.get('protocol', 'MQTTv311')
-        if mqttcommon.parse_protocol(protocol_string) not in mqttcommon.MQTT3_PROTOCOLS:
-            raise ValueError(MQTTSubscriberV1.log_messages[69001].format(protocol_string=protocol_string))
-
-        super().__init__(service_dict, logger)
-
-class MQTTSubscriberV2MQTT3(MQTTSubscriber):
-    ''' MQTTSubscriber that communicates with paho mqtt v2. '''
-    api = mqttcommon.API_V2_MQTT3
-
-    on_connect_rc_message_id = 72001
-    on_connect_flags_message_id = 72002
-    on_disconnect_message_id = 72003
-    on_subscribe_message_id = 72004
-
-    log_messages = {
-        # trace message
-        # debug messages
-        # informational messages
-        72001: "Connected with result code {rc}",
-        72002: "Connected flags {flags}",
-        72003: "Disconnected with result code {rc}",
-        72004: "Subscribed to mid: {mid} is size {size} has a reason_code of {code}",
-        # error messages
-    }
-
-    def _on_connect(self, client, userdata, flags, rc, properties):
-        threading.current_thread().name = f"MQTTSubscribe-{threading.get_native_id()}"
-        super()._on_connect(client, userdata, flags, rc, properties)
-
-class MQTTSubscriberV2(MQTTSubscriber):
-    ''' MQTTSubscriber that communicates with paho mqtt v2. '''
-    api = mqttcommon.API_V2_MQTT5
-
-    on_connect_rc_message_id = 82001
-    on_connect_flags_message_id = 82002
-    on_disconnect_message_id = 82003
-    on_subscribe_message_id = 82004
-
-    log_messages = {
-        # trace message
-        # debug messages
-        # informational messages
-        82001: "Connected with result code {rc}",
-        82002: "Connected flags {flags}",
-        82003: "Disconnected with result code {rc}",
-        82004: "Subscribed to mid: {mid} is size {size} has a reason_code of {code}",
-        # error messages
-    }
 
 class MQTTSubscribeService(StdService):
     """ The MQTT subscribe service. """
@@ -2584,7 +2527,7 @@ class MQTTSubscribeService(StdService):
 
         self.end_ts = 0  # prime for processing loop packet
 
-        self.subscriber = MQTTSubscriber.get_subscriber(service_dict, self.logger)
+        self.subscriber = MQTTSubscriber(service_dict, self.logger)
 
         self.logger.info(22003, MQTTSubscribeService.log_messages[22003].format(binding=self.binding))
 
@@ -2745,7 +2688,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         engine.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
         engine.bind(weewx.END_ARCHIVE_PERIOD, self.end_archive_period)
 
-        self.subscriber = MQTTSubscriber.get_subscriber(stn_dict, self.logger)
+        self.subscriber = MQTTSubscriber(stn_dict, self.logger)
 
         self.queue = next((q for q in self.subscriber.queues if q['name'] == self.archive_topic), None)
 

@@ -228,9 +228,7 @@ class Testnew_loop_packet(unittest.TestCase):
         mock_new_loop_packet_event = mock.NonCallableMagicMock()
         mock_new_loop_packet_event.packet = self.packet_data
 
-        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
-            mock_MQTTSubscribe = mock.Mock()
-            mock_MQTTSubscribe_class.get_subscriber = mock_MQTTSubscribe
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe:
             type(mock_MQTTSubscribe.return_value).queues = mock.PropertyMock(return_value=[queue])
             type(mock_MQTTSubscribe.return_value).get_accumulated_data = mock.Mock(return_value=self.target_data)
             type(mock_MQTTSubscribe.return_value).cached_fields = mock.PropertyMock(return_value=None)
@@ -254,10 +252,8 @@ class Testnew_loop_packet(unittest.TestCase):
         mock_new_loop_packet_event = mock.MagicMock()
         mock_new_loop_packet_event.packet = self.packet_data
 
-        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe:
             with mock.patch('user.mqttsubscribe.Logger'):
-                mock_MQTTSubscribe = mock.Mock()
-                mock_MQTTSubscribe_class.get_subscriber = mock_MQTTSubscribe
                 type(mock_MQTTSubscribe.return_value).get_accumulated_data = mock.Mock(return_value=self.target_data)
                 type(mock_MQTTSubscribe.return_value).cached_fields = mock.PropertyMock(return_value=None)
 
@@ -291,10 +287,8 @@ class Testnew_loop_packet(unittest.TestCase):
         mock_new_loop_packet_event = mock.NonCallableMagicMock()
         mock_new_loop_packet_event.packet = packet
 
-        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe:
             with mock.patch('user.mqttsubscribe.RecordCache'):
-                mock_MQTTSubscribe = mock.Mock()
-                mock_MQTTSubscribe_class.get_subscriber = mock_MQTTSubscribe
                 type(mock_MQTTSubscribe.return_value).queues = mock.PropertyMock(return_value=[queue])
                 type(mock_MQTTSubscribe.return_value).get_accumulated_data = mock.Mock(return_value=self.target_data)
                 type(mock_MQTTSubscribe.return_value).cached_fields = mock.PropertyMock(return_value={'outTemp': {}})
@@ -386,9 +380,7 @@ class Testnew_archive_record(unittest.TestCase):
         mock_new_archive_record_event = mock.MagicMock()
         mock_new_archive_record_event.record = self.record_data
 
-        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager_class:
-            mock_manager = mock.Mock()
-            mock_manager_class.get_subscriber = mock_manager
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
             type(mock_manager.return_value).get_accumulated_data = mock.Mock(return_value=self.target_data)
             type(mock_manager.return_value).cached_fields = mock.PropertyMock(return_value=None)
@@ -411,10 +403,8 @@ class Testnew_archive_record(unittest.TestCase):
 
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe:
             with mock.patch('user.mqttsubscribe.RecordCache') as mock_cache:
-                mock_MQTTSubscribe = mock.Mock()
-                mock_MQTTSubscribe_class.get_subscriber = mock_MQTTSubscribe
                 type(mock_MQTTSubscribe.return_value).cached_fields = \
                     mock.PropertyMock(return_value={fieldname: {'expires_after': random.randint(1, 10)}})
                 value = round(random.uniform(10, 100), 2)
@@ -448,10 +438,8 @@ class Testnew_archive_record(unittest.TestCase):
 
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe_class:
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe:
             with mock.patch('user.mqttsubscribe.RecordCache'):
-                mock_MQTTSubscribe = mock.Mock()
-                mock_MQTTSubscribe_class.get_subscriber = mock_MQTTSubscribe
                 type(mock_MQTTSubscribe.return_value).cached_fields = mock.PropertyMock(return_value={fieldname: {}})
                 SUT = user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config)
 
