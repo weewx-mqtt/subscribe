@@ -93,6 +93,14 @@ def connect(client, api, *, host, port, keepalive, clean_start=None):  # pylint:
     client.connect(host, port, keepalive)
 
 
+def configure_reconnect_delay(client, *, min_delay, max_delay):
+    """ Configure the paho reconnect backoff delays.
+
+        The delays are the same for all api variants, so no api variant is needed.
+    """
+    client.reconnect_delay_set(min_delay=min_delay, max_delay=max_delay)
+
+
 def adapt_callback(api, event, callback):
     """ Adapt a canonical callback to the calling convention of an api variant.
 

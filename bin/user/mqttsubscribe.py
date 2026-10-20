@@ -2317,7 +2317,9 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
         mqttcommon.apply_credentials(self.client, mqtt_options['username'], mqtt_options['password'])
 
-        self.client.reconnect_delay_set(min_delay=mqtt_options['min_delay'], max_delay=mqtt_options['max_delay'])
+        mqttcommon.configure_reconnect_delay(self.client,
+                                             min_delay=mqtt_options['min_delay'],
+                                             max_delay=mqtt_options['max_delay'])
 
         try:
             self.connect(mqtt_options)
