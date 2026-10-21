@@ -550,6 +550,7 @@ import logging
 import math
 import os
 import platform
+import queue as Queue
 import random
 import re
 import sys
@@ -594,19 +595,29 @@ class ConversionError(ValueError):
     """ Error converting data types. """
 
 class Logger():  # pylint: disable=too-many-instance-attributes
-    """ The logging class. """
+    """ The logging class.
+        Log messages are queued and written by a LoggerThread, so logging and the
+        throttled message state are only ever accessed by that thread. """
     # This is the timestamp of the archive record being processed.
     # It is 'captured' via the NEW_ARCHIVE_RECORD event but due to WeeWX processing, updated via the END_ARCHIVE_PERIOD.
     # It is added to every log message.
     archive_timestamp = -1
+
+    # The maximum time shutdown waits for the LoggerThread to flush queued messages.
+    SHUTDOWN_TIMEOUT = 10
+
     log_messages = {
         # trace message
         # debug messages
         # informational messages
         122001: "Throttling messages is an experimental option. It has limited support and may cause one to miss important messages.",
+        122002: "Starting logger thread.",
+        122003: "Exited logger thread.",
         # error messages
         124001: "{count} messages have been suppressed in window id: {window}.",
         124002: "{count} messages have been suppressed of {max}.",
+        124003: "Invalid log entry: {entry}",
+        124004: "Unable to shut down logger thread {name}.",
         # exception messages
         129001: "{message_id} has been configured multiple times",
         129003: "{category} is not valid. Valid categories are {valid_categories}",
@@ -639,6 +650,17 @@ class Logger():  # pylint: disable=too-many-instance-attributes
 
         self._logmsg = logging.getLogger(__name__)
         self._setup_logging()
+
+        self.log_functions = {
+            'TRACE': self._log_trace,
+            'DEBUG': self._log_debug,
+            'INFO': self._log_info,
+            'ERROR': self._log_error,
+        }
+
+        self.log_queue = Queue.Queue()
+        self.log_thread = LoggerThread(self.log_queue, self)
+        self.log_thread.start()
 
         # Logging is setup, now safe to log a mwssage about using throttling option
         if 'throttle' in config:
@@ -871,28 +893,96 @@ class Logger():  # pylint: disable=too-many-instance-attributes
         self.debug(0, f"Record Augmentation is: {record_augmentation}")
         self.debug(0, f"Record Generation is: {record_generation}")
 
+    @staticmethod
+    def create_entry(log_type, msg_id, msg_text):
+        """ Create a log entry, capturing the emitting thread and the archive timestamp. """
+        return {
+            'log_type': log_type,
+            'msg_id': msg_id,
+            'msg_text': msg_text,
+            'thread_id': threading.get_native_id(),
+            'archive_timestamp': Logger.archive_timestamp,
+        }
+
     def trace(self, msg_id, msg_text):
-        """ Log trace messages. """
-        if not self._is_throttled('TRACE', msg_id):
-            if self.weewx_debug > 1:
-                self._logmsg.debug(self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
-            else:
-                self._logmsg.log(self.trace_level, self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
+        """ Queue trace messages. """
+        self.log_queue.put(Logger.create_entry('TRACE', msg_id, msg_text))
 
     def debug(self, msg_id, msg_text):
-        """ Log debug messages. """
-        if not self._is_throttled('DEBUG', msg_id):
-            self._logmsg.debug(self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
+        """ Queue debug messages. """
+        self.log_queue.put(Logger.create_entry('DEBUG', msg_id, msg_text))
 
     def info(self, msg_id, msg_text):
-        """ Log informational messages. """
-        if not self._is_throttled('INFO', msg_id):
-            self._logmsg.info(self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
+        """ Queue informational messages. """
+        self.log_queue.put(Logger.create_entry('INFO', msg_id, msg_text))
 
     def error(self, msg_id, msg_text):
-        """ Log error messages. """
-        if not self._is_throttled('ERROR', msg_id):
-            self._logmsg.error(self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
+        """ Queue error messages. """
+        self.log_queue.put(Logger.create_entry('ERROR', msg_id, msg_text))
+
+    def log_entry(self, entry):
+        """ Log a queued entry. This is called by the LoggerThread. """
+        log_type = entry['log_type']
+        if not self._is_throttled(log_type, entry['msg_id']):
+            self.log_functions[log_type](entry)
+
+    def shutdown(self, timeout=SHUTDOWN_TIMEOUT):
+        """ Stop the logger thread, flushing queued messages. """
+        if not self.log_thread.is_alive():
+            return
+
+        self.log_queue.put(None)
+        self.log_thread.join(timeout)
+        if self.log_thread.is_alive():
+            # The thread is stuck, a queued message would not be logged so log it directly.
+            self._logmsg.error(self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp,
+                               Logger.log_messages[124004].format(name=self.log_thread.name))
+
+    def _log_trace(self, entry):
+        """ Log a trace entry. This is called by the LoggerThread. """
+        if self.weewx_debug > 1:
+            self._logmsg.debug(self.MSG_FORMAT, self.mode, entry['thread_id'], entry['archive_timestamp'], entry['msg_text'])
+        else:
+            self._logmsg.log(self.trace_level, self.MSG_FORMAT, self.mode, entry['thread_id'], entry['archive_timestamp'], entry['msg_text'])
+
+    def _log_debug(self, entry):
+        """ Log a debug entry. This is called by the LoggerThread. """
+        self._logmsg.debug(self.MSG_FORMAT, self.mode, entry['thread_id'], entry['archive_timestamp'], entry['msg_text'])
+
+    def _log_info(self, entry):
+        """ Log an informational entry. This is called by the LoggerThread. """
+        self._logmsg.info(self.MSG_FORMAT, self.mode, entry['thread_id'], entry['archive_timestamp'], entry['msg_text'])
+
+    def _log_error(self, entry):
+        """ Log an error entry. This is called by the LoggerThread. """
+        self._logmsg.error(self.MSG_FORMAT, self.mode, entry['thread_id'], entry['archive_timestamp'], entry['msg_text'])
+
+class LoggerThread(threading.Thread):
+    """ Thread to manage logging.
+        It is the only consumer of the Logger's queue, and therefore the only
+        thread that logs messages and accesses the throttled message state. """
+
+    def __init__(self, log_queue, logger):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.log_queue = log_queue
+        self.logger = logger
+
+    def run(self):
+        threading.current_thread().name = f"{self.__class__.__name__}-{threading.get_native_id()}"
+        self.logger.log_entry(Logger.create_entry('INFO', 122002, Logger.log_messages[122002]))
+
+        while True:
+            entry = self.log_queue.get()
+            if entry is None:
+                break
+            try:
+                self.logger.log_entry(entry)
+            except (TypeError, KeyError):
+                self.logger.log_entry(Logger.create_entry('ERROR', 124003,
+                                                          Logger.log_messages[124003].format(entry=entry)))
+
+        self.logger.log_entry(Logger.create_entry('INFO', 122003, Logger.log_messages[122003]))
 
 class RecordCache():
     """ Manage the cache. """
@@ -2555,6 +2645,7 @@ class MQTTSubscribeService(StdService):
         """Run when an engine shutdown is requested."""
         if self.subscriber:
             self.subscriber.disconnect()
+        self.logger.shutdown()
 
     def new_loop_packet(self, event):
         """ Handle the new loop packet event. """
@@ -2719,6 +2810,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
     def closePort(self):  # need to override parent
         """ Called to perform any close/cleanup before termination. """
         self.subscriber.disconnect()
+        self.logger.shutdown()
 
     def new_archive_record(self, event):
         """ Handle the new archive record event. """

@@ -11,6 +11,7 @@ import configobj
 import copy
 import random
 import sys
+import threading
 import time
 
 import test_weewx_stubs
@@ -416,6 +417,7 @@ class TestInintialization(BaseTestClass):
         config = configobj.ConfigObj(config_dict)
 
         SUT = Logger(config)
+        SUT.shutdown()
         with mock.patch.object(Logger, '_check_message') as mock_check_message:
             SUT._is_throttled(logging_level, msg_id_int)
 
@@ -451,6 +453,7 @@ class TestInintialization(BaseTestClass):
         config = configobj.ConfigObj(config_dict)
 
         SUT = Logger(config)
+        SUT.shutdown()
         with mock.patch.object(Logger, '_check_message') as mock_check_message:
             SUT._is_throttled(logging_level, random_message_id)
 
@@ -485,6 +488,7 @@ class TestInintialization(BaseTestClass):
         }
         config = configobj.ConfigObj(config_dict)
         SUT = Logger(config)
+        SUT.shutdown()
         with mock.patch.object(Logger, '_check_message') as mock_check_message:
             SUT._is_throttled(random_string(), random_message_id)
 
@@ -525,84 +529,157 @@ class TestLogging(BaseTestClass):
     @staticmethod
     def test_error_logged():
         with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
-                mock_logging._checkLevel.return_value = 0
-                thread_id = random.randint(10000, 99999)
-                mock_threading.get_native_id.return_value = thread_id
-                mode = random_string()
-                message_text = random_string()
+            mock_logging._checkLevel.return_value = 0
+            thread_id = threading.get_native_id()
+            mode = random_string()
+            message_text = random_string()
 
-                SUT = Logger({'mode': mode})
+            SUT = Logger({'mode': mode})
 
-                SUT.error(random.randint(1, 100), message_text)
+            SUT.error(random.randint(1, 100), message_text)
+            SUT.shutdown()
 
-                SUT._logmsg.error.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message_text)
+            SUT._logmsg.error.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message_text)
 
     @staticmethod
     def test_info_logged():
         with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
-                mock_logging._checkLevel.return_value = 0
-                thread_id = random.randint(10000, 99999)
-                mock_threading.get_native_id.return_value = thread_id
-                mode = random_string()
-                message = random_string()
+            mock_logging._checkLevel.return_value = 0
+            thread_id = threading.get_native_id()
+            mode = random_string()
+            message = random_string()
 
-                SUT = Logger({'mode': mode})
+            SUT = Logger({'mode': mode})
 
-                SUT.info(random.randint(1, 100), message)
+            SUT.info(random.randint(1, 100), message)
+            SUT.shutdown()
 
-                SUT._logmsg.info.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message)
+            # The logger thread start message is also logged at INFO.
+            SUT._logmsg.info.assert_any_call(SUT.MSG_FORMAT, mode, thread_id, -1, message)
 
     @staticmethod
     def test_debug_logged():
         with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
-                mock_logging._checkLevel.return_value = 0
-                thread_id = random.randint(10000, 99999)
-                mock_threading.get_native_id.return_value = thread_id
-                mode = random_string()
-                message = random_string()
+            mock_logging._checkLevel.return_value = 0
+            thread_id = threading.get_native_id()
+            mode = random_string()
+            message = random_string()
 
-                SUT = Logger({'mode': mode})
+            SUT = Logger({'mode': mode})
 
-                SUT.debug(random.randint(1, 100), message)
+            SUT.debug(random.randint(1, 100), message)
+            SUT.shutdown()
 
-                SUT._logmsg.debug.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message)
+            SUT._logmsg.debug.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message)
 
     @staticmethod
     def test_trace_logged_with_debug_set():
         with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
-                sys.modules['weewx'].debug = 2
-                mock_logging._checkLevel.return_value = 0
-                thread_id = random.randint(10000, 99999)
-                mock_threading.get_native_id.return_value = thread_id
-                mode = random_string()
-                message = random_string()
+            sys.modules['weewx'].debug = 2
+            mock_logging._checkLevel.return_value = 0
+            thread_id = threading.get_native_id()
+            mode = random_string()
+            message = random_string()
 
-                SUT = Logger({'mode': mode})
+            SUT = Logger({'mode': mode})
 
-                SUT.trace(random.randint(1, 100), message)
+            SUT.trace(random.randint(1, 100), message)
+            SUT.shutdown()
 
-                SUT._logmsg.debug.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message)
+            SUT._logmsg.debug.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message)
 
     @staticmethod
     def test_trace_logged_with_debug_not_set():
         with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
-                mock_logging._checkLevel.return_value = 0
-                thread_id = random.randint(10000, 99999)
-                mock_threading.get_native_id.return_value = thread_id
-                mode = random_string()
-                message = random_string()
+            mock_logging._checkLevel.return_value = 0
+            thread_id = threading.get_native_id()
+            mode = random_string()
+            message = random_string()
 
-                SUT = Logger({'mode': mode})
-                SUT.weewx_debug = 0
+            SUT = Logger({'mode': mode})
+            SUT.weewx_debug = 0
 
-                SUT.trace(random.randint(1, 100), message)
+            SUT.trace(random.randint(1, 100), message)
+            SUT.shutdown()
 
-                SUT._logmsg.log.assert_called_once_with(5, SUT.MSG_FORMAT, mode, thread_id, -1, message)
+            SUT._logmsg.log.assert_called_once_with(5, SUT.MSG_FORMAT, mode, thread_id, -1, message)
+
+class TestQueue(BaseTestClass):
+    def test_log_entry_invalid_entry(self):
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+
+            SUT = Logger({'mode': random_string()})
+
+            with self.assertRaises(KeyError):
+                SUT.log_entry({'log_type': random_string(), 'msg_id': None, 'msg_text': random_string()})
+            with self.assertRaises(KeyError):
+                SUT.log_entry({})
+            with self.assertRaises(TypeError):
+                SUT.log_entry(random_string())
+
+            SUT.shutdown()
+
+    def test_shutdown_drains_queue(self):
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+            mock_logmsg = mock_logging.getLogger.return_value
+
+            SUT = Logger({'mode': random_string()})
+
+            SUT.info(random.randint(1, 100), random_string())
+            SUT.debug(random.randint(1, 100), random_string())
+            SUT.error(random.randint(1, 100), random_string())
+
+            SUT.shutdown()
+
+            # The start message, the queued messages, and the exit message are logged in queue order.
+            logged = [call[0] for call in mock_logmsg.method_calls]
+            self.assertEqual(logged, ['info', 'info', 'debug', 'error', 'info'])
+            self.assertFalse(SUT.log_thread.is_alive())
+
+    def test_shutdown_is_idempotent(self):
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+
+            SUT = Logger({'mode': random_string()})
+
+            SUT.shutdown()
+            SUT.shutdown()
+
+            self.assertFalse(SUT.log_thread.is_alive())
+
+    def test_shutdown_timeout(self):
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+            mock_logmsg = mock_logging.getLogger.return_value
+            mode = random_string()
+
+            SUT = Logger({'mode': mode})
+
+            # Replace log_entry to simulate a stuck log handler.
+            block_entered = threading.Event()
+            blocked = threading.Event()
+
+            def block_entry(_entry):
+                block_entered.set()
+                blocked.wait(5)
+
+            SUT.log_entry = block_entry
+
+            SUT.info(random.randint(1, 100), random_string())
+            self.assertTrue(block_entered.wait(5))
+
+            SUT.shutdown(timeout=0.05)
+
+            expected_text = Logger.log_messages[124004].format(name=SUT.log_thread.name)
+            mock_logmsg.error.assert_called_once_with(SUT.MSG_FORMAT, mode, threading.get_native_id(), -1, expected_text)
+            self.assertTrue(SUT.log_thread.is_alive())
+
+            # Release the thread and wait for it to exit.
+            blocked.set()
+            SUT.log_thread.join(timeout=5)
+            self.assertFalse(SUT.log_thread.is_alive())
 
 class TestThrottling(BaseTestClass):
     def test_duration_is_zero(self):
@@ -867,36 +944,36 @@ class TestThrottling(BaseTestClass):
 
         with mock.patch('user.mqttsubscribe.logging') as mock_logging:
             with mock.patch('user.mqttsubscribe.time') as mock_time:
-                with mock.patch('user.mqttsubscribe.threading') as mock_threading:
-                    mock_logging._checkLevel.return_value = 0
-                    mock_time.time.return_value = now
-                    thread_id = random.randint(10000, 99999)
-                    mock_threading.get_native_id.return_value = thread_id
+                mock_logging._checkLevel.return_value = 0
+                mock_time.time.return_value = now
+                thread_id = threading.get_native_id()
 
-                    SUT = Logger(config)
+                SUT = Logger(config)
 
-                    SUT.logged_ids = {
-                        msg_id: {
-                            'window': window,
-                            'count': count,
-                        }
+                SUT.logged_ids = {
+                    msg_id: {
+                        'window': window,
+                        'count': count,
                     }
+                }
 
-                    throttle = SUT._check_message(msg_id, SUT.throttle_config['message'][msg_id_int])
+                throttle = SUT._check_message(msg_id, SUT.throttle_config['message'][msg_id_int])
 
-                    logged_ids = {
-                        msg_id: {
-                            'window': window,
-                            'count': threshold,
-                        }
+                logged_ids = {
+                    msg_id: {
+                        'window': window,
+                        'count': threshold,
                     }
+                }
 
-                    message_text = f"{threshold - max_count} messages have been suppressed in window id: {window}."
+                message_text = f"{threshold - max_count} messages have been suppressed in window id: {window}."
 
-                    self.assertFalse(throttle)
-                    self.assertEqual(len(SUT.logged_ids), 1)
-                    self.assertDictEqual(SUT.logged_ids, logged_ids)
-                    SUT._logmsg.error.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message_text)
+                SUT.shutdown()
+
+                self.assertFalse(throttle)
+                self.assertEqual(len(SUT.logged_ids), 1)
+                self.assertDictEqual(SUT.logged_ids, logged_ids)
+                SUT._logmsg.error.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message_text)
 
     def test_message_is_over_threshold(self):
         mode = random_string()
@@ -922,33 +999,32 @@ class TestThrottling(BaseTestClass):
 
         with mock.patch('user.mqttsubscribe.logging') as mock_logging:
             with mock.patch('user.mqttsubscribe.time') as mock_time:
-                with mock.patch('user.mqttsubscribe.threading') as mock_threading:
-                    mock_logging._checkLevel.return_value = 0
-                    mock_time.time.return_value = now
-                    thread_id = random.randint(10000, 99999)
-                    mock_threading.get_native_id.return_value = thread_id
+                mock_logging._checkLevel.return_value = 0
+                mock_time.time.return_value = now
 
-                    SUT = Logger(config)
+                SUT = Logger(config)
 
-                    SUT.logged_ids = {
-                        msg_id: {
-                            'window': int(now // duration),
-                            'count': count,
-                        }
+                SUT.logged_ids = {
+                    msg_id: {
+                        'window': int(now // duration),
+                        'count': count,
                     }
+                }
 
-                    throttle = SUT._check_message(msg_id, SUT.throttle_config['message'][msg_id_int])
+                throttle = SUT._check_message(msg_id, SUT.throttle_config['message'][msg_id_int])
 
-                    logged_ids = {
-                        msg_id: {
-                            'window': int(now // duration),
-                            'count': count + 1,
-                        }
+                logged_ids = {
+                    msg_id: {
+                        'window': int(now // duration),
+                        'count': count + 1,
                     }
+                }
 
-                    self.assertTrue(throttle, f"SUT logged ids: {SUT.logged_ids} expected: {logged_ids}")
-                    self.assertEqual(len(SUT.logged_ids), 1)
-                    self.assertDictEqual(SUT.logged_ids, logged_ids)
+                SUT.shutdown()
+
+                self.assertTrue(throttle, f"SUT logged ids: {SUT.logged_ids} expected: {logged_ids}")
+                self.assertEqual(len(SUT.logged_ids), 1)
+                self.assertDictEqual(SUT.logged_ids, logged_ids)
 
 if __name__ == '__main__':
     # testcase = sys.argv[1]

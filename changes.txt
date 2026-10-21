@@ -2,6 +2,8 @@ V3.2.1 (draft)
 Enhancements:
 - Added the 'log_mqtt' option, it replaces the 'log' option.
   'log' is deprecated, remains supported, and is scheduled to be removed in V4.
+- Log messages are now queued and written by a dedicated logger thread.
+  This makes logging thread safe and the throttled message state deterministic.
 
 V3.2.0
 Enhancements:
