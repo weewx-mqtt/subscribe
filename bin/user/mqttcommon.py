@@ -7,7 +7,9 @@
 import abc
 import ssl
 import threading
+import time
 
+import configobj
 import paho.mqtt.client as mqtt
 
 # The mqttcommon API level. Bump it when a change requires consumers to have a newer
@@ -87,6 +89,188 @@ class QueueLoggerThread(threading.Thread, abc.ABC):
     @abc.abstractmethod
     def invalid_entry(self, entry):
         """ Return the error entry logged for an entry that could not be logged. """
+
+
+# These mirror weeutil.weeutil.to_int/option_as_list so that mqttcommon stays importable
+# without weewx (subscribe's unit suite stubs weewx and has no weeutil).
+def _to_int(x):
+    if isinstance(x, str) and (x.lower() == 'none' or x == ''):
+        x = None
+    try:
+        return int(x) if x is not None else None
+    except ValueError:
+        # Perhaps it's a string, holding a floating point number?
+        return int(float(x))
+
+
+def _as_list(option):
+    if option is None:
+        return None
+    return [option] if not isinstance(option, list) else option
+
+
+class MessageThrottle:  # pylint: disable=too-few-public-methods
+    """ Decide whether a log message must be suppressed.
+
+    Messages are throttled by key (typically a message id), falling back to the
+    log type's category and then to 'ALL'. Key None messages are never throttled.
+
+    The throttle state is only ever accessed from the logger thread, so no
+    locking is needed. Summaries of suppressed messages are passed to the
+    optional log_summary callback, which the consumer wires to its logger. """
+
+    VALID_CATEGORIES = ['ALL', 'ERROR', 'INFO', 'DEBUG', 'TRACE']
+
+    # The suppression summaries, formatted and passed to the log_summary callback.
+    SUMMARY_WINDOW = "{count} messages have been suppressed in window id: {window}."
+    SUMMARY_DURATION_ZERO = "{count} messages have been suppressed of {max}."
+
+    # The notice logged when the throttle feature is configured.
+    NOTICE_EXPERIMENTAL = ("Throttling messages is an experimental option. It has limited support "
+                           "and may cause one to miss important messages.")
+
+    # The config parse/validate errors, raised as ValueError.
+    ERROR_DUPLICATE_MESSAGE = "{message_id} has been configured multiple times"
+    ERROR_INVALID_CATEGORY = "{category} is not valid. Valid categories are {valid_categories}"
+    ERROR_CATEGORY_MISSING_MAX = "{category} is missing 'max' configuration option."
+    ERROR_CATEGORY_MISSING_DURATION = "{category} is missing 'duration' configuration option."
+    ERROR_MESSAGE_MISSING_MAX = "{message} is missing 'max' configuration option."
+    ERROR_MESSAGE_MISSING_DURATION = "{message} is missing 'duration' configuration option."
+
+    @staticmethod
+    def parse_config(config):
+        """ Parse the 'throttle' section of the config into the internal representation. """
+        throttle_config = {'category': {}, 'message': {}}
+
+        if 'throttle' in config:
+            throttle_config['category'] = MessageThrottle._parse_categories(config['throttle'])
+            throttle_config['message'] = MessageThrottle._parse_messages(config['throttle'])
+
+        return throttle_config
+
+    @staticmethod
+    def _parse_categories(throttle):
+        """ Parse the 'category' section of the throttle config. """
+        categories = {}
+        for category in throttle.get('category', configobj.ConfigObj({})).sections:
+            if category not in MessageThrottle.VALID_CATEGORIES:
+                raise ValueError(MessageThrottle.ERROR_INVALID_CATEGORY.format(
+                    category=category, valid_categories=MessageThrottle.VALID_CATEGORIES))
+            if 'max' not in throttle['category'][category]:
+                raise ValueError(MessageThrottle.ERROR_CATEGORY_MISSING_MAX.format(category=category))
+            if 'duration' not in throttle['category'][category]:
+                raise ValueError(MessageThrottle.ERROR_CATEGORY_MISSING_DURATION.format(category=category))
+            throttle['category'][category]['max'] = _to_int(throttle['category'][category]['max'])
+            throttle['category'][category]['duration'] = _to_int(throttle['category'][category]['duration'])
+            categories[category] = throttle['category'][category]
+
+        return categories
+
+    @staticmethod
+    def _parse_messages(throttle):
+        """ Parse the 'messages' section of the throttle config. """
+        messages = {}
+        for message in throttle.get('messages', configobj.ConfigObj({})).sections:
+            MessageThrottle._validate_message(throttle['messages'][message], message)
+
+            if 'messages' in throttle['messages'][message]:
+                message_ids = _as_list(throttle['messages'][message]['messages'])
+            else:
+                message_ids = [message]
+
+            for message_id in message_ids:
+                message_id_int = _to_int(message_id)
+                if message_id_int in messages:
+                    raise ValueError(MessageThrottle.ERROR_DUPLICATE_MESSAGE.format(message_id=message_id))
+                messages[message_id_int] = {
+                    'duration': _to_int(throttle['messages'][message]['duration']),
+                    'max': _to_int(throttle['messages'][message]['max'])
+                }
+
+        return messages
+
+    @staticmethod
+    def _validate_message(message_config, message):
+        """ Validate a 'messages' section of the throttle config. """
+        if 'max' not in message_config:
+            raise ValueError(MessageThrottle.ERROR_MESSAGE_MISSING_MAX.format(message=message))
+        if 'duration' not in message_config:
+            raise ValueError(MessageThrottle.ERROR_MESSAGE_MISSING_DURATION.format(message=message))
+
+    def __init__(self, throttle_config=None, log_summary=None):
+        if throttle_config is None:
+            throttle_config = {'category': {}, 'message': {}}
+
+        self.throttle_config = throttle_config
+        self.log_summary = log_summary
+        self.logged_ids = {}
+
+    def is_throttled(self, log_type, key):
+        """ Return True when the message must be suppressed. """
+        if key is None:
+            return False
+        if key in self.throttle_config['message']:
+            return self._check_message(key, self.throttle_config['message'][key])
+        if log_type in self.throttle_config['category']:
+            return self._check_message(key, self.throttle_config['category'][log_type])
+        if 'ALL' in self.throttle_config['category']:
+            return self._check_message(key, self.throttle_config['category']['ALL'])
+
+        return False
+
+    def _check_message(self, key, throttle_config):
+        if throttle_config['max'] is None:
+            return False
+
+        if throttle_config['duration'] == 0:
+            return self._check_message_duration_zero(key, throttle_config)
+
+        return self._check_message_window(key, throttle_config)
+
+    def _check_message_duration_zero(self, key, throttle_config):
+        if key not in self.logged_ids:
+            self.logged_ids[key] = {}
+            self.logged_ids[key]['count'] = 0
+
+        if self.logged_ids[key]['count'] > throttle_config['max']:
+            if self.logged_ids[key]['count'] % throttle_config['max'] == 0:
+                self.logged_ids[key]['count'] += 1
+                self._log_summary(MessageThrottle.SUMMARY_DURATION_ZERO.format(
+                    count=self.logged_ids[key]['count'], max=throttle_config['max']))
+                return False
+
+        self.logged_ids[key]['count'] += 1
+        return True
+
+    def _check_message_window(self, key, throttle_config):
+        now = int(time.time())
+        window = int(now // throttle_config['duration'])
+
+        if key not in self.logged_ids:
+            self.logged_ids[key] = {}
+            self.logged_ids[key]['window'] = window
+            self.logged_ids[key]['count'] = 1
+            return False
+
+        if window != self.logged_ids[key]['window']:
+            self.logged_ids[key]['count'] = 0
+            self.logged_ids[key]['window'] = window
+
+        self.logged_ids[key]['count'] += 1
+
+        if self.logged_ids[key]['count'] > throttle_config['max']:
+            if self.logged_ids[key]['count'] % throttle_config['max'] == 0:
+                self._log_summary(MessageThrottle.SUMMARY_WINDOW.format(
+                    count=self.logged_ids[key]['count'] - throttle_config['max'], window=window))
+                return False
+            return True
+
+        return False
+
+    def _log_summary(self, msg_text):
+        """ Pass a suppression summary to the callback when one was provided. """
+        if self.log_summary is not None:
+            self.log_summary(msg_text)
 
 
 def has_v2_api():

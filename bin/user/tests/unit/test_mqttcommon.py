@@ -4,10 +4,14 @@
 #    See the file LICENSE.txt for your full rights.
 #
 """ Tests for the common paho mqtt code. """
+import copy
 import queue
+import random
 import ssl
+import time
 import unittest
 
+import configobj
 import mock
 
 import paho.mqtt.client as mqtt
@@ -471,6 +475,538 @@ class TestQueueLoggerThread(unittest.TestCase):
     def test_abstract_base_class_cannot_be_instantiated(self):
         with self.assertRaises(TypeError):
             user.mqttcommon.QueueLoggerThread(queue.Queue(), mock.Mock())
+
+
+class TestMessageThrottle(unittest.TestCase):
+    @staticmethod
+    def _throttle_config(max_count=None, duration=None):
+        return {'max': max_count, 'duration': duration}
+
+    def test_none_key_is_not_throttled(self):
+        throttle_config = {
+            'category': {'ERROR': self._throttle_config(random.randint(1, 10), random.randint(1, 10))},
+            'message': {},
+        }
+        SUT = user.mqttcommon.MessageThrottle(throttle_config)
+
+        with mock.patch.object(user.mqttcommon.MessageThrottle, '_check_message') as mock_check_message:
+            self.assertFalse(SUT.is_throttled('ERROR', None))
+
+            mock_check_message.assert_not_called()
+
+    def test_no_config_is_not_throttled(self):
+        SUT = user.mqttcommon.MessageThrottle()
+
+        self.assertFalse(SUT.is_throttled('ERROR', random.randint(1000, 9999)))
+        self.assertEqual(SUT.logged_ids, {})
+
+    def test_message_tier_is_used(self):
+        logging_level = 'ERROR'
+        msg_id = random.randint(1000, 9999)
+        message_config = self._throttle_config(random.randint(1, 10), random.randint(1, 10))
+        throttle_config = {
+            'category': {
+                'ALL': self._throttle_config(random.randint(1, 10), random.randint(1, 10)),
+                logging_level: self._throttle_config(random.randint(1, 10), random.randint(1, 10)),
+            },
+            'message': {msg_id: message_config},
+        }
+        SUT = user.mqttcommon.MessageThrottle(throttle_config)
+
+        with mock.patch.object(user.mqttcommon.MessageThrottle, '_check_message') as mock_check_message:
+            SUT.is_throttled(logging_level, msg_id)
+
+            mock_check_message.assert_called_once_with(msg_id, message_config)
+
+    def test_category_tier_is_used(self):
+        logging_level = 'ERROR'
+        msg_id = random.randint(1000, 9999)
+        category_config = self._throttle_config(random.randint(1, 10), random.randint(1, 10))
+        throttle_config = {
+            'category': {
+                'ALL': self._throttle_config(random.randint(1, 10), random.randint(1, 10)),
+                logging_level: category_config,
+            },
+            'message': {},
+        }
+        SUT = user.mqttcommon.MessageThrottle(throttle_config)
+
+        with mock.patch.object(user.mqttcommon.MessageThrottle, '_check_message') as mock_check_message:
+            SUT.is_throttled(logging_level, msg_id)
+
+            mock_check_message.assert_called_once_with(msg_id, category_config)
+
+    def test_all_tier_is_used(self):
+        msg_id = random.randint(1000, 9999)
+        all_config = self._throttle_config(random.randint(1, 10), random.randint(1, 10))
+        throttle_config = {
+            'category': {'ALL': all_config},
+            'message': {},
+        }
+        SUT = user.mqttcommon.MessageThrottle(throttle_config)
+
+        with mock.patch.object(user.mqttcommon.MessageThrottle, '_check_message') as mock_check_message:
+            SUT.is_throttled('INFO', msg_id)
+
+            mock_check_message.assert_called_once_with(msg_id, all_config)
+
+    def test_no_tier_is_used(self):
+        throttle_config = {
+            'category': {'ERROR': self._throttle_config(random.randint(1, 10), random.randint(1, 10))},
+            'message': {},
+        }
+        SUT = user.mqttcommon.MessageThrottle(throttle_config)
+
+        with mock.patch.object(user.mqttcommon.MessageThrottle, '_check_message') as mock_check_message:
+            self.assertFalse(SUT.is_throttled('INFO', random.randint(1000, 9999)))
+
+            mock_check_message.assert_not_called()
+
+    def test_max_is_none(self):
+        msg_id = random.randint(1000, 9999)
+        throttle_config = self._throttle_config(None, random.randint(60, 600))
+        SUT = user.mqttcommon.MessageThrottle()
+
+        with mock.patch('user.mqttcommon.time') as mock_time:
+            self.assertFalse(SUT._check_message(msg_id, throttle_config))
+
+            self.assertEqual(SUT.logged_ids, {})
+            self.assertEqual(mock_time.time.call_count, 0)
+
+    def test_duration_zero_first_message_is_throttled(self):
+        msg_id = random.randint(1000, 9999)
+        throttle_config = self._throttle_config(random.randint(1, 1000), 0)
+        SUT = user.mqttcommon.MessageThrottle()
+
+        with mock.patch('user.mqttcommon.time') as mock_time:
+            self.assertTrue(SUT._check_message(msg_id, throttle_config))
+
+            self.assertEqual(SUT.logged_ids, {msg_id: {'count': 1}})
+            self.assertEqual(mock_time.time.call_count, 0)
+
+    def test_duration_zero_within_count_is_throttled(self):
+        msg_id = random.randint(1000, 9999)
+        count = random.randint(1, 10)
+        throttle_config = self._throttle_config(random.randint(count, 1000), 0)
+        SUT = user.mqttcommon.MessageThrottle()
+
+        with mock.patch('user.mqttcommon.time') as mock_time:
+            SUT.logged_ids = {msg_id: {'count': count}}
+
+            self.assertTrue(SUT._check_message(msg_id, throttle_config))
+
+            self.assertEqual(SUT.logged_ids, {msg_id: {'count': count + 1}})
+            self.assertEqual(mock_time.time.call_count, 0)
+
+    def test_duration_zero_summary_is_emitted(self):
+        msg_id = random.randint(1000, 9999)
+        max_count = random.randint(1, 100)
+        count = max_count * random.randint(2, 9)
+        summaries = []
+        throttle_config = self._throttle_config(max_count, 0)
+        SUT = user.mqttcommon.MessageThrottle(log_summary=summaries.append)
+
+        with mock.patch('user.mqttcommon.time') as mock_time:
+            SUT.logged_ids = {msg_id: {'count': count}}
+
+            self.assertFalse(SUT._check_message(msg_id, throttle_config))
+
+            self.assertEqual(SUT.logged_ids, {msg_id: {'count': count + 1}})
+            self.assertEqual(summaries, [f"{count + 1} messages have been suppressed of {max_count}."])
+            self.assertEqual(mock_time.time.call_count, 0)
+
+    def test_window_first_message_is_logged(self):
+        msg_id = random.randint(1000, 9999)
+        duration = random.randint(60, 600)
+        throttle_config = self._throttle_config(random.randint(1, 1000), duration)
+        now = int(time.time())
+        SUT = user.mqttcommon.MessageThrottle()
+
+        with mock.patch('user.mqttcommon.time') as mock_time:
+            mock_time.time.return_value = now
+
+            self.assertFalse(SUT._check_message(msg_id, throttle_config))
+
+            self.assertEqual(SUT.logged_ids, {msg_id: {'window': int(now // duration), 'count': 1}})
+
+    def test_window_change_resets_count(self):
+        msg_id = random.randint(1000, 9999)
+        duration = random.randint(60, 600)
+        count = random.randint(1, 100)
+        now = time.time()
+        throttle_config = self._throttle_config(random.randint(1, 1000), duration)
+        SUT = user.mqttcommon.MessageThrottle()
+
+        with mock.patch('user.mqttcommon.time') as mock_time:
+            mock_time.time.return_value = now
+
+            SUT.logged_ids = {msg_id: {'window': -1, 'count': count}}
+
+            self.assertFalse(SUT._check_message(msg_id, throttle_config))
+
+            self.assertEqual(SUT.logged_ids, {msg_id: {'window': int(now // duration), 'count': 1}})
+
+    def test_message_within_threshold(self):
+        msg_id = random.randint(1000, 9999)
+        duration = random.randint(60, 600)
+        count = random.randint(1, 100)
+        now = time.time()
+        window = int(now // duration)
+        throttle_config = self._throttle_config(count + 1, duration)
+        SUT = user.mqttcommon.MessageThrottle()
+
+        with mock.patch('user.mqttcommon.time') as mock_time:
+            mock_time.time.return_value = now
+
+            SUT.logged_ids = {msg_id: {'window': window, 'count': count}}
+
+            self.assertFalse(SUT._check_message(msg_id, throttle_config))
+
+            self.assertEqual(SUT.logged_ids, {msg_id: {'window': window, 'count': count + 1}})
+
+    def test_window_summary_is_emitted(self):
+        msg_id = random.randint(1000, 9999)
+        duration = random.randint(60, 600)
+        max_count = random.randint(1, 100)
+        count = max_count * random.randint(2, 9) - 1
+        threshold = count + 1
+        now = duration
+        window = int(now // duration)
+        summaries = []
+        throttle_config = self._throttle_config(max_count, duration)
+        SUT = user.mqttcommon.MessageThrottle(log_summary=summaries.append)
+
+        with mock.patch('user.mqttcommon.time') as mock_time:
+            mock_time.time.return_value = now
+
+            SUT.logged_ids = {msg_id: {'window': window, 'count': count}}
+
+            self.assertFalse(SUT._check_message(msg_id, throttle_config))
+
+            self.assertEqual(SUT.logged_ids, {msg_id: {'window': window, 'count': threshold}})
+            self.assertEqual(summaries, [f"{threshold - max_count} messages have been suppressed in window id: {window}."])
+
+    def test_message_is_over_threshold(self):
+        msg_id = random.randint(1000, 9999)
+        duration = random.randint(60, 600)
+        count = random.randint(10, 100)
+        now = duration
+        window = int(now // duration)
+        throttle_config = self._throttle_config(count - 3, duration)
+        SUT = user.mqttcommon.MessageThrottle()
+
+        with mock.patch('user.mqttcommon.time') as mock_time:
+            mock_time.time.return_value = now
+
+            SUT.logged_ids = {msg_id: {'window': window, 'count': count}}
+
+            self.assertTrue(SUT._check_message(msg_id, throttle_config))
+
+            self.assertEqual(SUT.logged_ids, {msg_id: {'window': window, 'count': count + 1}})
+
+    def test_summary_without_callback_is_dropped(self):
+        msg_id = random.randint(1000, 9999)
+        duration = random.randint(60, 600)
+        max_count = random.randint(1, 100)
+        count = max_count * random.randint(2, 9) - 1
+        now = duration
+        window = int(now // duration)
+        throttle_config = self._throttle_config(max_count, duration)
+        SUT = user.mqttcommon.MessageThrottle()
+
+        with mock.patch('user.mqttcommon.time') as mock_time:
+            mock_time.time.return_value = now
+
+            SUT.logged_ids = {msg_id: {'window': window, 'count': count}}
+
+            self.assertFalse(SUT._check_message(msg_id, throttle_config))
+
+            self.assertEqual(SUT.logged_ids, {msg_id: {'window': window, 'count': count + 1}})
+
+
+class TestMessageThrottleParseConfig(unittest.TestCase):
+    def test_throttle_not_in_config(self):
+        config = configobj.ConfigObj({})
+
+        expected_throttle_config = {
+            'category': {},
+            'message': {},
+        }
+
+        self.assertDictEqual(user.mqttcommon.MessageThrottle.parse_config(config), expected_throttle_config)
+
+    def test_empty_throttle_section(self):
+        config_dict = {
+            'throttle': {}
+        }
+        config = configobj.ConfigObj(config_dict)
+
+        expected_throttle_config = {
+            'category': {},
+            'message': {},
+        }
+
+        self.assertDictEqual(user.mqttcommon.MessageThrottle.parse_config(config), expected_throttle_config)
+
+    def test_throttle_category_section(self):
+        category = {
+            'ERROR': {
+                'max': random.randint(1, 10),
+                'duration': random.randint(1, 10),
+            }
+        }
+
+        config_dict = {
+            'throttle': {
+                'category': copy.deepcopy(category),
+            }
+        }
+        config = configobj.ConfigObj(config_dict)
+
+        expected_throttle_config = {
+            'category': copy.deepcopy(category),
+            'message': {},
+        }
+
+        self.assertDictEqual(user.mqttcommon.MessageThrottle.parse_config(config), expected_throttle_config)
+
+    def test_invalid_category_specified(self):
+        category_name = f"NOT_A_CATEGORY-{random.randint(1000, 9999)}"
+        category = {
+            category_name: {}
+        }
+
+        config_dict = {
+            'throttle': {
+                'category': copy.deepcopy(category),
+            }
+        }
+        config = configobj.ConfigObj(config_dict)
+        with self.assertRaises(ValueError) as error:
+            user.mqttcommon.MessageThrottle.parse_config(config)
+
+        self.assertEqual(error.exception.args[0],
+                         f"{category_name} is not valid. Valid categories are ['ALL', 'ERROR', 'INFO', 'DEBUG', 'TRACE']")
+
+    def test_category_missing_max(self):
+        category_name = 'ERROR'
+        category = {
+            category_name: {
+                'duration': random.randint(1, 10),
+            }
+        }
+
+        config_dict = {
+            'throttle': {
+                'category': copy.deepcopy(category),
+            }
+        }
+        config = configobj.ConfigObj(config_dict)
+
+        with self.assertRaises(ValueError) as error:
+            user.mqttcommon.MessageThrottle.parse_config(config)
+        self.assertEqual(error.exception.args[0], f"{category_name} is missing 'max' configuration option.")
+
+    def test_category_missing_duration(self):
+        category_name = 'ERROR'
+        category = {
+            category_name: {
+                'max': random.randint(1, 10),
+            }
+        }
+
+        config_dict = {
+            'throttle': {
+                'category': copy.deepcopy(category),
+            }
+        }
+        config = configobj.ConfigObj(config_dict)
+
+        with self.assertRaises(ValueError) as error:
+            user.mqttcommon.MessageThrottle.parse_config(config)
+        self.assertEqual(error.exception.args[0], f"{category_name} is missing 'duration' configuration option.")
+
+    def test_messages_missing_max(self):
+        message_id = f"message-{random.randint(1000, 9999)}"
+        message = {
+            message_id: {
+                'duration': random.randint(1, 10),
+            }
+        }
+
+        config_dict = {
+            'throttle': {
+                'messages': copy.deepcopy(message),
+            }
+        }
+        config = configobj.ConfigObj(config_dict)
+
+        with self.assertRaises(ValueError) as error:
+            user.mqttcommon.MessageThrottle.parse_config(config)
+        self.assertEqual(error.exception.args[0], f"{message_id} is missing 'max' configuration option.")
+
+    def test_messages_missing_duration(self):
+        message_id = f"message-{random.randint(1000, 9999)}"
+        message = {
+            message_id: {
+                'max': random.randint(1, 10),
+            }
+        }
+
+        config_dict = {
+            'throttle': {
+                'messages': copy.deepcopy(message),
+            }
+        }
+        config = configobj.ConfigObj(config_dict)
+
+        with self.assertRaises(ValueError) as error:
+            user.mqttcommon.MessageThrottle.parse_config(config)
+        self.assertEqual(error.exception.args[0], f"{message_id} is missing 'duration' configuration option.")
+
+    def test_no_messages_specified_in_message_section(self):
+        msg_id_int = random.randint(1000, 9999)
+        message_id = str(msg_id_int)
+        message = {
+            message_id: {
+                'duration': random.randint(1, 10),
+                'max': random.randint(1, 10),
+            }
+        }
+
+        config_dict = {
+            'throttle': {
+                'messages': copy.deepcopy(message),
+            }
+        }
+        config = configobj.ConfigObj(config_dict)
+
+        expected_throttle_config = {
+            'category': {},
+            'message': {
+                msg_id_int: copy.deepcopy(message[message_id])
+            },
+        }
+
+        self.assertDictEqual(user.mqttcommon.MessageThrottle.parse_config(config), expected_throttle_config)
+
+    def test_single_message_specified_in_message_section(self):
+        messages_name = f"messages-{random.randint(1000, 9999)}"
+        msg_id_int = random.randint(1000, 9999)
+        message_ids = str(msg_id_int)
+        message = {
+            messages_name: {
+                'duration': random.randint(1, 10),
+                'max': random.randint(1, 10),
+                'messages': message_ids,
+            }
+        }
+
+        config_dict = {
+            'throttle': {
+                'messages': copy.deepcopy(message),
+            }
+        }
+        config = configobj.ConfigObj(config_dict)
+
+        expected_throttle_config = {
+            'category': {},
+            'message': {
+                msg_id_int: copy.deepcopy(message[messages_name])
+            },
+        }
+        del expected_throttle_config['message'][msg_id_int]['messages']
+
+        self.assertDictEqual(user.mqttcommon.MessageThrottle.parse_config(config), expected_throttle_config)
+
+    def test_multiple_messages_specified_in_message_section(self):
+        messages_name = f"messages-{random.randint(1000, 9999)}"
+        message_ids = [str(random.randint(1000, 9999)), str(random.randint(1000, 9999))]
+        duration = random.randint(1, 10)
+        max_count = random.randint(1, 10)
+        message = {
+            messages_name: {
+                'duration': duration,
+                'max': max_count,
+                'messages': message_ids,
+            }
+        }
+
+        config_dict = {
+            'throttle': {
+                'messages': copy.deepcopy(message),
+            }
+        }
+        config = configobj.ConfigObj(config_dict)
+
+        expected_throttle_config = {
+            'category': {},
+            'message': {
+            },
+        }
+        for message_id in message_ids:
+            expected_throttle_config['message'][int(message_id)] = {
+                'duration': duration,
+                'max': max_count,
+            }
+
+        self.assertDictEqual(user.mqttcommon.MessageThrottle.parse_config(config), expected_throttle_config)
+
+    def test_message_id_in_list_already_specified(self):
+        messages_name = f"messages-{random.randint(1000, 9999)}"
+        msg_id_int = random.randint(1000, 9999)
+        message_ids = str(msg_id_int)
+        message = {
+            message_ids: {
+                'duration': random.randint(1, 10),
+                'max': random.randint(1, 10),
+            },
+            messages_name: {
+                'duration': random.randint(1, 10),
+                'max': random.randint(1, 10),
+                'messages': message_ids,
+            },
+        }
+
+        config_dict = {
+            'throttle': {
+                'messages': copy.deepcopy(message),
+            }
+        }
+        config = configobj.ConfigObj(config_dict)
+
+        with self.assertRaises(ValueError) as error:
+            user.mqttcommon.MessageThrottle.parse_config(config)
+
+        self.assertEqual(error.exception.args[0], f"{message_ids} has been configured multiple times")
+
+    def test_message_id_already_specified(self):
+        messages_name = f"messages-{random.randint(1000, 9999)}"
+        msg_id_int = random.randint(1000, 9999)
+        message_ids = str(msg_id_int)
+        message = {
+            messages_name: {
+                'duration': random.randint(1, 10),
+                'max': random.randint(1, 10),
+                'messages': message_ids,
+            },
+            message_ids: {
+                'duration': random.randint(1, 10),
+                'max': random.randint(1, 10),
+            },
+        }
+
+        config_dict = {
+            'throttle': {
+                'messages': copy.deepcopy(message),
+            }
+        }
+        config = configobj.ConfigObj(config_dict)
+
+        with self.assertRaises(ValueError) as error:
+            user.mqttcommon.MessageThrottle.parse_config(config)
+
+        self.assertEqual(error.exception.args[0], f"{message_ids} has been configured multiple times")
 
 
 if __name__ == '__main__':

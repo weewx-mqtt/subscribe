@@ -547,7 +547,6 @@ import datetime
 import json
 import locale
 import logging
-import math
 import os
 import platform
 import queue as Queue
@@ -616,26 +615,14 @@ class Logger():  # pylint: disable=too-many-instance-attributes
         # trace message
         # debug messages
         # informational messages
-        122001: "Throttling messages is an experimental option. It has limited support and may cause one to miss important messages.",
         122002: "Starting logger thread.",
         122003: "Exited logger thread.",
         # error messages
-        124001: "{count} messages have been suppressed in window id: {window}.",
-        124002: "{count} messages have been suppressed of {max}.",
         124003: "Invalid log entry: {entry}",
         124004: "Unable to shut down logger thread {name}.",
-        # exception messages
-        129001: "{message_id} has been configured multiple times",
-        129003: "{category} is not valid. Valid categories are {valid_categories}",
-        129004: "{category} is missing 'max' configuration option.",
-        129005: "{category} is missing 'duration' configuration option.",
-        129006: "{message} is missing 'max' configuration option.",
-        129007: "{message} is missing 'duration' configuration option.",
     }
 
     MSG_FORMAT = "(%s-%s) %s %s"
-
-    valid_categories = ['ALL', 'ERROR', 'INFO', 'DEBUG', 'TRACE']
 
     def __init__(self, config, level='NOTSET', filename=None, console=None):
         self.console = console
@@ -643,8 +630,8 @@ class Logger():  # pylint: disable=too-many-instance-attributes
         self.filename = filename
         self.weewx_debug = weewx.debug
 
-        self.logged_ids = {}
-        self.throttle_config = self._parse_throttle_config(config)
+        throttle_config = mqttcommon.MessageThrottle.parse_config(config)
+        self.throttle = mqttcommon.MessageThrottle(throttle_config, self._log_throttle_summary)
 
         # Setup custom TRACE level
         self.trace_level = 5
@@ -670,64 +657,7 @@ class Logger():  # pylint: disable=too-many-instance-attributes
 
         # Logging is setup, now safe to log a mwssage about using throttling option
         if 'throttle' in config:
-            self.info(122001, Logger.log_messages[122001])
-
-    def _parse_throttle_config(self, config):
-        """ Parse the 'throttle' section of the config into the internal representation. """
-        throttle_config = {'category': {}, 'message': {}}
-
-        if 'throttle' in config:
-            throttle_config['category'] = self._parse_throttle_categories(config['throttle'])
-            throttle_config['message'] = self._parse_throttle_messages(config['throttle'])
-
-        return throttle_config
-
-    @staticmethod
-    def _parse_throttle_categories(throttle):
-        """ Parse the 'category' section of the throttle config. """
-        categories = {}
-        for category in throttle.get('category', configobj.ConfigObj({})).sections:
-            if category not in Logger.valid_categories:
-                raise ValueError(Logger.log_messages[129003].format(category=category, valid_categories=Logger.valid_categories))
-            if 'max' not in throttle['category'][category]:
-                raise ValueError(Logger.log_messages[129004].format(category=category))
-            if 'duration' not in throttle['category'][category]:
-                raise ValueError(Logger.log_messages[129005].format(category=category))
-            throttle['category'][category]['max'] = to_int(throttle['category'][category]['max'])
-            throttle['category'][category]['duration'] = to_int(throttle['category'][category]['duration'])
-            categories[category] = throttle['category'][category]
-
-        return categories
-
-    def _parse_throttle_messages(self, throttle):
-        """ Parse the 'messages' section of the throttle config. """
-        messages = {}
-        for message in throttle.get('messages', configobj.ConfigObj({})).sections:
-            Logger._validate_throttle_message(throttle['messages'][message], message)
-
-            if 'messages' in throttle['messages'][message]:
-                message_ids = weeutil.weeutil.option_as_list(throttle['messages'][message]['messages'])
-            else:
-                message_ids = [message]
-
-            for message_id in message_ids:
-                message_id_int = to_int(message_id)
-                if message_id_int in messages:
-                    raise ValueError(Logger.log_messages[129001].format(message_id=message_id))
-                messages[message_id_int] = {
-                    'duration': to_int(throttle['messages'][message]['duration']),
-                    'max': to_int(throttle['messages'][message]['max'])
-                }
-
-        return messages
-
-    @staticmethod
-    def _validate_throttle_message(message_config, message):
-        """ Validate a 'messages' section of the throttle config. """
-        if 'max' not in message_config:
-            raise ValueError(Logger.log_messages[129006].format(message=message))
-        if 'duration' not in message_config:
-            raise ValueError(Logger.log_messages[129007].format(message=message))
+            self.info(122001, mqttcommon.MessageThrottle.NOTICE_EXPERIMENTAL)
 
     def _setup_logging(self):
         """ Setup the weewx message handlers. """
@@ -753,116 +683,9 @@ class Logger():  # pylint: disable=too-many-instance-attributes
             file_handler.setFormatter(formatter)
             self._logmsg.addHandler(file_handler)
 
-    def _is_throttled(self, logging_level, msg_id):
-        if msg_id is None:
-            return False
-        if msg_id in self.throttle_config['message']:
-            return self._check_message(msg_id, self.throttle_config['message'][msg_id])
-        if logging_level in self.throttle_config['category']:
-            return self._check_message(msg_id, self.throttle_config['category'][logging_level])
-        if 'ALL' in self.throttle_config['category']:
-            return self._check_message(msg_id, self.throttle_config['category']['ALL'])
-
-        return False
-
-    def _check_message(self, msg_id, throttle_config):
-        if throttle_config['max'] is None:
-            return False
-
-        if throttle_config['duration'] == 0:
-            return self._check_message_duration_zero(msg_id, throttle_config)
-
-        return self._check_message_window(msg_id, throttle_config)
-
-    def _check_message_duration_zero(self, msg_id, throttle_config):
-        if msg_id not in self.logged_ids:
-            self.logged_ids[msg_id] = {}
-            self.logged_ids[msg_id]['count'] = 0
-
-        if self.logged_ids[msg_id]['count'] > throttle_config['max']:
-            if self.logged_ids[msg_id]['count'] % throttle_config['max'] == 0:
-                self.logged_ids[msg_id]['count'] += 1
-                self.error(None, Logger.log_messages[124002].format(count=self.logged_ids[msg_id]['count'], max=throttle_config['max']))
-                return False
-
-        self.logged_ids[msg_id]['count'] += 1
-        return True
-
-    def _check_message_window(self, msg_id, throttle_config):
-        now = int(time.time())
-        window = int(now // throttle_config['duration'])
-
-        if msg_id not in self.logged_ids:
-            self.logged_ids[msg_id] = {}
-            self.logged_ids[msg_id]['window'] = window
-            self.logged_ids[msg_id]['count'] = 1
-            return False
-
-        if window != self.logged_ids[msg_id]['window']:
-            self.logged_ids[msg_id]['count'] = 0
-            self.logged_ids[msg_id]['window'] = window
-
-        self.logged_ids[msg_id]['count'] += 1
-
-        if self.logged_ids[msg_id]['count'] > throttle_config['max']:
-            if self.logged_ids[msg_id]['count'] % throttle_config['max'] == 0:
-                self.error(None, Logger.log_messages[124001].format(
-                    count=self.logged_ids[msg_id]['count'] - throttle_config['max'],
-                    window=window))
-                return False
-            return True
-
-        return False
-
-    def _check_message_sliding(self, msg_id, throttle_config):  # Currently not being used - pragma: no cover
-        if throttle_config['max'] is None:
-            return False
-
-        if throttle_config['duration'] == 0:
-            return self._check_message_sliding_duration_zero(msg_id, throttle_config)
-
-        return self._check_message_sliding_window(msg_id, throttle_config)
-
-    def _check_message_sliding_duration_zero(self, msg_id, throttle_config):  # Currently not being used - pragma: no cover
-        if msg_id not in self.logged_ids:
-            self.logged_ids[msg_id] = {}
-            self.logged_ids[msg_id]['count'] = 0
-
-        if self.logged_ids[msg_id]['count'] % throttle_config['max'] == 0:
-            self.logged_ids[msg_id]['count'] += 1
-            self.error(None, Logger.log_messages[124002].format(count=self.logged_ids[msg_id]['count'], max=throttle_config['max']))
-            return False
-
-        self.logged_ids[msg_id]['count'] += 1
-        return True
-
-    def _check_message_sliding_window(self, msg_id, throttle_config):  # Currently not being used - pragma: no cover
-        now = int(time.time())
-        window = int(now // throttle_config['duration'])
-
-        if msg_id not in self.logged_ids:
-            self.logged_ids[msg_id] = {}
-            self.logged_ids[msg_id]['window'] = window
-            self.logged_ids[msg_id]['count'] = 1
-            self.logged_ids[msg_id]['previous_count'] = 0
-            return False
-
-        if window != self.logged_ids[msg_id]['window']:
-            self.logged_ids[msg_id]['previous_count'] = self.logged_ids[msg_id]['count']
-            self.logged_ids[msg_id]['count'] = 0
-            self.logged_ids[msg_id]['window'] = window
-
-        self.logged_ids[msg_id]['count'] += 1
-        window_elapsed = (now % throttle_config['duration']) / throttle_config['duration']
-        threshold = math.floor(self.logged_ids[msg_id]['previous_count'] * (1 - window_elapsed) + self.logged_ids[msg_id]['count'])
-
-        if threshold > throttle_config['max']:
-            if threshold % throttle_config['max'] == 0:
-                self.error(None, Logger.log_messages[124001].format(count=threshold))
-                return False
-            return True
-
-        return False
+    def _log_throttle_summary(self, msg_text):
+        """ Queue a throttle suppression summary message. """
+        self.error(None, msg_text)
 
     def get_handlers(self, logger):
         """ recursively get parent handlers """
@@ -929,7 +752,7 @@ class Logger():  # pylint: disable=too-many-instance-attributes
     def log_entry(self, entry):
         """ Log a queued entry. This is called by the LoggerThread. """
         log_type = entry['log_type']
-        if not self._is_throttled(log_type, entry['msg_id']):
+        if not self.throttle.is_throttled(log_type, entry['msg_id']):
             self.log_functions[log_type](entry)
 
     def shutdown(self, timeout=SHUTDOWN_TIMEOUT):
