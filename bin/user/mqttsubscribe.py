@@ -587,6 +587,12 @@ import weewx.drivers
 from weewx.engine import StdEngine, StdService
 # pylint: enable=wrong-import-position
 
+# All the weewx-mqtt extensions ship their own copy of mqttcommon. Fail loudly when the
+# loaded copy is older than this extension needs, instead of with a mysterious error later.
+if getattr(mqttcommon, 'MQTTCOMMON_API', (0, 0)) < (1, 0):
+    raise ImportError("user.mqttcommon is too old. An older weewx-mqtt extension likely overwrote it during"
+                      " install; reinstall or upgrade all the weewx-mqtt extensions.")
+
 VERSION = "3.2.1-rc01a"
 DRIVER_NAME = 'MQTTSubscribeDriver'
 DRIVER_VERSION = VERSION

@@ -393,5 +393,12 @@ class TestPahoLogLevels(unittest.TestCase):
         self.assertEqual(user.mqttcommon.PAHO_LOG_LEVELS[mqtt.MQTT_LOG_DEBUG], 'DEBUG')
 
 
+class TestApiLevel(unittest.TestCase):
+    def test_api_level(self):
+        # Bump deliberately when adding or changing shared surface, and raise the
+        # consumers' required level in the same round.
+        self.assertEqual(user.mqttcommon.MQTTCOMMON_API, (1, 0))
+
+
 if __name__ == '__main__':
     unittest.main()

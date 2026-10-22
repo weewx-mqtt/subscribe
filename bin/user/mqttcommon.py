@@ -8,6 +8,12 @@ import ssl
 
 import paho.mqtt.client as mqtt
 
+# The mqttcommon API level. Bump it when a change requires consumers to have a newer
+# copy than older extensions ship (new shared functions, etc). Each consumer verifies
+# at import that the loaded copy meets its required level, so a stale copy - an
+# install-order overwrite - fails loudly instead of with a mysterious error later.
+MQTTCOMMON_API = (1, 0)
+
 API_V1 = 'v1'
 API_V2_MQTT3 = 'v2-mqtt3'
 API_V2_MQTT5 = 'v2-mqtt5'

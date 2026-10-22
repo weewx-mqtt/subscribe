@@ -4,6 +4,8 @@ Enhancements:
   'log' is deprecated, remains supported, and is scheduled to be removed in V4.
 - Log messages are now queued and written by a dedicated logger thread.
   This makes logging thread safe and the throttled message state deterministic.
+- Fail loudly at import when an older 'user.mqttcommon' copy is loaded (an
+  install-order overwrite by another weewx-mqtt extension).
 
 V3.2.0
 Enhancements:
