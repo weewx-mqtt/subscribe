@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 """ Tests for the common paho mqtt code. """
+import queue
 import ssl
 import unittest
 
@@ -398,6 +399,78 @@ class TestApiLevel(unittest.TestCase):
         # Bump deliberately when adding or changing shared surface, and raise the
         # consumers' required level in the same round.
         self.assertEqual(user.mqttcommon.MQTTCOMMON_API, (1, 0))
+
+
+class QueueLoggerThreadStub(user.mqttcommon.QueueLoggerThread):
+    """ A concrete QueueLoggerThread for testing the base class. """
+    def start_entry(self):
+        """ Return the start entry. """
+        return {'log_type': 'INFO', 'msg_text': "Starting logger thread"}
+
+    def exit_entry(self):
+        """ Return the exit entry. """
+        return {'log_type': 'INFO', 'msg_text': f"Exited logger thread, {self.name}."}
+
+    def invalid_entry(self, entry):
+        """ Return the error entry for an entry that could not be logged. """
+        return {'log_type': 'ERROR', 'msg_text': entry}
+
+
+class TestQueueLoggerThread(unittest.TestCase):
+    def test_run(self):
+        mock_logger = mock.Mock()
+        log_queue = queue.Queue()
+
+        SUT = QueueLoggerThreadStub(log_queue, mock_logger)
+
+        entry = {'log_type': 'DEBUG', 'msg_text': "a message"}
+        log_queue.put(entry)
+        log_queue.put(None)
+
+        SUT.start()
+        SUT.join(timeout=5)
+
+        self.assertFalse(SUT.is_alive())
+        self.assertTrue(SUT.daemon)
+        self.assertTrue(SUT.name.startswith('QueueLoggerThreadStub-'))
+
+        entries = [call[0][0] for call in mock_logger.log_entry.call_args_list]
+        self.assertEqual(len(entries), 3)
+        self.assertEqual(entries[0], {'log_type': 'INFO', 'msg_text': "Starting logger thread"})
+        self.assertIs(entries[1], entry)
+        self.assertEqual(entries[2], {'log_type': 'INFO', 'msg_text': f"Exited logger thread, {SUT.name}."})
+
+    def test_run_with_invalid_entry(self):
+        mock_logger = mock.Mock()
+        log_queue = queue.Queue()
+
+        invalid_entry = {'log_type': 'BOGUS', 'msg_text': "invalid"}
+
+        def log_entry(entry):
+            if entry is invalid_entry:
+                raise KeyError('log_type')
+
+        mock_logger.log_entry.side_effect = log_entry
+
+        SUT = QueueLoggerThreadStub(log_queue, mock_logger)
+        log_queue.put(invalid_entry)
+        log_queue.put(None)
+
+        SUT.start()
+        SUT.join(timeout=5)
+
+        self.assertFalse(SUT.is_alive())
+
+        entries = [call[0][0] for call in mock_logger.log_entry.call_args_list]
+        self.assertEqual(len(entries), 4)
+        self.assertEqual(entries[0], {'log_type': 'INFO', 'msg_text': "Starting logger thread"})
+        self.assertIs(entries[1], invalid_entry)
+        self.assertEqual(entries[2], {'log_type': 'ERROR', 'msg_text': invalid_entry})
+        self.assertEqual(entries[3], {'log_type': 'INFO', 'msg_text': f"Exited logger thread, {SUT.name}."})
+
+    def test_abstract_base_class_cannot_be_instantiated(self):
+        with self.assertRaises(TypeError):
+            user.mqttcommon.QueueLoggerThread(queue.Queue(), mock.Mock())
 
 
 if __name__ == '__main__':

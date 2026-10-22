@@ -3,8 +3,10 @@
 #
 #    See the file LICENSE.txt for your full rights.
 #
-""" Common paho mqtt code for the weewx-mqtt extensions. """
+""" Common code for the weewx-mqtt extensions. """
+import abc
 import ssl
+import threading
 
 import paho.mqtt.client as mqtt
 
@@ -41,6 +43,50 @@ SSL_PROTOCOLS = (
     ('sslv23', 'PROTOCOL_SSLv23'),
     ('sslv3', 'PROTOCOL_SSLv3')
 )
+
+
+class QueueLoggerThread(threading.Thread, abc.ABC):
+    """ Drain a log queue and hand the entries to the concrete logger.
+
+        The queue loop, the daemon flag, and the thread rename are shared so they
+        cannot drift between the extensions; the entry format and the start, exit,
+        and invalid entries are the concrete class's responsibility. The hooks are
+        invoked from the thread itself, so entries may use the thread's name and
+        native id. """
+
+    def __init__(self, log_queue, logger):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.log_queue = log_queue
+        self.logger = logger
+
+    def run(self):
+        """ Log the start entry, then the queued entries until the None sentinel arrives. """
+        threading.current_thread().name = f"{self.__class__.__name__}-{threading.get_native_id()}"
+        self.logger.log_entry(self.start_entry())
+
+        while True:
+            entry = self.log_queue.get()
+            if entry is None:
+                break
+            try:
+                self.logger.log_entry(entry)
+            except (TypeError, KeyError):
+                self.logger.log_entry(self.invalid_entry(entry))
+
+        self.logger.log_entry(self.exit_entry())
+
+    @abc.abstractmethod
+    def start_entry(self):
+        """ Return the entry logged when the thread starts. """
+
+    @abc.abstractmethod
+    def exit_entry(self):
+        """ Return the entry logged when the thread exits. """
+
+    @abc.abstractmethod
+    def invalid_entry(self, entry):
+        """ Return the error entry logged for an entry that could not be logged. """
 
 
 def has_v2_api():

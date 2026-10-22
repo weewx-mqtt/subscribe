@@ -963,32 +963,23 @@ class Logger():  # pylint: disable=too-many-instance-attributes
         """ Log an error entry. This is called by the LoggerThread. """
         self._logmsg.error(self.MSG_FORMAT, self.mode, entry['thread_id'], entry['archive_timestamp'], entry['msg_text'])
 
-class LoggerThread(threading.Thread):
+class LoggerThread(mqttcommon.QueueLoggerThread):
     """ Thread to manage logging.
         It is the only consumer of the Logger's queue, and therefore the only
-        thread that logs messages and accesses the throttled message state. """
+        thread that logs messages and accesses the throttled message state.
+        The queue loop is inherited from mqttcommon.QueueLoggerThread. """
 
-    def __init__(self, log_queue, logger):
-        threading.Thread.__init__(self)
-        self.daemon = True
-        self.log_queue = log_queue
-        self.logger = logger
+    def start_entry(self):
+        """ Return the entry logged when the thread starts. """
+        return Logger.create_entry('INFO', 122002, Logger.log_messages[122002])
 
-    def run(self):
-        threading.current_thread().name = f"{self.__class__.__name__}-{threading.get_native_id()}"
-        self.logger.log_entry(Logger.create_entry('INFO', 122002, Logger.log_messages[122002]))
+    def exit_entry(self):
+        """ Return the entry logged when the thread exits. """
+        return Logger.create_entry('INFO', 122003, Logger.log_messages[122003])
 
-        while True:
-            entry = self.log_queue.get()
-            if entry is None:
-                break
-            try:
-                self.logger.log_entry(entry)
-            except (TypeError, KeyError):
-                self.logger.log_entry(Logger.create_entry('ERROR', 124003,
-                                                          Logger.log_messages[124003].format(entry=entry)))
-
-        self.logger.log_entry(Logger.create_entry('INFO', 122003, Logger.log_messages[122003]))
+    def invalid_entry(self, entry):
+        """ Return the error entry logged for an entry that could not be logged. """
+        return Logger.create_entry('ERROR', 124003, Logger.log_messages[124003].format(entry=entry))
 
 class RecordCache():
     """ Manage the cache. """
