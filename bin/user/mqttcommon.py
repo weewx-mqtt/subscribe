@@ -97,9 +97,10 @@ class Logger:
         The log queue and the LoggerThread that drains it are owned here.
 
         The message format is what consumers still diverge on; subclasses
-        override the format attributes. The entry contract, throttling, and the
-        thread class are the other hooks: is_suppressed, stuck_entry, and the
-        thread_class ctor argument. """
+        override the format attributes and _format_args. The entry contract,
+        throttling, the thread class, and the logger itself are the other
+        hooks: is_suppressed, stuck_entry, and the thread_class/log ctor
+        arguments. """
     # The default time shutdown waits for the LoggerThread to flush queued messages.
     SHUTDOWN_TIMEOUT = 10
 
@@ -111,9 +112,10 @@ class Logger:
     ERROR_LOG_FORMAT = "%s %s"
     LOG_KEY = 'name'
 
-    def __init__(self, name, log_queue, thread_class=None):
+    def __init__(self, name, log_queue, thread_class=None, log=None):
         self.name = name
-        self.log = logging.getLogger(self.LOG_NAME)
+        # A subclass that already configured its logger (before its thread starts) passes it in.
+        self.log = log if log is not None else logging.getLogger(self.LOG_NAME)
         self.log_queue = log_queue
         self.log_functions = {
             'TRACE': self._log_trace,
@@ -177,21 +179,25 @@ class Logger:
         return Logger.create_entry(self.name, 'ERROR', None,
                                    f"Unable to shut down {self.log_thread.name} thread")
 
+    def _format_args(self, entry):
+        """ Return the format arguments for an entry; the message is always last. """
+        return (entry[self.LOG_KEY], entry['msg_text'])
+
     def _log_trace(self, entry):
         """ Log a trace entry. This is called by the LoggerThread. """
-        self.log.debug(self.LOG_FORMAT, entry[self.LOG_KEY], entry['msg_text'])
+        self.log.debug(self.LOG_FORMAT, *self._format_args(entry))
 
     def _log_debug(self, entry):
         """ Log a debug entry. This is called by the LoggerThread. """
-        self.log.debug(self.LOG_FORMAT, entry[self.LOG_KEY], entry['msg_text'])
+        self.log.debug(self.LOG_FORMAT, *self._format_args(entry))
 
     def _log_info(self, entry):
         """ Log an informational entry. This is called by the LoggerThread. """
-        self.log.info(self.LOG_FORMAT, entry[self.LOG_KEY], entry['msg_text'])
+        self.log.info(self.LOG_FORMAT, *self._format_args(entry))
 
     def _log_error(self, entry):
         """ Log an error entry. This is called by the LoggerThread. """
-        self.log.error(self.ERROR_LOG_FORMAT, entry[self.LOG_KEY], entry['msg_text'])
+        self.log.error(self.ERROR_LOG_FORMAT, *self._format_args(entry))
 
 
 class LoggerThread(QueueLoggerThread):

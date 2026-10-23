@@ -48,12 +48,12 @@ class TestInintialization(BaseTestClass):
             SUT = Logger({'mode': random_string()}, level=random_string())
 
             mock_logging.addLevelName.assert_called_once_with(log_level, 'TRACE')
-            SUT._logmsg.setLevel.assert_called_once_with(log_level)
+            SUT.log.setLevel.assert_called_once_with(log_level)
 
             mock_grandparent_handler.setLevel.assert_called_once_with(log_level)
             mock_parent_handler.setLevel.assert_called_once_with(log_level)
 
-            self.assertEqual(SUT._logmsg.addHandler.call_count, 2)
+            self.assertEqual(SUT.log.addHandler.call_count, 2)
 
     @staticmethod
     def test_init_filename_set():
@@ -72,7 +72,7 @@ class TestInintialization(BaseTestClass):
             mock_logging.FileHandler.assert_called_once()
             mock_file_handler.setLevel.assert_called_once()
             mock_file_handler.setFormatter.assert_called_once()
-            SUT._logmsg.addHandler.assert_called_once()
+            SUT.log.addHandler.assert_called_once()
 
     @staticmethod
     def test_init_console_set():
@@ -83,7 +83,7 @@ class TestInintialization(BaseTestClass):
 
             SUT = Logger({'mode': mode}, console=True)
 
-            SUT._logmsg.addHandler.assert_called_once()
+            SUT.log.addHandler.assert_called_once()
 
     def test_throttle_notice_is_logged(self):
         mode = random_string()
@@ -100,7 +100,7 @@ class TestInintialization(BaseTestClass):
             SUT = Logger(config)
             SUT.shutdown()
 
-            SUT._logmsg.info.assert_any_call(SUT.MSG_FORMAT, mode, thread_id, -1,
+            SUT.log.info.assert_any_call(SUT.LOG_FORMAT, mode, thread_id, -1,
                                              user.mqttcommon.MessageThrottle.NOTICE_EXPERIMENTAL)
 
 class TestLogging(BaseTestClass):
@@ -117,7 +117,7 @@ class TestLogging(BaseTestClass):
             SUT.error(random.randint(1, 100), message_text)
             SUT.shutdown()
 
-            SUT._logmsg.error.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message_text)
+            SUT.log.error.assert_called_once_with(SUT.LOG_FORMAT, mode, thread_id, -1, message_text)
 
     @staticmethod
     def test_info_logged():
@@ -133,7 +133,7 @@ class TestLogging(BaseTestClass):
             SUT.shutdown()
 
             # The logger thread start message is also logged at INFO.
-            SUT._logmsg.info.assert_any_call(SUT.MSG_FORMAT, mode, thread_id, -1, message)
+            SUT.log.info.assert_any_call(SUT.LOG_FORMAT, mode, thread_id, -1, message)
 
     @staticmethod
     def test_debug_logged():
@@ -148,7 +148,7 @@ class TestLogging(BaseTestClass):
             SUT.debug(random.randint(1, 100), message)
             SUT.shutdown()
 
-            SUT._logmsg.debug.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message)
+            SUT.log.debug.assert_called_once_with(SUT.LOG_FORMAT, mode, thread_id, -1, message)
 
     @staticmethod
     def test_trace_logged_with_debug_set():
@@ -164,7 +164,7 @@ class TestLogging(BaseTestClass):
             SUT.trace(random.randint(1, 100), message)
             SUT.shutdown()
 
-            SUT._logmsg.debug.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message)
+            SUT.log.debug.assert_called_once_with(SUT.LOG_FORMAT, mode, thread_id, -1, message)
 
     @staticmethod
     def test_trace_logged_with_debug_not_set():
@@ -180,7 +180,7 @@ class TestLogging(BaseTestClass):
             SUT.trace(random.randint(1, 100), message)
             SUT.shutdown()
 
-            SUT._logmsg.log.assert_called_once_with(5, SUT.MSG_FORMAT, mode, thread_id, -1, message)
+            SUT.log.log.assert_called_once_with(5, SUT.LOG_FORMAT, mode, thread_id, -1, message)
 
 class TestQueue(BaseTestClass):
     def test_log_entry_invalid_entry(self):
@@ -201,7 +201,7 @@ class TestQueue(BaseTestClass):
     def test_shutdown_drains_queue(self):
         with mock.patch('user.mqttsubscribe.logging') as mock_logging:
             mock_logging._checkLevel.return_value = 0
-            mock_logmsg = mock_logging.getLogger.return_value
+            mock_log = mock_logging.getLogger.return_value
 
             SUT = Logger({'mode': random_string()})
 
@@ -212,7 +212,7 @@ class TestQueue(BaseTestClass):
             SUT.shutdown()
 
             # The start message, the queued messages, and the exit message are logged in queue order.
-            logged = [call[0] for call in mock_logmsg.method_calls]
+            logged = [call[0] for call in mock_log.method_calls]
             self.assertEqual(logged, ['info', 'info', 'debug', 'error', 'info'])
             self.assertFalse(SUT.log_thread.is_alive())
 
@@ -230,7 +230,7 @@ class TestQueue(BaseTestClass):
     def test_shutdown_timeout(self):
         with mock.patch('user.mqttsubscribe.logging') as mock_logging:
             mock_logging._checkLevel.return_value = 0
-            mock_logmsg = mock_logging.getLogger.return_value
+            mock_log = mock_logging.getLogger.return_value
             mode = random_string()
 
             SUT = Logger({'mode': mode})
@@ -251,7 +251,7 @@ class TestQueue(BaseTestClass):
             SUT.shutdown(timeout=0.05)
 
             expected_text = Logger.log_messages[124004].format(name=SUT.log_thread.name)
-            mock_logmsg.error.assert_called_once_with(SUT.MSG_FORMAT, mode, threading.get_native_id(), -1, expected_text)
+            mock_log.error.assert_called_once_with(SUT.LOG_FORMAT, mode, threading.get_native_id(), -1, expected_text)
             self.assertTrue(SUT.log_thread.is_alive())
 
             # Release the thread and wait for it to exit.
@@ -315,7 +315,7 @@ class TestThrottling(BaseTestClass):
                 self.assertFalse(throttle)
                 self.assertEqual(len(SUT.throttle.logged_ids), 1)
                 self.assertDictEqual(SUT.throttle.logged_ids, logged_ids)
-                SUT._logmsg.error.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message_text)
+                SUT.log.error.assert_called_once_with(SUT.LOG_FORMAT, mode, thread_id, -1, message_text)
 
 
 

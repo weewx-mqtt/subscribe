@@ -495,6 +495,13 @@ class LoggerThreadStub(user.mqttcommon.LoggerThread):
     """ A distinct concrete LoggerThread, to assert the ctor honors thread_class. """
 
 
+class ComposedLoggerStub(LoggerStub):
+    """ A Logger whose format arguments are composed instead of LOG_KEY-keyed. """
+    def _format_args(self, entry):
+        """ Compose the first argument from the message id. """
+        return (f"composed-{entry['msg_id']}", entry['msg_text'])
+
+
 class TestLogger(unittest.TestCase):
     def test_init_starts_a_daemon_logger_thread(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
@@ -526,6 +533,32 @@ class TestLogger(unittest.TestCase):
             SUT.shutdown(timeout=5)
 
             self.assertFalse(SUT.log_thread.is_alive())
+
+    def test_init_uses_the_supplied_logger(self):
+        mock_log = mock.Mock()
+        SUT = LoggerStub(random_string(), queue.Queue(), log=mock_log)
+
+        self.assertIs(SUT.log, mock_log)
+
+        message = random_string()
+        SUT.info(None, message)
+        SUT.shutdown(timeout=5)
+
+        # The start, the queued message, and the exit all log through the supplied logger.
+        mock_log.info.assert_any_call("test %s %s", SUT.name, message)
+        self.assertEqual(mock_log.info.call_count, 3)
+
+    def test_format_args_can_be_overridden(self):
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_log = mock_logging.getLogger.return_value
+            SUT = ComposedLoggerStub(random_string(), queue.Queue())
+            SUT.shutdown(timeout=5)
+            mock_log.reset_mock()
+
+            text = random_string()
+            SUT.log_entry({'log_type': 'INFO', 'msg_id': 7, 'msg_text': text})
+
+            mock_log.info.assert_called_once_with("test %s %s", "composed-7", text)
 
     def test_create_entry_captures_the_emitting_thread(self):
         name = random_string()

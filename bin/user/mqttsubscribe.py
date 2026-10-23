@@ -624,7 +624,8 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         124004: "Unable to shut down logger thread {name}.",
     }
 
-    MSG_FORMAT = "(%s-%s) %s %s"
+    LOG_FORMAT = "(%s-%s) %s %s"
+    ERROR_LOG_FORMAT = LOG_FORMAT
 
     def __init__(self, config, level='NOTSET', filename=None, console=None):
         self.console = console
@@ -643,10 +644,10 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         # check that the level configured is valid
         self.level = logging._checkLevel(level)
 
-        self._logmsg = logging.getLogger(__name__)
+        self.log = logging.getLogger(__name__)
         self._setup_logging()
 
-        super().__init__(None, Queue.Queue(), thread_class=LoggerThread)
+        super().__init__(None, Queue.Queue(), thread_class=LoggerThread, log=self.log)
 
         # Logging is setup, now safe to log a mwssage about using throttling option
         if 'throttle' in config:
@@ -655,17 +656,17 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
     def _setup_logging(self):
         """ Setup the weewx message handlers. """
         if self.console:
-            self._logmsg.addHandler(logging.StreamHandler(sys.stdout))
+            self.log.addHandler(logging.StreamHandler(sys.stdout))
 
         if self.level > 0:
             self.weewx_debug = 0
-            self._logmsg.propagate = 0
-            self._logmsg.setLevel(self.level)
+            self.log.propagate = 0
+            self.log.setLevel(self.level)
             # Get a copy of all the handlers
-            handlers = self.get_handlers(self._logmsg.parent)
+            handlers = self.get_handlers(self.log.parent)
             for handler in handlers:
                 handler.setLevel(self.level)
-                self._logmsg.addHandler(handler)
+                self.log.addHandler(handler)
         else:
             self.weewx_debug = weewx.debug
 
@@ -674,7 +675,7 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
             file_handler = logging.FileHandler(self.filename, mode='w')
             file_handler.setLevel(self.level)
             file_handler.setFormatter(formatter)
-            self._logmsg.addHandler(file_handler)
+            self.log.addHandler(file_handler)
 
     def _log_throttle_summary(self, msg_text):
         """ Queue a throttle suppression summary message. """
@@ -750,24 +751,16 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         """ Return the entry logged when the logger thread is stuck in shutdown. """
         return Logger.create_entry('ERROR', None, Logger.log_messages[124004].format(name=self.log_thread.name))
 
+    def _format_args(self, entry):
+        """ Return subscribe's format arguments: mode, thread, archive timestamp, message. """
+        return (self.mode, entry['thread_id'], entry['archive_timestamp'], entry['msg_text'])
+
     def _log_trace(self, entry):
         """ Log a trace entry. This is called by the LoggerThread. """
         if self.weewx_debug > 1:
-            self._logmsg.debug(self.MSG_FORMAT, self.mode, entry['thread_id'], entry['archive_timestamp'], entry['msg_text'])
+            self.log.debug(self.LOG_FORMAT, *self._format_args(entry))
         else:
-            self._logmsg.log(self.trace_level, self.MSG_FORMAT, self.mode, entry['thread_id'], entry['archive_timestamp'], entry['msg_text'])
-
-    def _log_debug(self, entry):
-        """ Log a debug entry. This is called by the LoggerThread. """
-        self._logmsg.debug(self.MSG_FORMAT, self.mode, entry['thread_id'], entry['archive_timestamp'], entry['msg_text'])
-
-    def _log_info(self, entry):
-        """ Log an informational entry. This is called by the LoggerThread. """
-        self._logmsg.info(self.MSG_FORMAT, self.mode, entry['thread_id'], entry['archive_timestamp'], entry['msg_text'])
-
-    def _log_error(self, entry):
-        """ Log an error entry. This is called by the LoggerThread. """
-        self._logmsg.error(self.MSG_FORMAT, self.mode, entry['thread_id'], entry['archive_timestamp'], entry['msg_text'])
+            self.log.log(self.trace_level, self.LOG_FORMAT, *self._format_args(entry))
 
 class LoggerThread(mqttcommon.LoggerThread):
     """ Thread to manage logging.
