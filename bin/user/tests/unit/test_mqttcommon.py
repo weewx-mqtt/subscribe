@@ -487,7 +487,6 @@ class LoggerStub(user.mqttcommon.Logger):
     """ A concrete Logger, for testing the shared logging skeleton. """
     LOG_NAME = 'user.mqttcommon-test'
     LOG_FORMAT = "test %s %s"
-    ERROR_LOG_FORMAT = "test-error %s %s"
     LOG_KEY = 'name'
 
 
@@ -624,7 +623,7 @@ class TestLogger(unittest.TestCase):
             mock_log.debug.assert_any_call("test %s %s", trace_name, trace_message)
             mock_log.debug.assert_any_call("test %s %s", debug_name, debug_message)
             mock_log.info.assert_called_once_with("test %s %s", info_name, info_message)
-            mock_log.error.assert_called_once_with("test-error %s %s", error_name, error_message)
+            mock_log.error.assert_called_once_with("test %s %s", error_name, error_message)
 
     def test_log_entry_with_no_log_type_is_skipped(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
@@ -712,7 +711,7 @@ class TestShutdown(unittest.TestCase):
 
             SUT.shutdown(timeout=0.05)
 
-            mock_log.error.assert_called_once_with("test-error %s %s", name,
+            mock_log.error.assert_called_once_with("test %s %s", name,
                                                    f"Unable to shut down {SUT.log_thread.name} thread")
             self.assertTrue(SUT.log_thread.is_alive())
 

@@ -604,11 +604,12 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         Log messages are queued and written by a LoggerThread, so logging and the
         throttled message state are only ever accessed by that thread.
 
-        The queue, the dispatch, and shutdown come from mqttcommon.Logger; this
-        subclass owns the entry contract, the message format, and throttling. """
+        The queue, the dispatch, the message format, and shutdown come from
+        mqttcommon.Logger; this subclass owns the entry contract, the context
+        composition, and throttling. """
     # This is the timestamp of the archive record being processed.
     # It is 'captured' via the NEW_ARCHIVE_RECORD event but due to WeeWX processing, updated via the END_ARCHIVE_PERIOD.
-    # It is added to every log message.
+    # It is added to log messages while set; the -1 default (no record captured) is omitted.
     archive_timestamp = -1
 
     LOG_NAME = __name__
@@ -623,9 +624,6 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         124003: "Invalid log entry: {entry}",
         124004: "Unable to shut down logger thread {name}.",
     }
-
-    LOG_FORMAT = "(%s-%s) %s %s"
-    ERROR_LOG_FORMAT = LOG_FORMAT
 
     def __init__(self, config, level='NOTSET', filename=None, console=None):
         self.console = console
@@ -752,8 +750,11 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         return Logger.create_entry('ERROR', None, Logger.log_messages[124004].format(name=self.log_thread.name))
 
     def _format_args(self, entry):
-        """ Return subscribe's format arguments: mode, thread, archive timestamp, message. """
-        return (self.mode, entry['thread_id'], entry['archive_timestamp'], entry['msg_text'])
+        """ Return subscribe's format arguments: a mode-thread(-archive) context and the message. """
+        parts = [self.mode, entry['thread_id']]
+        if entry['archive_timestamp'] != -1:
+            parts.append(entry['archive_timestamp'])
+        return ('-'.join(str(part) for part in parts), entry['msg_text'])
 
     def _log_trace(self, entry):
         """ Log a trace entry. This is called by the LoggerThread. """

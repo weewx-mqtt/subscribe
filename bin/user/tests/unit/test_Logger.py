@@ -100,8 +100,8 @@ class TestInintialization(BaseTestClass):
             SUT = Logger(config)
             SUT.shutdown()
 
-            SUT.log.info.assert_any_call(SUT.LOG_FORMAT, mode, thread_id, -1,
-                                             user.mqttcommon.MessageThrottle.NOTICE_EXPERIMENTAL)
+            SUT.log.info.assert_any_call(SUT.LOG_FORMAT, f"{mode}-{thread_id}",
+                                         user.mqttcommon.MessageThrottle.NOTICE_EXPERIMENTAL)
 
 class TestLogging(BaseTestClass):
     @staticmethod
@@ -117,7 +117,7 @@ class TestLogging(BaseTestClass):
             SUT.error(random.randint(1, 100), message_text)
             SUT.shutdown()
 
-            SUT.log.error.assert_called_once_with(SUT.LOG_FORMAT, mode, thread_id, -1, message_text)
+            SUT.log.error.assert_called_once_with(SUT.LOG_FORMAT, f"{mode}-{thread_id}", message_text)
 
     @staticmethod
     def test_info_logged():
@@ -133,7 +133,28 @@ class TestLogging(BaseTestClass):
             SUT.shutdown()
 
             # The logger thread start message is also logged at INFO.
-            SUT.log.info.assert_any_call(SUT.LOG_FORMAT, mode, thread_id, -1, message)
+            SUT.log.info.assert_any_call(SUT.LOG_FORMAT, f"{mode}-{thread_id}", message)
+
+    @staticmethod
+    def test_archive_record_context_is_logged():
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+            thread_id = threading.get_native_id()
+            mode = random_string()
+            archive_timestamp = int(time.time())
+            message = random_string()
+
+            SUT = Logger({'mode': mode})
+            Logger.archive_timestamp = archive_timestamp
+
+            try:
+                SUT.info(random.randint(1, 100), message)
+                SUT.shutdown()
+
+                # The archive timestamp is part of the context while a record is being processed.
+                SUT.log.info.assert_any_call(SUT.LOG_FORMAT, f"{mode}-{thread_id}-{archive_timestamp}", message)
+            finally:
+                Logger.archive_timestamp = -1
 
     @staticmethod
     def test_debug_logged():
@@ -148,7 +169,7 @@ class TestLogging(BaseTestClass):
             SUT.debug(random.randint(1, 100), message)
             SUT.shutdown()
 
-            SUT.log.debug.assert_called_once_with(SUT.LOG_FORMAT, mode, thread_id, -1, message)
+            SUT.log.debug.assert_called_once_with(SUT.LOG_FORMAT, f"{mode}-{thread_id}", message)
 
     @staticmethod
     def test_trace_logged_with_debug_set():
@@ -164,7 +185,7 @@ class TestLogging(BaseTestClass):
             SUT.trace(random.randint(1, 100), message)
             SUT.shutdown()
 
-            SUT.log.debug.assert_called_once_with(SUT.LOG_FORMAT, mode, thread_id, -1, message)
+            SUT.log.debug.assert_called_once_with(SUT.LOG_FORMAT, f"{mode}-{thread_id}", message)
 
     @staticmethod
     def test_trace_logged_with_debug_not_set():
@@ -180,7 +201,7 @@ class TestLogging(BaseTestClass):
             SUT.trace(random.randint(1, 100), message)
             SUT.shutdown()
 
-            SUT.log.log.assert_called_once_with(5, SUT.LOG_FORMAT, mode, thread_id, -1, message)
+            SUT.log.log.assert_called_once_with(5, SUT.LOG_FORMAT, f"{mode}-{thread_id}", message)
 
 class TestQueue(BaseTestClass):
     def test_log_entry_invalid_entry(self):
@@ -251,7 +272,7 @@ class TestQueue(BaseTestClass):
             SUT.shutdown(timeout=0.05)
 
             expected_text = Logger.log_messages[124004].format(name=SUT.log_thread.name)
-            mock_log.error.assert_called_once_with(SUT.LOG_FORMAT, mode, threading.get_native_id(), -1, expected_text)
+            mock_log.error.assert_called_once_with(SUT.LOG_FORMAT, f"{mode}-{threading.get_native_id()}", expected_text)
             self.assertTrue(SUT.log_thread.is_alive())
 
             # Release the thread and wait for it to exit.
@@ -315,7 +336,7 @@ class TestThrottling(BaseTestClass):
                 self.assertFalse(throttle)
                 self.assertEqual(len(SUT.throttle.logged_ids), 1)
                 self.assertDictEqual(SUT.throttle.logged_ids, logged_ids)
-                SUT.log.error.assert_called_once_with(SUT.LOG_FORMAT, mode, thread_id, -1, message_text)
+                SUT.log.error.assert_called_once_with(SUT.LOG_FORMAT, f"{mode}-{thread_id}", message_text)
 
 
 
