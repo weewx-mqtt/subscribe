@@ -97,19 +97,24 @@ class Logger:
         The log queue and the LoggerThread that drains it are owned here.
 
         The message format is shared; what the format's first argument is is
-        the hook: subclasses pin LOG_KEY or override _format_args. The entry
+        the hook: subclasses pin LOG_KEYS or override _format_args. The entry
         contract, throttling, the thread class, and the logger itself are the
         other hooks: is_suppressed, stuck_entry, and the thread_class/log ctor
         arguments. """
     # The default time shutdown waits for the LoggerThread to flush queued messages.
     SHUTDOWN_TIMEOUT = 10
 
-    # The name of the module logger, the message format, and the context key.
-    # LOG_KEY names the entry field used as the format's first argument; subclasses
-    # may instead override _format_args to compose it.
+    # The name of the module logger, the message format, and the context keys.
+    # LOG_KEYS names the entry fields, in order, that form the format's first
+    # argument; fields that are None are omitted. Subclasses may instead
+    # override _format_args to compose it.
     LOG_NAME = __name__
     LOG_FORMAT = "(%s) %s"
-    LOG_KEY = 'name'
+    LOG_KEYS = ('name',)
+
+    # The timestamp of the archive record being processed, stamped onto entries at
+    # enqueue time. None when no record is being processed.
+    archive_timestamp = None
 
     def __init__(self, name, log_queue, thread_class=None, log=None):
         self.name = name
@@ -126,32 +131,33 @@ class Logger:
         self.log_thread = (thread_class or LoggerThread)(self.log_queue, self)
         self.log_thread.start()
 
-    @staticmethod
-    def create_entry(name, log_type, msg_id, msg_text):
-        """ Create a log entry, capturing the emitting thread. """
+    @classmethod
+    def create_entry(cls, name, log_type, msg_id, msg_text):
+        """ Create a log entry, capturing the emitting thread and the archive timestamp. """
         return {
             'name': name,
             'log_type': log_type,
             'msg_id': msg_id,
             'msg_text': msg_text,
             'thread_id': threading.get_native_id(),
+            'archive_timestamp': cls.archive_timestamp,
         }
 
     def trace(self, msg_id, msg_text):
         """ Queue a trace message. """
-        self.log_queue.put(Logger.create_entry(self.name, 'TRACE', msg_id, msg_text))
+        self.log_queue.put(self.create_entry(self.name, 'TRACE', msg_id, msg_text))
 
     def debug(self, msg_id, msg_text):
         """ Queue a debug message. """
-        self.log_queue.put(Logger.create_entry(self.name, 'DEBUG', msg_id, msg_text))
+        self.log_queue.put(self.create_entry(self.name, 'DEBUG', msg_id, msg_text))
 
     def info(self, msg_id, msg_text):
         """ Queue an informational message. """
-        self.log_queue.put(Logger.create_entry(self.name, 'INFO', msg_id, msg_text))
+        self.log_queue.put(self.create_entry(self.name, 'INFO', msg_id, msg_text))
 
     def error(self, msg_id, msg_text):
         """ Queue an error message. """
-        self.log_queue.put(Logger.create_entry(self.name, 'ERROR', msg_id, msg_text))
+        self.log_queue.put(self.create_entry(self.name, 'ERROR', msg_id, msg_text))
 
     def log_entry(self, entry):
         """ Log a queued entry. This is called by the LoggerThread. """
@@ -175,12 +181,12 @@ class Logger:
 
     def stuck_entry(self):
         """ Return the entry logged when the logger thread is stuck in shutdown. """
-        return Logger.create_entry(self.name, 'ERROR', None,
-                                   f"Unable to shut down {self.log_thread.name} thread")
+        return self.create_entry(self.name, 'ERROR', None,
+                                 f"Unable to shut down {self.log_thread.name} thread")
 
     def _format_args(self, entry):
         """ Return the format arguments for an entry; the message is always last. """
-        return (entry[self.LOG_KEY], entry['msg_text'])
+        return ('-'.join(str(entry[key]) for key in self.LOG_KEYS if entry[key] is not None), entry['msg_text'])
 
     def _log_trace(self, entry):
         """ Log a trace entry. This is called by the LoggerThread. """
@@ -207,15 +213,15 @@ class LoggerThread(QueueLoggerThread):
 
     def start_entry(self):
         """ Return the entry logged when the thread starts. """
-        return Logger.create_entry(self.name, 'INFO', None, "Starting logger thread")
+        return self.logger.create_entry(self.name, 'INFO', None, "Starting logger thread")
 
     def exit_entry(self):
         """ Return the entry logged when the thread exits. """
-        return Logger.create_entry(self.name, 'INFO', None, f"Exited logger thread, {self.name}.")
+        return self.logger.create_entry(self.name, 'INFO', None, f"Exited logger thread, {self.name}.")
 
     def invalid_entry(self, entry):
         """ Return the error entry logged for an entry that could not be logged. """
-        return Logger.create_entry(self.name, 'ERROR', None, entry)
+        return self.logger.create_entry(self.name, 'ERROR', None, entry)
 
 
 # These mirror weeutil.weeutil.to_int/option_as_list so that mqttcommon stays importable

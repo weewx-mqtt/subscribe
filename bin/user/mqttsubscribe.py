@@ -604,15 +604,17 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         Log messages are queued and written by a LoggerThread, so logging and the
         throttled message state are only ever accessed by that thread.
 
-        The queue, the dispatch, the message format, and shutdown come from
-        mqttcommon.Logger; this subclass owns the entry contract, the context
-        composition, and throttling. """
+        The queue, the entry contract, the message format, and shutdown come from
+        mqttcommon.Logger; this subclass owns throttling, the trace-level handling,
+        and the archive timestamp state. """
     # This is the timestamp of the archive record being processed.
     # It is 'captured' via the NEW_ARCHIVE_RECORD event but due to WeeWX processing, updated via the END_ARCHIVE_PERIOD.
-    # It is added to log messages while set; None (no record captured) is omitted.
+    # It is stamped onto log entries and rendered in log messages while set; None (no record captured) is omitted.
     archive_timestamp = None
 
     LOG_NAME = __name__
+    # The context: the mode (stamped as the entry name), the emitting thread, and the archive record.
+    LOG_KEYS = ('name', 'thread_id', 'archive_timestamp')
 
     log_messages = {
         # trace message
@@ -627,7 +629,6 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
 
     def __init__(self, config, level='NOTSET', filename=None, console=None):
         self.console = console
-        self.mode = config['mode']
         self.filename = filename
         self.weewx_debug = weewx.debug
 
@@ -645,7 +646,7 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         self.log = logging.getLogger(__name__)
         self._setup_logging()
 
-        super().__init__(None, Queue.Queue(), thread_class=LoggerThread, log=self.log)
+        super().__init__(config['mode'], Queue.Queue(), thread_class=LoggerThread, log=self.log)
 
         # Logging is setup, now safe to log a mwssage about using throttling option
         if 'throttle' in config:
@@ -714,45 +715,14 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         self.debug(0, f"Record Augmentation is: {record_augmentation}")
         self.debug(0, f"Record Generation is: {record_generation}")
 
-    @staticmethod
-    def create_entry(log_type, msg_id, msg_text):  # pylint: disable=arguments-differ
-        """ Create a log entry, capturing the emitting thread and the archive timestamp. """
-        return {
-            'log_type': log_type,
-            'msg_id': msg_id,
-            'msg_text': msg_text,
-            'thread_id': threading.get_native_id(),
-            'archive_timestamp': Logger.archive_timestamp,
-        }
-
-    def trace(self, msg_id, msg_text):
-        """ Queue trace messages. """
-        self.log_queue.put(Logger.create_entry('TRACE', msg_id, msg_text))
-
-    def debug(self, msg_id, msg_text):
-        """ Queue debug messages. """
-        self.log_queue.put(Logger.create_entry('DEBUG', msg_id, msg_text))
-
-    def info(self, msg_id, msg_text):
-        """ Queue informational messages. """
-        self.log_queue.put(Logger.create_entry('INFO', msg_id, msg_text))
-
-    def error(self, msg_id, msg_text):
-        """ Queue error messages. """
-        self.log_queue.put(Logger.create_entry('ERROR', msg_id, msg_text))
-
     def is_suppressed(self, entry):
         """ Return True when the entry is throttled. """
         return self.throttle.is_throttled(entry['log_type'], entry['msg_id'])
 
     def stuck_entry(self):
         """ Return the entry logged when the logger thread is stuck in shutdown. """
-        return Logger.create_entry('ERROR', None, Logger.log_messages[124004].format(name=self.log_thread.name))
-
-    def _format_args(self, entry):
-        """ Return subscribe's format arguments: a mode-thread(-archive) context and the message. """
-        parts = (self.mode, entry['thread_id'], entry['archive_timestamp'])
-        return ('-'.join(str(part) for part in parts if part is not None), entry['msg_text'])
+        return self.create_entry(self.name, 'ERROR', None,
+                                 Logger.log_messages[124004].format(name=self.log_thread.name))
 
     def _log_trace(self, entry):
         """ Log a trace entry. This is called by the LoggerThread. """
@@ -770,15 +740,16 @@ class LoggerThread(mqttcommon.LoggerThread):
 
     def start_entry(self):
         """ Return the entry logged when the thread starts. """
-        return Logger.create_entry('INFO', 122002, Logger.log_messages[122002])
+        return self.logger.create_entry(self.logger.name, 'INFO', 122002, Logger.log_messages[122002])
 
     def exit_entry(self):
         """ Return the entry logged when the thread exits. """
-        return Logger.create_entry('INFO', 122003, Logger.log_messages[122003])
+        return self.logger.create_entry(self.logger.name, 'INFO', 122003, Logger.log_messages[122003])
 
     def invalid_entry(self, entry):
         """ Return the error entry logged for an entry that could not be logged. """
-        return Logger.create_entry('ERROR', 124003, Logger.log_messages[124003].format(entry=entry))
+        return self.logger.create_entry(self.logger.name, 'ERROR', 124003,
+                                        Logger.log_messages[124003].format(entry=entry))
 
 class RecordCache():
     """ Manage the cache. """

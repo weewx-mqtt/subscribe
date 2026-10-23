@@ -21,11 +21,12 @@ class TestLoggerThread(BaseTestClass):
     def test_run(self):
         log_queue = queue.Queue()
         mock_logger = mock.Mock()
+        mock_logger.create_entry.side_effect = Logger.create_entry
 
         SUT = LoggerThread(log_queue, mock_logger)
 
-        first = Logger.create_entry('INFO', random.randint(1, 100), random_string())
-        second = Logger.create_entry('ERROR', None, random_string())
+        first = Logger.create_entry(random_string(), 'INFO', random.randint(1, 100), random_string())
+        second = Logger.create_entry(random_string(), 'ERROR', None, random_string())
         log_queue.put(first)
         log_queue.put(second)
         log_queue.put(None)
@@ -46,6 +47,7 @@ class TestLoggerThread(BaseTestClass):
     def test_run_invalid_entry(self):
         log_queue = queue.Queue()
         mock_logger = mock.Mock()
+        mock_logger.create_entry.side_effect = Logger.create_entry
 
         invalid_entry = {'log_type': random_string(), 'msg_id': None, 'msg_text': random_string()}
 
