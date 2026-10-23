@@ -715,7 +715,7 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         self.debug(0, f"Record Generation is: {record_generation}")
 
     @staticmethod
-    def create_entry(log_type, msg_id, msg_text):
+    def create_entry(log_type, msg_id, msg_text):  # pylint: disable=arguments-differ
         """ Create a log entry, capturing the emitting thread and the archive timestamp. """
         return {
             'log_type': log_type,
