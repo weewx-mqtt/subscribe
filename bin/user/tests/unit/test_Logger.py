@@ -154,7 +154,7 @@ class TestLogging(BaseTestClass):
                 # The archive timestamp is part of the context while a record is being processed.
                 SUT.log.info.assert_any_call(SUT.LOG_FORMAT, f"{mode}-{thread_id}-{archive_timestamp}", message)
             finally:
-                Logger.archive_timestamp = -1
+                Logger.archive_timestamp = None
 
     @staticmethod
     def test_debug_logged():

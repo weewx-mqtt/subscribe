@@ -609,8 +609,8 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         composition, and throttling. """
     # This is the timestamp of the archive record being processed.
     # It is 'captured' via the NEW_ARCHIVE_RECORD event but due to WeeWX processing, updated via the END_ARCHIVE_PERIOD.
-    # It is added to log messages while set; the -1 default (no record captured) is omitted.
-    archive_timestamp = -1
+    # It is added to log messages while set; None (no record captured) is omitted.
+    archive_timestamp = None
 
     LOG_NAME = __name__
 
@@ -751,10 +751,8 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
 
     def _format_args(self, entry):
         """ Return subscribe's format arguments: a mode-thread(-archive) context and the message. """
-        parts = [self.mode, entry['thread_id']]
-        if entry['archive_timestamp'] != -1:
-            parts.append(entry['archive_timestamp'])
-        return ('-'.join(str(part) for part in parts), entry['msg_text'])
+        parts = (self.mode, entry['thread_id'], entry['archive_timestamp'])
+        return ('-'.join(str(part) for part in parts if part is not None), entry['msg_text'])
 
     def _log_trace(self, entry):
         """ Log a trace entry. This is called by the LoggerThread. """
