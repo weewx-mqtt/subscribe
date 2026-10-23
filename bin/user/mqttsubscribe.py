@@ -599,17 +599,19 @@ DRIVER_VERSION = VERSION
 class ConversionError(ValueError):
     """ Error converting data types. """
 
-class Logger():  # pylint: disable=too-many-instance-attributes
+class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
     """ The logging class.
         Log messages are queued and written by a LoggerThread, so logging and the
-        throttled message state are only ever accessed by that thread. """
+        throttled message state are only ever accessed by that thread.
+
+        The queue, the dispatch, and shutdown come from mqttcommon.Logger; this
+        subclass owns the entry contract, the message format, and throttling. """
     # This is the timestamp of the archive record being processed.
     # It is 'captured' via the NEW_ARCHIVE_RECORD event but due to WeeWX processing, updated via the END_ARCHIVE_PERIOD.
     # It is added to every log message.
     archive_timestamp = -1
 
-    # The maximum time shutdown waits for the LoggerThread to flush queued messages.
-    SHUTDOWN_TIMEOUT = 10
+    LOG_NAME = __name__
 
     log_messages = {
         # trace message
@@ -644,16 +646,7 @@ class Logger():  # pylint: disable=too-many-instance-attributes
         self._logmsg = logging.getLogger(__name__)
         self._setup_logging()
 
-        self.log_functions = {
-            'TRACE': self._log_trace,
-            'DEBUG': self._log_debug,
-            'INFO': self._log_info,
-            'ERROR': self._log_error,
-        }
-
-        self.log_queue = Queue.Queue()
-        self.log_thread = LoggerThread(self.log_queue, self)
-        self.log_thread.start()
+        super().__init__(None, Queue.Queue(), thread_class=LoggerThread)
 
         # Logging is setup, now safe to log a mwssage about using throttling option
         if 'throttle' in config:
@@ -749,23 +742,13 @@ class Logger():  # pylint: disable=too-many-instance-attributes
         """ Queue error messages. """
         self.log_queue.put(Logger.create_entry('ERROR', msg_id, msg_text))
 
-    def log_entry(self, entry):
-        """ Log a queued entry. This is called by the LoggerThread. """
-        log_type = entry['log_type']
-        if not self.throttle.is_throttled(log_type, entry['msg_id']):
-            self.log_functions[log_type](entry)
+    def is_suppressed(self, entry):
+        """ Return True when the entry is throttled. """
+        return self.throttle.is_throttled(entry['log_type'], entry['msg_id'])
 
-    def shutdown(self, timeout=SHUTDOWN_TIMEOUT):
-        """ Stop the logger thread, flushing queued messages. """
-        if not self.log_thread.is_alive():
-            return
-
-        self.log_queue.put(None)
-        self.log_thread.join(timeout)
-        if self.log_thread.is_alive():
-            # The thread is stuck, a queued message would not be logged so log it directly.
-            self._logmsg.error(self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp,
-                               Logger.log_messages[124004].format(name=self.log_thread.name))
+    def stuck_entry(self):
+        """ Return the entry logged when the logger thread is stuck in shutdown. """
+        return Logger.create_entry('ERROR', None, Logger.log_messages[124004].format(name=self.log_thread.name))
 
     def _log_trace(self, entry):
         """ Log a trace entry. This is called by the LoggerThread. """
@@ -786,11 +769,12 @@ class Logger():  # pylint: disable=too-many-instance-attributes
         """ Log an error entry. This is called by the LoggerThread. """
         self._logmsg.error(self.MSG_FORMAT, self.mode, entry['thread_id'], entry['archive_timestamp'], entry['msg_text'])
 
-class LoggerThread(mqttcommon.QueueLoggerThread):
+class LoggerThread(mqttcommon.LoggerThread):
     """ Thread to manage logging.
         It is the only consumer of the Logger's queue, and therefore the only
         thread that logs messages and accesses the throttled message state.
-        The queue loop is inherited from mqttcommon.QueueLoggerThread. """
+        The queue loop is inherited from mqttcommon.LoggerThread; the entries
+        use the Logger's log_messages registry texts. """
 
     def start_entry(self):
         """ Return the entry logged when the thread starts. """
