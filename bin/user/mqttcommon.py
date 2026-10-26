@@ -5,12 +5,16 @@
 #
 """ Common code for the weewx-mqtt extensions. """
 import abc
+import locale
 import logging
+import platform
 import ssl
+import sys
 import threading
 import time
 
 import configobj
+import paho.mqtt
 import paho.mqtt.client as mqtt
 
 # The mqttcommon API level. Bump it when a change requires consumers to have a newer
@@ -111,6 +115,13 @@ class Logger:
     LOG_FORMAT = "(%s) %s"
     LOG_KEYS = ('name',)
 
+    # Diagnostics reported by log_environment: the logging settings a subclass
+    # configures in its ctor.
+    level = 0
+    weewx_debug = 0
+    console = False
+    filename = None
+
     # The message texts, keyed by message id, for the logger thread's start, exit,
     # and invalid entries and the stuck-in-shutdown warning. stuck_entry and a
     # subclass's thread hooks look these up; the base thread hooks log their own
@@ -197,6 +208,31 @@ class Logger:
         """ Return the entry logged when the logger thread is stuck in shutdown. """
         return self.create_entry(self.name, 'ERROR', None,
                                  self.log_messages[124004].format(name=self.log_thread.name))
+
+    def log_environment(self, config_dict, version):
+        """ Log the environment we are running in. """
+        # Imported here so that mqttcommon stays importable without weewx.
+        import weewx  # pylint: disable=import-outside-toplevel
+
+        # Since WeeWX logs this, only log it when debugging
+        self.debug(0, f"Using weewx version {weewx.__version__}")
+        self.debug(0, f"Using Python {sys.version}")
+        self.debug(0, f"Platform {platform.platform()}")
+        self.debug(0, f"Locale is '{locale.setlocale(locale.LC_ALL)}'")
+
+        # Too easy to leak sensitive information
+        # self.debug(config_dict)
+        archive_dict = config_dict.get('StdArchive', {})
+        record_augmentation = archive_dict.get('record_augmentation', None)
+        record_generation = archive_dict.get('record_generation', None)
+        self.info(0, f"Version is {version}")
+        self.info(0, f"Using paho.mqtt {paho.mqtt.__version__}")
+        self.info(0, f"Log level: {int(self.level)}")
+        self.info(0, f"Log debug setting: {int(self.weewx_debug)}")
+        self.info(0, f"Log console: {self.console}")
+        self.info(0, f"Log file: {self.filename}")
+        self.debug(0, f"Record Augmentation is: {record_augmentation}")
+        self.debug(0, f"Record Generation is: {record_generation}")
 
     def _format_args(self, entry):
         """ Return the format arguments for an entry; the message is always last. """

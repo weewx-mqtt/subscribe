@@ -545,10 +545,8 @@ import argparse
 import copy
 import datetime
 import json
-import locale
 import logging
 import os
-import platform
 import queue as Queue
 import random
 import re
@@ -559,7 +557,6 @@ import traceback
 from collections import deque
 
 import configobj
-import paho
 import paho.mqtt.client as mqtt
 from paho.mqtt.client import connack_string
 
@@ -681,28 +678,6 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
             handlers.extend(self.get_handlers(logger.parent))
 
         return handlers
-
-    def log_environment(self, config_dict):
-        """ Log the environment we are running in. """
-        # Since WeeWX logs this, only log it when debugging
-        self.debug(0, f"Using weewx version {weewx.__version__}")
-        self.debug(0, f"Using Python {sys.version}")
-        self.debug(0, f"Platform {platform.platform()}")
-        self.debug(0, f"Locale is '{locale.setlocale(locale.LC_ALL)}'")
-
-        # Too easy to leak sensitive information
-        # self.debug(config_dict)
-        archive_dict = config_dict.get('StdArchive', {})
-        record_augmentation = archive_dict.get('record_augmentation', None)
-        record_generation = archive_dict.get('record_generation', None)
-        self.info(0, f"Version is {VERSION}")
-        self.info(0, f"Using paho.mqtt {paho.mqtt.__version__}")
-        self.info(0, f"Log level: {int(self.level)}")
-        self.info(0, f"Log debug setting: {int(self.weewx_debug)}")
-        self.info(0, f"Log console: {self.console}")
-        self.info(0, f"Log file: {self.filename}")
-        self.debug(0, f"Record Augmentation is: {record_augmentation}")
-        self.debug(0, f"Record Generation is: {record_generation}")
 
     def is_suppressed(self, entry):
         """ Return True when the entry is throttled. """
@@ -2356,7 +2331,7 @@ class MQTTSubscribeService(StdService):
                              level=logging_level,
                              filename=logging_filename,
                              console=console)
-        self.logger.log_environment(config_dict)
+        self.logger.log_environment(config_dict, VERSION)
 
         self.enable = to_bool(service_dict.get('enable', True))
         if not self.enable:
@@ -2520,7 +2495,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         logging_filename = stn_dict.get('logging_filename', None)
         logging_level = stn_dict.get('logging_level', 'NOTSET').upper()
         self.logger = Logger({'mode': 'Driver'}, level=logging_level, filename=logging_filename, console=console)
-        self.logger.log_environment(config_dict)
+        self.logger.log_environment(config_dict, VERSION)
 
         self.max_loop_interval = to_int(stn_dict.get('max_loop_interval', 0))
         self.logger.info(12001, MQTTSubscribeDriver.log_messages[12001].format(max_loop_interval=self.max_loop_interval))

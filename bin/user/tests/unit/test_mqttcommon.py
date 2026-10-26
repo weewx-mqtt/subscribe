@@ -8,6 +8,7 @@ import copy
 import queue
 import random
 import ssl
+import sys
 import threading
 import time
 import unittest
@@ -510,6 +511,32 @@ class TestLogger(unittest.TestCase):
             124003: "Invalid log entry: {entry}",
             124004: "Unable to shut down logger thread {name}.",
         })
+
+    def test_log_environment_logs_the_environment(self):
+        with mock.patch('user.mqttcommon.logging') as mock_logging, \
+                mock.patch.dict(sys.modules, {'weewx': mock.MagicMock(__version__='stub')}):
+            mock_log = mock_logging.getLogger.return_value
+            name = random_string()
+            SUT = LoggerStub(name, queue.Queue())
+            # Drain the thread so the queued environment entries dispatch synchronously.
+            SUT.shutdown(timeout=5)
+            mock_log.reset_mock()
+
+            SUT.log_environment({'StdArchive': {'record_augmentation': 'archive',
+                                                 'record_generation': 'generator'}}, '1.2.3-test')
+            while not SUT.log_queue.empty():
+                SUT.log_entry(SUT.log_queue.get_nowait())
+
+            # The weewx/python/platform/locale/paho values are environment-specific; the rest is exact.
+            self.assertEqual(mock_log.debug.call_count, 6)
+            self.assertEqual(mock_log.info.call_count, 6)
+            mock_log.info.assert_any_call("test %s %s", name, "Version is 1.2.3-test")
+            mock_log.info.assert_any_call("test %s %s", name, "Log level: 0")
+            mock_log.info.assert_any_call("test %s %s", name, "Log debug setting: 0")
+            mock_log.info.assert_any_call("test %s %s", name, "Log console: False")
+            mock_log.info.assert_any_call("test %s %s", name, "Log file: None")
+            mock_log.debug.assert_any_call("test %s %s", name, "Record Augmentation is: archive")
+            mock_log.debug.assert_any_call("test %s %s", name, "Record Generation is: generator")
 
     def test_init_starts_a_daemon_logger_thread(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
