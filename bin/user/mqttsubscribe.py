@@ -604,7 +604,7 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         Log messages are queued and written by a LoggerThread, so logging and the
         throttled message state are only ever accessed by that thread.
 
-        The queue, the entry contract, the message format, and shutdown come from
+        The queue, the entry contract, the message texts, and shutdown come from
         mqttcommon.Logger; this subclass owns throttling, the trace-level handling,
         and the archive timestamp state. """
     # This is the timestamp of the archive record being processed.
@@ -615,17 +615,6 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
     LOG_NAME = __name__
     # The context: the mode (stamped as the entry name), the emitting thread, and the archive record.
     LOG_KEYS = ('name', 'thread_id', 'archive_timestamp')
-
-    log_messages = {
-        # trace message
-        # debug messages
-        # informational messages
-        122002: "Starting logger thread.",
-        122003: "Exited logger thread.",
-        # error messages
-        124003: "Invalid log entry: {entry}",
-        124004: "Unable to shut down logger thread {name}.",
-    }
 
     def __init__(self, config, level='NOTSET', filename=None, console=None):
         self.console = console

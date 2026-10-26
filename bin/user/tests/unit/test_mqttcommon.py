@@ -502,6 +502,15 @@ class ComposedLoggerStub(LoggerStub):
 
 
 class TestLogger(unittest.TestCase):
+    def test_log_messages_texts(self):
+        # The thread entries' message texts are shared; consumer hooks look them up by id.
+        self.assertEqual(user.mqttcommon.Logger.log_messages, {
+            122002: "Starting logger thread.",
+            122003: "Exited logger thread.",
+            124003: "Invalid log entry: {entry}",
+            124004: "Unable to shut down logger thread {name}.",
+        })
+
     def test_init_starts_a_daemon_logger_thread(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_log = mock_logging.getLogger.return_value

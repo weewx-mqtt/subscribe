@@ -112,6 +112,21 @@ class Logger:
     LOG_FORMAT = "(%s) %s"
     LOG_KEYS = ('name',)
 
+    # The message texts, keyed by message id, for the logger thread's start, exit,
+    # and invalid entries and the stuck-in-shutdown warning. A subclass's thread
+    # hooks and stuck_entry look these up; the base hooks log their own msg_id None
+    # texts.
+    log_messages = {
+        # trace message
+        # debug messages
+        # informational messages
+        122002: "Starting logger thread.",
+        122003: "Exited logger thread.",
+        # error messages
+        124003: "Invalid log entry: {entry}",
+        124004: "Unable to shut down logger thread {name}.",
+    }
+
     # The timestamp of the archive record being processed, stamped onto entries at
     # enqueue time. None when no record is being processed.
     archive_timestamp = None
