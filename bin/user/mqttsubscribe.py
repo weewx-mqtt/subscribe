@@ -708,11 +708,6 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         """ Return True when the entry is throttled. """
         return self.throttle.is_throttled(entry['log_type'], entry['msg_id'])
 
-    def stuck_entry(self):
-        """ Return the entry logged when the logger thread is stuck in shutdown. """
-        return self.create_entry(self.name, 'ERROR', None,
-                                 Logger.log_messages[124004].format(name=self.log_thread.name))
-
     def _log_trace(self, entry):
         """ Log a trace entry. This is called by the LoggerThread. """
         if self.weewx_debug > 1:

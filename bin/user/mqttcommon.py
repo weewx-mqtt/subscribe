@@ -99,8 +99,7 @@ class Logger:
         The message format is shared; what the format's first argument is is
         the hook: subclasses pin LOG_KEYS or override _format_args. The entry
         contract, throttling, the thread class, and the logger itself are the
-        other hooks: is_suppressed, stuck_entry, and the thread_class/log ctor
-        arguments. """
+        other hooks: is_suppressed, the thread_class/log ctor arguments. """
     # The default time shutdown waits for the LoggerThread to flush queued messages.
     SHUTDOWN_TIMEOUT = 10
 
@@ -113,9 +112,9 @@ class Logger:
     LOG_KEYS = ('name',)
 
     # The message texts, keyed by message id, for the logger thread's start, exit,
-    # and invalid entries and the stuck-in-shutdown warning. A subclass's thread
-    # hooks and stuck_entry look these up; the base hooks log their own msg_id None
-    # texts.
+    # and invalid entries and the stuck-in-shutdown warning. stuck_entry and a
+    # subclass's thread hooks look these up; the base thread hooks log their own
+    # msg_id None texts.
     log_messages = {
         # trace message
         # debug messages
@@ -197,7 +196,7 @@ class Logger:
     def stuck_entry(self):
         """ Return the entry logged when the logger thread is stuck in shutdown. """
         return self.create_entry(self.name, 'ERROR', None,
-                                 f"Unable to shut down {self.log_thread.name} thread")
+                                 self.log_messages[124004].format(name=self.log_thread.name))
 
     def _format_args(self, entry):
         """ Return the format arguments for an entry; the message is always last. """

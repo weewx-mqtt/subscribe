@@ -731,8 +731,8 @@ class TestShutdown(unittest.TestCase):
 
             SUT.shutdown(timeout=0.05)
 
-            mock_log.error.assert_called_once_with("test %s %s", name,
-                                                   f"Unable to shut down {SUT.log_thread.name} thread")
+            expected_text = user.mqttcommon.Logger.log_messages[124004].format(name=SUT.log_thread.name)
+            mock_log.error.assert_called_once_with("test %s %s", name, expected_text)
             self.assertTrue(SUT.log_thread.is_alive())
 
             # Release the thread and wait for it to exit.
