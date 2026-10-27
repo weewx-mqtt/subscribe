@@ -13,7 +13,7 @@ import configobj
 import utils
 
 import weewx
-from user.mqttsubscribe import TopicManager, Logger
+from user.mqttsubscribe import TopicManager, create_logger as Logger
 
 class TestAccumulatedData(unittest.TestCase):
     def runit(self, payload, file_pointer, check_results=True):

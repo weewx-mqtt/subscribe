@@ -17,7 +17,8 @@ from test_weewx_stubs import random_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.mqttsubscribe import MQTTSubscriber, Logger
+from user.mqttcommon import Logger
+from user.mqttsubscribe import MQTTSubscriber
 
 mock_client = None
 
@@ -571,7 +572,7 @@ class TestDeprecatedOptions(unittest.TestCase):
 
         with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
             with mock.patch('user.mqttsubscribe.TopicManager'):
-                with mock.patch('user.mqttsubscribe.Logger', spec=Logger) as mock_logger:
+                with mock.patch('user.mqttcommon.Logger', spec=Logger) as mock_logger:
                     MQTTSubscriberTest(config, mock_logger)
 
                 self.assertEqual(mock_logger.info.call_count, 15)

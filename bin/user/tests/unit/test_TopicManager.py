@@ -20,7 +20,8 @@ import test_weewx_stubs
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.mqttsubscribe import TopicManager, Logger
+from user.mqttcommon import Logger
+from user.mqttsubscribe import TopicManager
 
 class TestInit(unittest.TestCase):
     def setUp(self):

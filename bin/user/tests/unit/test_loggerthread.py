@@ -15,13 +15,15 @@ from test_weewx_stubs import BaseTestClass, random_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.mqttsubscribe import Logger, LoggerThread
+from user.mqttcommon import Logger
+from user.mqttsubscribe import LoggerThread
 
 class TestLoggerThread(BaseTestClass):
     def test_run(self):
         log_queue = queue.Queue()
         mock_logger = mock.Mock()
         mock_logger.create_entry.side_effect = Logger.create_entry
+        mock_logger.stamp_entry.side_effect = lambda entry: entry
 
         SUT = LoggerThread(log_queue, mock_logger)
 
@@ -48,6 +50,7 @@ class TestLoggerThread(BaseTestClass):
         log_queue = queue.Queue()
         mock_logger = mock.Mock()
         mock_logger.create_entry.side_effect = Logger.create_entry
+        mock_logger.stamp_entry.side_effect = lambda entry: entry
 
         invalid_entry = {'log_type': random_string(), 'msg_id': None, 'msg_text': random_string()}
 

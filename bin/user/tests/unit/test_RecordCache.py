@@ -20,7 +20,8 @@ import test_weewx_stubs
 from test_weewx_stubs import random_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
-from user.mqttsubscribe import RecordCache, Logger
+from user.mqttcommon import Logger
+from user.mqttsubscribe import RecordCache
 
 class Test_clear_cache(unittest.TestCase):
     def test_cache_is_cleared(self):

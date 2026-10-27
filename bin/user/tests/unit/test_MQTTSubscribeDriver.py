@@ -18,7 +18,8 @@ from test_weewx_stubs import random_string, startOfInterval, timestamp_to_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.mqttsubscribe import MQTTSubscribeDriver, Logger
+from user.mqttcommon import Logger
+from user.mqttsubscribe import MQTTSubscribeDriver
 
 class TestclosePort(unittest.TestCase):
     def setUp(self):
@@ -64,7 +65,7 @@ class TestclosePort(unittest.TestCase):
                             })
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
-            with mock.patch('user.mqttsubscribe.Logger', spec=Logger):
+            with mock.patch('user.mqttcommon.Logger', spec=Logger):
                 SUT = MQTTSubscribeDriver(config_dict, mock_engine)
                 SUT.new_archive_record(event)
 
@@ -176,7 +177,7 @@ class TestgenLoopPackets(unittest.TestCase):
         )
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
-            with mock.patch('user.mqttsubscribe.Logger'):
+            with mock.patch('user.mqttcommon.Logger'):
                 type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
                 queue_data = copy.deepcopy(self.queue_data)
                 queue_data['dateTime'] = queue_data['dateTime'] + 2000
@@ -229,7 +230,7 @@ class TestgenLoopPackets(unittest.TestCase):
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             with mock.patch('user.mqttsubscribe.time'):
-                with mock.patch('user.mqttsubscribe.Logger'):
+                with mock.patch('user.mqttcommon.Logger'):
                     type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
                     type(mock_manager.return_value).get_data = mock.Mock(side_effect=[self.empty_generator(), self.generator([self.queue_data])])
 

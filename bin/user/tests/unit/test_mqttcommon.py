@@ -490,6 +490,11 @@ class LoggerStub(user.mqttcommon.Logger):
     LOG_FORMAT = "test %s %s"
     LOG_KEYS = ('name',)
 
+    def __init__(self, name, log_queue, thread_class=None, log_name=None, log_keys=None):
+        """ Pack the flat arguments into the base ctor's options dict. """
+        super().__init__({'name': name, 'log_queue': log_queue, 'thread_class': thread_class,
+                          'log_name': log_name, 'log_keys': log_keys})
+
 
 class LoggerThreadStub(user.mqttcommon.LoggerThread):
     """ A distinct concrete LoggerThread, to assert the ctor honors thread_class. """
@@ -503,7 +508,7 @@ class ComposedLoggerStub(LoggerStub):
 
 
 class ConfiguredLoggerStub(LoggerStub):
-    """ A Logger whose subclass configures its logger before calling super, as subscribe does. """
+    """ A Logger whose subclass configures its logger before calling super. """
     def __init__(self, name, log_queue):
         """ Pre-configure the logger, before the base ctor runs. """
         self.log = mock.Mock()
@@ -604,6 +609,38 @@ class TestLogger(unittest.TestCase):
                            'msg_text': text})
 
             mock_log.info.assert_called_once_with("test %s %s", '42', text)
+
+    def test_init_requires_a_name_or_a_config(self):
+        with self.assertRaises(ValueError):
+            user.mqttcommon.Logger()
+        with self.assertRaises(ValueError):
+            user.mqttcommon.Logger({})
+
+    def test_init_builds_a_log_queue_when_omitted(self):
+        with mock.patch('user.mqttcommon.logging'):
+            SUT = user.mqttcommon.Logger({'name': random_string()})
+
+            self.assertIsInstance(SUT.log_queue, queue.Queue)
+            SUT.shutdown(timeout=5)
+
+    def test_init_config_applies_the_config_setup(self):
+        mode = random_string()
+        with mock.patch('user.mqttcommon.logging') as mock_logging, \
+                mock.patch.dict(sys.modules, {'weewx': mock.MagicMock(debug=0)}):
+            mock_logging._checkLevel.return_value = 0
+            config = {'mode': mode, 'throttle': {}}
+
+            SUT = user.mqttcommon.Logger({'config': config})
+
+            self.assertEqual(SUT.name, mode)
+            self.assertIsNotNone(SUT.throttle)
+            # weewx debugging off leaves the TRACE level set.
+            self.assertEqual(SUT.trace_level, 5)
+            SUT.shutdown(timeout=5)
+
+            # The experimental throttle notice is queued, and logged after the thread's start entry.
+            mock_logging.getLogger.return_value.info.assert_any_call(
+                "(%s) %s", mode, user.mqttcommon.MessageThrottle.NOTICE_EXPERIMENTAL)
 
     def test_init_keeps_a_preconfigured_logger(self):
         SUT = ConfiguredLoggerStub(random_string(), queue.Queue())

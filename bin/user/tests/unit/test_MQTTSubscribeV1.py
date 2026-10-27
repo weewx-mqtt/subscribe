@@ -17,7 +17,8 @@ from test_weewx_stubs import random_string
 test_weewx_stubs.setup_stubs()
 
 import user.mqttcommon
-from user.mqttsubscribe import MQTTSubscriber, Logger
+from user.mqttcommon import Logger
+from user.mqttsubscribe import MQTTSubscriber
 
 mock_client = None
 

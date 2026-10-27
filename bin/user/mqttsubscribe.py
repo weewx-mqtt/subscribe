@@ -545,9 +545,7 @@ import argparse
 import copy
 import datetime
 import json
-import logging
 import os
-import queue as Queue
 import random
 import re
 import sys
@@ -596,76 +594,46 @@ DRIVER_VERSION = VERSION
 class ConversionError(ValueError):
     """ Error converting data types. """
 
-class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
-    """ The logging class.
-        Log messages are queued and written by a LoggerThread, so logging and the
-        throttled message state are only ever accessed by that thread.
-
-        The queue, the entry contract, the message texts, and shutdown come from
-        mqttcommon.Logger; this subclass owns throttling, the trace-level handling,
-        and the archive timestamp state. """
-    # This is the timestamp of the archive record being processed.
-    # It is 'captured' via the NEW_ARCHIVE_RECORD event but due to WeeWX processing, updated via the END_ARCHIVE_PERIOD.
-    # It is stamped onto log entries and rendered in log messages while set; None (no record captured) is omitted.
-    archive_timestamp = None
-
-    LOG_NAME = __name__
-    # The context: the mode (stamped as the entry name), the emitting thread, and the archive record.
-    LOG_KEYS = ('name', 'thread_id', 'archive_timestamp')
-
-    def __init__(self, config, level='NOTSET', filename=None, console=None):
-        self.console = console
-        self.filename = filename
-        self.weewx_debug = weewx.debug
-
-        throttle_config = mqttcommon.MessageThrottle.parse_config(config)
-        self.throttle = mqttcommon.MessageThrottle(throttle_config, self._log_throttle_summary)
-
-        # Setup custom TRACE level
-        self.trace_level = 5
-        if logging.getLevelName(self.trace_level) == 'Level 5':
-            logging.addLevelName(self.trace_level, "TRACE")
-
-        # check that the level configured is valid
-        self.level = logging._checkLevel(level)
-
-        self.log = logging.getLogger(__name__)
-        self._setup_logging()
-
-        # Resolve where trace entries log: at DEBUG when weewx debugging is on,
-        # at the TRACE level otherwise. After _setup_logging, which may clear the setting.
-        if self.weewx_debug > 1:
-            self.trace_level = None
-
-        super().__init__(config['mode'], Queue.Queue(), thread_class=LoggerThread)
-
-        # Logging is setup, now safe to log a mwssage about using throttling option
-        if 'throttle' in config:
-            self.info(122001, mqttcommon.MessageThrottle.NOTICE_EXPERIMENTAL)
-
-    def _log_throttle_summary(self, msg_text):
-        """ Queue a throttle suppression summary message. """
-        self.error(None, msg_text)
-
 class LoggerThread(mqttcommon.LoggerThread):
     """ Thread to manage logging.
-        It is the only consumer of the Logger's queue, and therefore the only
+        It is the only consumer of the logger's queue, and therefore the only
         thread that logs messages and accesses the throttled message state.
         The queue loop is inherited from mqttcommon.LoggerThread; the entries
-        use the Logger's log_messages registry texts. """
+        use the shared log_messages registry texts. """
 
     def start_entry(self):
         """ Return the entry logged when the thread starts. """
-        return self.logger.create_entry(self.logger.name, 'INFO', 122002, Logger.log_messages[122002])
+        entry = self.logger.create_entry(self.logger.name, 'INFO', 122002,
+                                         mqttcommon.Logger.log_messages[122002])
+        return self.logger.stamp_entry(entry)
 
     def exit_entry(self):
         """ Return the entry logged when the thread exits. """
-        return self.logger.create_entry(self.logger.name, 'INFO', 122003, Logger.log_messages[122003])
+        entry = self.logger.create_entry(self.logger.name, 'INFO', 122003,
+                                         mqttcommon.Logger.log_messages[122003])
+        return self.logger.stamp_entry(entry)
 
     def invalid_entry(self, entry):
         """ Return the error entry logged for an entry that could not be logged. """
-        return self.logger.create_entry(self.logger.name, 'ERROR', 124003,
-                                        Logger.log_messages[124003].format(entry=entry))
+        invalid = self.logger.create_entry(self.logger.name, 'ERROR', 124003,
+                                           mqttcommon.Logger.log_messages[124003].format(entry=entry))
+        return self.logger.stamp_entry(invalid)
+
+# The context keys for subscribe's log lines: the mode (stamped as the entry name),
+# the emitting thread, and the archive record. None (no record captured) is omitted.
+LOG_KEYS = ('name', 'thread_id', 'archive_timestamp')
+
+def create_logger(config, level='NOTSET', filename=None, console=None):
+    """ Create subscribe's logger: config-driven, with subscribe's pins. """
+    return mqttcommon.Logger({
+        'config': config,
+        'level': level,
+        'filename': filename,
+        'console': console,
+        'log_name': __name__,
+        'log_keys': LOG_KEYS,
+        'thread_class': LoggerThread,
+    })
 
 class RecordCache():
     """ Manage the cache. """
@@ -2284,10 +2252,10 @@ class MQTTSubscribeService(StdService):
         logging_level = service_dict.get('logging_level', 'NOTSET')
         console = to_bool(service_dict.get('console', False))
 
-        self.logger = Logger({'mode': 'Service', 'throttle': service_dict.get('logging', {}).get('throttle', {})},
-                             level=logging_level,
-                             filename=logging_filename,
-                             console=console)
+        self.logger = create_logger({'mode': 'Service', 'throttle': service_dict.get('logging', {}).get('throttle', {})},
+                                    level=logging_level,
+                                    filename=logging_filename,
+                                    console=console)
         self.logger.log_environment(config_dict, VERSION)
 
         self.enable = to_bool(service_dict.get('enable', True))
@@ -2408,7 +2376,7 @@ class MQTTSubscribeService(StdService):
 
     def end_archive_period(self, _event):
         """ Handle the end archive period event."""
-        Logger.archive_timestamp = self.next_archive_timestamp
+        self.logger.archive_timestamp = self.next_archive_timestamp
 
 def loader(config_dict, engine):
     """ Load and return the driver. """
@@ -2451,7 +2419,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         console = to_bool(stn_dict.get('console', False))
         logging_filename = stn_dict.get('logging_filename', None)
         logging_level = stn_dict.get('logging_level', 'NOTSET').upper()
-        self.logger = Logger({'mode': 'Driver'}, level=logging_level, filename=logging_filename, console=console)
+        self.logger = create_logger({'mode': 'Driver'}, level=logging_level, filename=logging_filename, console=console)
         self.logger.log_environment(config_dict, VERSION)
 
         self.max_loop_interval = to_int(stn_dict.get('max_loop_interval', 0))
@@ -2504,7 +2472,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
 
     def end_archive_period(self, _event):
         """ Handle the end archive period event."""
-        Logger.archive_timestamp = self.next_archive_timestamp
+        self.logger.archive_timestamp = self.next_archive_timestamp
 
     def genLoopPackets(self):  # need to override parent
         """ Called to generate loop packets. """
@@ -3031,7 +2999,7 @@ class Parser():
 
         message_callback_config = self.config_dict.get('message_callback', None)
 
-        logger = Logger({'mode': 'Service'}, level=options.logging_level, filename=options.logging_file, console=options.console)
+        logger = create_logger({'mode': 'Service'}, level=options.logging_level, filename=options.logging_file, console=options.console)
         self.manager = TopicManager(None, topics_dict, logger)
         self.message_callback_provider = MessageCallbackProvider(message_callback_config, logger, self.manager)
 

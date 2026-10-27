@@ -19,7 +19,8 @@ from test_weewx_stubs import random_string
 test_weewx_stubs.setup_stubs()
 
 import user.mqttcommon
-from user.mqttsubscribe import MQTTSubscriber, Logger
+from user.mqttcommon import Logger
+from user.mqttsubscribe import MQTTSubscriber
 
 
 @unittest.skipIf(not hasattr(paho.mqtt.client, 'CallbackAPIVersion'), "paho-mqtt is v1, skipping tests.")

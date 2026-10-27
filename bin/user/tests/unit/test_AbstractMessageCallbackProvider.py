@@ -15,7 +15,8 @@ from test_weewx_stubs import random_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.mqttsubscribe import AbstractMessageCallbackProvider, Logger, TopicManager
+from user.mqttcommon import Logger
+from user.mqttsubscribe import AbstractMessageCallbackProvider, TopicManager
 
 # todo - mock?
 def to_float(x):

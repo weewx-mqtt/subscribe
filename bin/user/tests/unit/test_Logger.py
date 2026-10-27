@@ -20,13 +20,13 @@ from test_weewx_stubs import BaseTestClass, random_string
 import user.mqttcommon
 test_weewx_stubs.setup_stubs()
 
-from user.mqttsubscribe import Logger
+from user.mqttsubscribe import create_logger as Logger
 
 class TestInintialization(BaseTestClass):
     def test_init_set_trace_log_level(self):
         log_level = 5
 
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
 
             mock_logging._checkLevel.return_value = log_level
             mock_logging.getLevelName.return_value = f'Level {int(log_level)}'
@@ -57,8 +57,7 @@ class TestInintialization(BaseTestClass):
 
     @staticmethod
     def test_init_filename_set():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging, \
-                mock.patch('user.mqttcommon.logging', mock_logging):
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
 
             mock_logging._checkLevel.return_value = 0
 
@@ -77,7 +76,7 @@ class TestInintialization(BaseTestClass):
 
     @staticmethod
     def test_init_console_set():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
 
             mock_logging._checkLevel.return_value = 0
             mode = random_string()
@@ -94,7 +93,7 @@ class TestInintialization(BaseTestClass):
         }
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_logging._checkLevel.return_value = 0
             thread_id = threading.get_native_id()
 
@@ -107,7 +106,7 @@ class TestInintialization(BaseTestClass):
 class TestLogging(BaseTestClass):
     @staticmethod
     def test_error_logged():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_logging._checkLevel.return_value = 0
             thread_id = threading.get_native_id()
             mode = random_string()
@@ -122,7 +121,7 @@ class TestLogging(BaseTestClass):
 
     @staticmethod
     def test_info_logged():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_logging._checkLevel.return_value = 0
             thread_id = threading.get_native_id()
             mode = random_string()
@@ -138,7 +137,7 @@ class TestLogging(BaseTestClass):
 
     @staticmethod
     def test_archive_record_context_is_logged():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_logging._checkLevel.return_value = 0
             thread_id = threading.get_native_id()
             mode = random_string()
@@ -146,20 +145,17 @@ class TestLogging(BaseTestClass):
             message = random_string()
 
             SUT = Logger({'mode': mode})
-            Logger.archive_timestamp = archive_timestamp
+            SUT.archive_timestamp = archive_timestamp
 
-            try:
-                SUT.info(random.randint(1, 100), message)
-                SUT.shutdown()
+            SUT.info(random.randint(1, 100), message)
+            SUT.shutdown()
 
-                # The archive timestamp is part of the context while a record is being processed.
-                SUT.log.info.assert_any_call(SUT.LOG_FORMAT, f"{mode}-{thread_id}-{archive_timestamp}", message)
-            finally:
-                Logger.archive_timestamp = None
+            # The archive timestamp is part of the context while a record is being processed.
+            SUT.log.info.assert_any_call(SUT.LOG_FORMAT, f"{mode}-{thread_id}-{archive_timestamp}", message)
 
     @staticmethod
     def test_debug_logged():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_logging._checkLevel.return_value = 0
             thread_id = threading.get_native_id()
             mode = random_string()
@@ -174,7 +170,7 @@ class TestLogging(BaseTestClass):
 
     @staticmethod
     def test_trace_logged_with_debug_set():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
             sys.modules['weewx'].debug = 2
             mock_logging._checkLevel.return_value = 0
             thread_id = threading.get_native_id()
@@ -190,14 +186,14 @@ class TestLogging(BaseTestClass):
 
     @staticmethod
     def test_trace_logged_with_debug_not_set():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_logging._checkLevel.return_value = 0
             thread_id = threading.get_native_id()
             mode = random_string()
             message = random_string()
 
-            with mock.patch('user.mqttsubscribe.weewx.debug', 0):
-                SUT = Logger({'mode': mode})
+            sys.modules['weewx'].debug = 0
+            SUT = Logger({'mode': mode})
 
             SUT.trace(random.randint(1, 100), message)
             SUT.shutdown()
@@ -206,7 +202,7 @@ class TestLogging(BaseTestClass):
 
 class TestQueue(BaseTestClass):
     def test_log_entry_invalid_entry(self):
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_logging._checkLevel.return_value = 0
 
             SUT = Logger({'mode': random_string()})
@@ -221,7 +217,7 @@ class TestQueue(BaseTestClass):
             SUT.shutdown()
 
     def test_shutdown_drains_queue(self):
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_logging._checkLevel.return_value = 0
             mock_log = mock_logging.getLogger.return_value
 
@@ -239,7 +235,7 @@ class TestQueue(BaseTestClass):
             self.assertFalse(SUT.log_thread.is_alive())
 
     def test_shutdown_is_idempotent(self):
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_logging._checkLevel.return_value = 0
 
             SUT = Logger({'mode': random_string()})
@@ -250,7 +246,7 @@ class TestQueue(BaseTestClass):
             self.assertFalse(SUT.log_thread.is_alive())
 
     def test_shutdown_timeout(self):
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_logging._checkLevel.return_value = 0
             mock_log = mock_logging.getLogger.return_value
             mode = random_string()
@@ -272,7 +268,7 @@ class TestQueue(BaseTestClass):
 
             SUT.shutdown(timeout=0.05)
 
-            expected_text = Logger.log_messages[124004].format(name=SUT.log_thread.name)
+            expected_text = user.mqttcommon.Logger.log_messages[124004].format(name=SUT.log_thread.name)
             mock_log.error.assert_called_once_with(SUT.LOG_FORMAT, f"{mode}-{threading.get_native_id()}", expected_text)
             self.assertTrue(SUT.log_thread.is_alive())
 
@@ -306,7 +302,7 @@ class TestThrottling(BaseTestClass):
         }
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
             with mock.patch('user.mqttcommon.time') as mock_time:
                 mock_logging._checkLevel.return_value = 0
                 mock_time.time.return_value = now

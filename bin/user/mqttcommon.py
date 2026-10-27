@@ -9,6 +9,7 @@ import copy
 import locale
 import logging
 import platform
+import queue
 import ssl
 import sys
 import threading
@@ -97,40 +98,44 @@ class QueueLoggerThread(threading.Thread, abc.ABC):
         """ Return the error entry logged for an entry that could not be logged. """
 
 
-class Logger:
+class Logger:  # pylint: disable=too-many-instance-attributes
     """ Manage the logging.
         The log queue and the LoggerThread that drains it are owned here.
 
         The message format is shared; what the format's first argument is is
-        the hook: the log_keys ctor argument, a subclass's pin, or an override
-        of _format_args. The thread class and the logger are ctor hooks:
-        thread_class and log_name. The throttle and the trace level are the
-        remaining hooks, set before the thread starts: is_suppressed delegates
-        to self.throttle when a subclass set one (with none, entries with no
-        log type are dropped), and _log_trace logs at self.trace_level when a
-        subclass set one (with none, trace entries log at DEBUG). """
+        the hook: the log_keys option, a subclass's pin, or an override
+        of _format_args. The thread class and the logger are options:
+        thread_class and log_name, and a config option switches on the
+        config-driven setup: the level, the weewx debug setting, the
+        throttle, the TRACE level, and the handlers, all applied before
+        the thread starts. The throttle and the trace level are the
+        remaining hooks, set before the thread starts: is_suppressed
+        delegates to self.throttle when one is set (with none, entries
+        with no log type are dropped), and _log_trace logs at
+        self.trace_level when one is set (with none, trace entries
+        log at DEBUG). """
     # The default time shutdown waits for the LoggerThread to flush queued messages.
     SHUTDOWN_TIMEOUT = 10
 
     # The name of the module logger, the message format, and the context keys.
     # LOG_KEYS names the entry fields, in order, that form the format's first
-    # argument; fields that are None are omitted. The log_name/log_keys ctor
-    # arguments override these; a subclass may instead pin them, or override
+    # argument; fields that are None are omitted. The log_name/log_keys options
+    # override these; a subclass may instead pin them, or override
     # _format_args to compose the first argument.
     LOG_NAME = __name__
     LOG_FORMAT = "(%s) %s"
     LOG_KEYS = ('name',)
 
-    # Diagnostics reported by log_environment: the logging settings a subclass
-    # configures in its ctor.
+    # Diagnostics reported by log_environment: the logging settings _configure
+    # applies when a config is supplied.
     level = 0
     weewx_debug = 0
     console = False
     filename = None
 
     # The level trace entries are logged at. None (the default) logs them at
-    # DEBUG via log.debug; a subclass with a custom TRACE level sets it before
-    # starting its thread and _log_trace logs at it via log.log.
+    # DEBUG via log.debug; _configure sets it, before starting the thread, when
+    # a config is supplied and _log_trace then logs at it via log.log.
     trace_level = None
 
     # The message texts, keyed by message id, for the logger thread's start, exit,
@@ -149,33 +154,84 @@ class Logger:
     }
 
     # The timestamp of the archive record being processed, stamped onto entries at
-    # enqueue time. None when no record is being processed.
+    # enqueue time. None when no record is being processed. The class attribute is
+    # the default; a consumer whose event handlers track a record sets it on its
+    # logger instance, which stamp_entry prefers.
     archive_timestamp = None
 
-    # The MessageThrottle that gates suppression: a subclass that wants throttling
-    # builds one in its own ctor and sets it before calling super().__init__. When set,
-    # is_suppressed delegates to it; when None (the default), is_suppressed drops
-    # entries that have no log type.
+    # The MessageThrottle that gates suppression: the config path builds one in
+    # _configure. When set, is_suppressed delegates to it; when None (the default),
+    # is_suppressed drops entries that have no log type. A subclass may instead
+    # build one before calling super().__init__.
     throttle = None
 
-    def __init__(self, name, log_queue, thread_class=None, log_name=None, log_keys=None):
-        self.name = name
+    def __init__(self, options=None):
+        """ Create the logger and start its drain thread.
+
+            options keys: 'name' or 'config' - at least one is required, and
+            'name' defaults to the config's 'mode' - plus 'log_queue' (built
+            when omitted), 'thread_class', 'log_name', and 'log_keys'. A
+            'config' also switches on the config-driven setup, applied before
+            the thread starts: level, filename, console, the weewx debug
+            setting, the throttle, the TRACE level, and the handlers. """
+        options = {} if options is None else options
+        config = options.get('config')
+        name = options.get('name')
+        if name is None and config is None:
+            raise ValueError("a logger requires a 'name' or a 'config' option")
+        self.name = name if name is not None else config['mode']
         # log_name/log_keys identify the extension's module logger and context keys; omitted,
         # the LOG_NAME/LOG_KEYS defaults or a subclass's pins apply. A subclass that already
         # configured its logger (before its thread starts) keeps it.
+        log_keys = options.get('log_keys')
         self.log_keys = log_keys if log_keys is not None else self.LOG_KEYS
         if not hasattr(self, 'log'):
-            self.log = logging.getLogger(log_name or self.LOG_NAME)
-        self.log_queue = log_queue
+            self.log = logging.getLogger(options.get('log_name') or self.LOG_NAME)
+        # The queue must exist before _configure: it queues the throttle notice.
+        self.log_queue = options.get('log_queue') or queue.Queue()
+        if config is not None:
+            # check that the level configured is valid
+            self.level = logging._checkLevel(options.get('level', 'NOTSET'))
+            self._configure(config, options)
         self.log_functions = {
             'TRACE': self._log_trace,
             'DEBUG': self._log_debug,
             'INFO': self._log_info,
             'ERROR': self._log_error,
         }
-        # thread_class lets a subclass drain with its own LoggerThread (its entry texts).
-        self.log_thread = (thread_class or LoggerThread)(self.log_queue, self)
+        # thread_class lets a caller drain with its own LoggerThread (its entry texts).
+        self.log_thread = (options.get('thread_class') or LoggerThread)(self.log_queue, self)
         self.log_thread.start()
+
+    def _configure(self, config, options):
+        """ Apply the config-driven settings, before the thread starts. """
+        # Imported here so that mqttcommon stays importable without weewx.
+        import weewx  # pylint: disable=import-outside-toplevel
+
+        self.console = options.get('console')
+        self.filename = options.get('filename')
+        self.weewx_debug = weewx.debug
+
+        throttle_config = MessageThrottle.parse_config(config)
+        self.throttle = MessageThrottle(throttle_config, self._log_throttle_summary)
+
+        # Setup custom TRACE level
+        self.trace_level = 5
+        if logging.getLevelName(self.trace_level) == 'Level 5':
+            logging.addLevelName(self.trace_level, "TRACE")
+
+        self._setup_logging()
+
+        # Resolve where trace entries log: at DEBUG when weewx debugging is on,
+        # at the TRACE level otherwise. After _setup_logging, which may clear the setting.
+        if self.weewx_debug > 1:
+            self.trace_level = None
+
+        # Logging is setup, now safe to log a message about using throttling option.
+        # It is queued before the thread starts; the thread logs its start entry
+        # before it drains the queue, so the logged order is start, then notice.
+        if 'throttle' in config:
+            self.info(122001, MessageThrottle.NOTICE_EXPERIMENTAL)
 
     @classmethod
     def create_entry(cls, name, log_type, msg_id, msg_text):
@@ -189,21 +245,28 @@ class Logger:
             'archive_timestamp': cls.archive_timestamp,
         }
 
+    def stamp_entry(self, entry):
+        """ Stamp an entry with the archive timestamp this logger is processing, and
+            return it. create_entry stamps the class attribute; the consumer's event
+            handlers set the timestamp on their logger instance, which takes precedence. """
+        entry['archive_timestamp'] = self.archive_timestamp
+        return entry
+
     def trace(self, msg_id, msg_text):
         """ Queue a trace message. """
-        self.log_queue.put(self.create_entry(self.name, 'TRACE', msg_id, msg_text))
+        self.log_queue.put(self.stamp_entry(self.create_entry(self.name, 'TRACE', msg_id, msg_text)))
 
     def debug(self, msg_id, msg_text):
         """ Queue a debug message. """
-        self.log_queue.put(self.create_entry(self.name, 'DEBUG', msg_id, msg_text))
+        self.log_queue.put(self.stamp_entry(self.create_entry(self.name, 'DEBUG', msg_id, msg_text)))
 
     def info(self, msg_id, msg_text):
         """ Queue an informational message. """
-        self.log_queue.put(self.create_entry(self.name, 'INFO', msg_id, msg_text))
+        self.log_queue.put(self.stamp_entry(self.create_entry(self.name, 'INFO', msg_id, msg_text)))
 
     def error(self, msg_id, msg_text):
         """ Queue an error message. """
-        self.log_queue.put(self.create_entry(self.name, 'ERROR', msg_id, msg_text))
+        self.log_queue.put(self.stamp_entry(self.create_entry(self.name, 'ERROR', msg_id, msg_text)))
 
     def log_entry(self, entry):
         """ Log a queued entry. This is called by the LoggerThread. """
@@ -215,6 +278,10 @@ class Logger:
         if self.throttle is not None:
             return self.throttle.is_throttled(entry['log_type'], entry['msg_id'])
         return entry['log_type'] is None
+
+    def _log_throttle_summary(self, msg_text):
+        """ Queue a throttle suppression summary message. """
+        self.error(None, msg_text)
 
     def shutdown(self, timeout=SHUTDOWN_TIMEOUT):
         """ Stop the logger thread, flushing queued messages. """
@@ -229,8 +296,8 @@ class Logger:
 
     def stuck_entry(self):
         """ Return the entry logged when the logger thread is stuck in shutdown. """
-        return self.create_entry(self.name, 'ERROR', None,
-                                 self.log_messages[124004].format(name=self.log_thread.name))
+        return self.stamp_entry(self.create_entry(self.name, 'ERROR', None,
+                                                  self.log_messages[124004].format(name=self.log_thread.name)))
 
     def log_environment(self, config_dict, version):
         """ Log the environment we are running in. """
