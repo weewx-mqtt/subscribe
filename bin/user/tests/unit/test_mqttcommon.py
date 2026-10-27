@@ -616,6 +616,18 @@ class TestLogger(unittest.TestCase):
         SUT.log.info.assert_any_call("test %s %s", SUT.name, message)
         self.assertEqual(SUT.log.info.call_count, 3)
 
+    def test_setup_logging_adds_the_file_handler(self):
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            SUT = LoggerStub(random_string(), queue.Queue())
+            SUT.shutdown(timeout=5)
+            filename = random_string()
+
+            SUT.filename = filename
+            SUT._setup_logging()
+
+            mock_logging.FileHandler.assert_called_once_with(filename, mode='w')
+            SUT.log.addHandler.assert_called_once_with(mock_logging.FileHandler.return_value)
+
     def test_format_args_can_be_overridden(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_log = mock_logging.getLogger.return_value

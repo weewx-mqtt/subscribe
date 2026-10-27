@@ -5,6 +5,7 @@
 #
 """ Common code for the weewx-mqtt extensions. """
 import abc
+import copy
 import locale
 import logging
 import platform
@@ -239,6 +240,41 @@ class Logger:
         self.info(0, f"Log file: {self.filename}")
         self.debug(0, f"Record Augmentation is: {record_augmentation}")
         self.debug(0, f"Record Generation is: {record_generation}")
+
+    def _setup_logging(self):
+        """ Setup the weewx message handlers. """
+        if self.console:
+            self.log.addHandler(logging.StreamHandler(sys.stdout))
+
+        if self.level > 0:
+            self.weewx_debug = 0
+            self.log.propagate = 0
+            self.log.setLevel(self.level)
+            # Get a copy of all the handlers
+            handlers = self.get_handlers(self.log.parent)
+            for handler in handlers:
+                handler.setLevel(self.level)
+                self.log.addHandler(handler)
+
+        if self.filename is not None:
+            formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s", "%Y-%m-%d %H:%M:%S")
+            file_handler = logging.FileHandler(self.filename, mode='w')
+            file_handler.setLevel(self.level)
+            file_handler.setFormatter(formatter)
+            self.log.addHandler(file_handler)
+
+    def get_handlers(self, logger):
+        """ recursively get parent handlers """
+        handlers = []
+        for handler in logger.handlers:
+            # Unfortunately cannot make a deep copy, but this seems safe
+            # we only change the logging level...
+            handlers.append(copy.copy(handler))
+
+        if logger.propagate and logger.parent is not None:
+            handlers.extend(self.get_handlers(logger.parent))
+
+        return handlers
 
     def _format_args(self, entry):
         """ Return the format arguments for an entry; the message is always last. """

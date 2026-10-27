@@ -57,7 +57,8 @@ class TestInintialization(BaseTestClass):
 
     @staticmethod
     def test_init_filename_set():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttsubscribe.logging') as mock_logging, \
+                mock.patch('user.mqttcommon.logging', mock_logging):
 
             mock_logging._checkLevel.return_value = 0
 
