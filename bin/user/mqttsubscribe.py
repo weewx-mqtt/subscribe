@@ -594,31 +594,6 @@ DRIVER_VERSION = VERSION
 class ConversionError(ValueError):
     """ Error converting data types. """
 
-class LoggerThread(mqttcommon.LoggerThread):
-    """ Thread to manage logging.
-        It is the only consumer of the logger's queue, and therefore the only
-        thread that logs messages and accesses the throttled message state.
-        The queue loop is inherited from mqttcommon.LoggerThread; the entries
-        use the shared log_messages registry texts. """
-
-    def start_entry(self):
-        """ Return the entry logged when the thread starts. """
-        entry = self.logger.create_entry(self.logger.name, 'INFO', 122002,
-                                         mqttcommon.Logger.log_messages[122002])
-        return self.logger.stamp_entry(entry)
-
-    def exit_entry(self):
-        """ Return the entry logged when the thread exits. """
-        entry = self.logger.create_entry(self.logger.name, 'INFO', 122003,
-                                         mqttcommon.Logger.log_messages[122003])
-        return self.logger.stamp_entry(entry)
-
-    def invalid_entry(self, entry):
-        """ Return the error entry logged for an entry that could not be logged. """
-        invalid = self.logger.create_entry(self.logger.name, 'ERROR', 124003,
-                                           mqttcommon.Logger.log_messages[124003].format(entry=entry))
-        return self.logger.stamp_entry(invalid)
-
 # The context keys for subscribe's log lines: the mode (stamped as the entry name),
 # the emitting thread, and the archive record. None (no record captured) is omitted.
 LOG_KEYS = ('name', 'thread_id', 'archive_timestamp')
@@ -632,7 +607,6 @@ def create_logger(config, level='NOTSET', filename=None, console=None):
         'console': console,
         'log_name': __name__,
         'log_keys': LOG_KEYS,
-        'thread_class': LoggerThread,
     })
 
 class RecordCache():

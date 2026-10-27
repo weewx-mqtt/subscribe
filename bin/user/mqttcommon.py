@@ -387,19 +387,27 @@ class LoggerThread(QueueLoggerThread):
     """ Thread to manage logging.
         This has to be a thread because WeeWX 'owns' the logger.
         So logging has to happen in that process and not a subprocess.
-        The queue loop is inherited from QueueLoggerThread. """
+        The queue loop is inherited from QueueLoggerThread; this is the only consumer of
+        the logger's queue, so queued messages and the throttled message state are only
+        ever accessed by this thread. The start, exit, and invalid entries use the
+        logger's name, the shared log_messages texts and ids, and are stamped with the
+        logger's archive timestamp. """
 
     def start_entry(self):
         """ Return the entry logged when the thread starts. """
-        return self.logger.create_entry(self.name, 'INFO', None, "Starting logger thread")
+        entry = self.logger.create_entry(self.logger.name, 'INFO', 122002, Logger.log_messages[122002])
+        return self.logger.stamp_entry(entry)
 
     def exit_entry(self):
         """ Return the entry logged when the thread exits. """
-        return self.logger.create_entry(self.name, 'INFO', None, f"Exited logger thread, {self.name}.")
+        entry = self.logger.create_entry(self.logger.name, 'INFO', 122003, Logger.log_messages[122003])
+        return self.logger.stamp_entry(entry)
 
     def invalid_entry(self, entry):
         """ Return the error entry logged for an entry that could not be logged. """
-        return self.logger.create_entry(self.name, 'ERROR', None, entry)
+        invalid = self.logger.create_entry(self.logger.name, 'ERROR', 124003,
+                                           Logger.log_messages[124003].format(entry=entry))
+        return self.logger.stamp_entry(invalid)
 
 
 # These mirror weeutil.weeutil.to_int/option_as_list so that mqttcommon stays importable

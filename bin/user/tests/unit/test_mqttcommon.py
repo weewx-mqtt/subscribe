@@ -569,7 +569,7 @@ class TestLogger(unittest.TestCase):
             self.assertFalse(SUT.log_thread.is_alive())
             # The thread logs its start and its exit, and nothing else.
             messages = [call[0][2] for call in mock_log.info.call_args_list]
-            self.assertEqual(messages, ["Starting logger thread", f"Exited logger thread, {SUT.log_thread.name}."])
+            self.assertEqual(messages, ["Starting logger thread.", "Exited logger thread."])
 
     def test_init_uses_the_supplied_thread_class(self):
         with mock.patch('user.mqttcommon.logging'):
@@ -829,10 +829,10 @@ class TestShutdown(unittest.TestCase):
             # The start message, the queued messages, and the exit message are logged in queue order.
             self.assertFalse(SUT.log_thread.is_alive())
             logged = [(call[0], call[1][2]) for call in mock_log.method_calls if call[0] in ('info', 'error')]
-            self.assertEqual(logged, [('info', "Starting logger thread"),
+            self.assertEqual(logged, [('info', "Starting logger thread."),
                                       ('info', first['msg_text']),
                                       ('error', second['msg_text']),
-                                      ('info', f"Exited logger thread, {SUT.log_thread.name}.")])
+                                      ('info', "Exited logger thread.")])
 
     def test_shutdown_is_idempotent(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
@@ -887,7 +887,10 @@ class TestShutdown(unittest.TestCase):
 class TestLoggerThread(unittest.TestCase):
     def test_run(self):
         mock_logger = mock.Mock()
+        mock_logger.name = random_string()
+        mock_logger.archive_timestamp = None
         mock_logger.create_entry.side_effect = user.mqttcommon.Logger.create_entry
+        mock_logger.stamp_entry.side_effect = lambda entry: entry
         log_queue = queue.Queue()
 
         SUT = user.mqttcommon.LoggerThread(log_queue, mock_logger)
@@ -910,19 +913,22 @@ class TestLoggerThread(unittest.TestCase):
 
         entries = [call[0][0] for call in mock_logger.log_entry.call_args_list]
         self.assertEqual(len(entries), 5)
-        self.assertEqual(entries[0], {'name': SUT.name, 'log_type': 'INFO', 'msg_id': None,
-                                      'msg_text': "Starting logger thread", 'thread_id': SUT.native_id,
+        self.assertEqual(entries[0], {'name': mock_logger.name, 'log_type': 'INFO', 'msg_id': 122002,
+                                      'msg_text': "Starting logger thread.", 'thread_id': SUT.native_id,
                                       'archive_timestamp': None})
         self.assertIs(entries[1], debug_entry)
         self.assertIs(entries[2], no_log_type_entry)
         self.assertIs(entries[3], error_entry)
-        self.assertEqual(entries[4], {'name': SUT.name, 'log_type': 'INFO', 'msg_id': None,
-                                      'msg_text': f"Exited logger thread, {SUT.name}.",
+        self.assertEqual(entries[4], {'name': mock_logger.name, 'log_type': 'INFO', 'msg_id': 122003,
+                                      'msg_text': "Exited logger thread.",
                                       'thread_id': SUT.native_id, 'archive_timestamp': None})
 
     def test_run_invalid_entry(self):
         mock_logger = mock.Mock()
+        mock_logger.name = random_string()
+        mock_logger.archive_timestamp = None
         mock_logger.create_entry.side_effect = user.mqttcommon.Logger.create_entry
+        mock_logger.stamp_entry.side_effect = lambda entry: entry
         log_queue = queue.Queue()
 
         invalid_entry = {'name': random_string(), 'log_type': random_string(),
@@ -947,12 +953,13 @@ class TestLoggerThread(unittest.TestCase):
         entries = [call[0][0] for call in mock_logger.log_entry.call_args_list]
         self.assertEqual(len(entries), 4)
         self.assertIs(entries[1], invalid_entry)
-        # The raw entry is handed over as the message of an error entry.
-        self.assertEqual(entries[2], {'name': SUT.name, 'log_type': 'ERROR', 'msg_id': None,
-                                      'msg_text': invalid_entry, 'thread_id': SUT.native_id,
-                                      'archive_timestamp': None})
-        self.assertEqual(entries[3]['log_type'], 'INFO')
-        self.assertEqual(entries[3]['msg_text'], f"Exited logger thread, {SUT.name}.")
+        # The invalid entry is replaced with a formatted error entry.
+        self.assertEqual(entries[2], {'name': mock_logger.name, 'log_type': 'ERROR', 'msg_id': 124003,
+                                      'msg_text': f"Invalid log entry: {invalid_entry}",
+                                      'thread_id': SUT.native_id, 'archive_timestamp': None})
+        self.assertEqual(entries[3], {'name': mock_logger.name, 'log_type': 'INFO', 'msg_id': 122003,
+                                      'msg_text': "Exited logger thread.",
+                                      'thread_id': SUT.native_id, 'archive_timestamp': None})
 
 
 class TestMessageThrottle(unittest.TestCase):

@@ -15,8 +15,7 @@ from test_weewx_stubs import BaseTestClass, random_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.mqttcommon import Logger
-from user.mqttsubscribe import LoggerThread
+from user.mqttcommon import Logger, LoggerThread
 
 class TestLoggerThread(BaseTestClass):
     def test_run(self):
