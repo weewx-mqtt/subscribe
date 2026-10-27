@@ -632,7 +632,7 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         self.log = logging.getLogger(__name__)
         self._setup_logging()
 
-        super().__init__(config['mode'], Queue.Queue(), thread_class=LoggerThread, log=self.log)
+        super().__init__(config['mode'], Queue.Queue(), thread_class=LoggerThread)
 
         # Logging is setup, now safe to log a mwssage about using throttling option
         if 'throttle' in config:

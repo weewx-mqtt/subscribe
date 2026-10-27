@@ -101,16 +101,18 @@ class Logger:
         The log queue and the LoggerThread that drains it are owned here.
 
         The message format is shared; what the format's first argument is is
-        the hook: subclasses pin LOG_KEYS or override _format_args. The entry
-        contract, throttling, the thread class, and the logger itself are the
-        other hooks: is_suppressed, the thread_class/log ctor arguments. """
+        the hook: the log_keys ctor argument, a subclass's pin, or an override
+        of _format_args. The entry contract, throttling, the thread class, and
+        the logger itself are the other hooks: is_suppressed, the thread_class
+        and log_name ctor arguments. """
     # The default time shutdown waits for the LoggerThread to flush queued messages.
     SHUTDOWN_TIMEOUT = 10
 
     # The name of the module logger, the message format, and the context keys.
     # LOG_KEYS names the entry fields, in order, that form the format's first
-    # argument; fields that are None are omitted. Subclasses may instead
-    # override _format_args to compose it.
+    # argument; fields that are None are omitted. The log_name/log_keys ctor
+    # arguments override these; a subclass may instead pin them, or override
+    # _format_args to compose the first argument.
     LOG_NAME = __name__
     LOG_FORMAT = "(%s) %s"
     LOG_KEYS = ('name',)
@@ -141,10 +143,14 @@ class Logger:
     # enqueue time. None when no record is being processed.
     archive_timestamp = None
 
-    def __init__(self, name, log_queue, thread_class=None, log=None):
+    def __init__(self, name, log_queue, thread_class=None, log_name=None, log_keys=None):
         self.name = name
-        # A subclass that already configured its logger (before its thread starts) passes it in.
-        self.log = log if log is not None else logging.getLogger(self.LOG_NAME)
+        # log_name/log_keys identify the extension's module logger and context keys; omitted,
+        # the LOG_NAME/LOG_KEYS defaults or a subclass's pins apply. A subclass that already
+        # configured its logger (before its thread starts) keeps it.
+        self.log_keys = log_keys if log_keys is not None else self.LOG_KEYS
+        if not hasattr(self, 'log'):
+            self.log = logging.getLogger(log_name or self.LOG_NAME)
         self.log_queue = log_queue
         self.log_functions = {
             'TRACE': self._log_trace,
@@ -236,7 +242,7 @@ class Logger:
 
     def _format_args(self, entry):
         """ Return the format arguments for an entry; the message is always last. """
-        return ('-'.join(str(entry[key]) for key in self.LOG_KEYS if entry[key] is not None), entry['msg_text'])
+        return ('-'.join(str(entry[key]) for key in self.log_keys if entry[key] is not None), entry['msg_text'])
 
     def _log_trace(self, entry):
         """ Log a trace entry. This is called by the LoggerThread. """

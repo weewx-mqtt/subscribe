@@ -502,6 +502,14 @@ class ComposedLoggerStub(LoggerStub):
         return (f"composed-{entry['msg_id']}", entry['msg_text'])
 
 
+class ConfiguredLoggerStub(LoggerStub):
+    """ A Logger whose subclass configures its logger before calling super, as subscribe does. """
+    def __init__(self, name, log_queue):
+        """ Pre-configure the logger, before the base ctor runs. """
+        self.log = mock.Mock()
+        super().__init__(name, log_queue)
+
+
 class TestLogger(unittest.TestCase):
     def test_log_messages_texts(self):
         # The thread entries' message texts are shared; consumer hooks look them up by id.
@@ -523,7 +531,7 @@ class TestLogger(unittest.TestCase):
             mock_log.reset_mock()
 
             SUT.log_environment({'StdArchive': {'record_augmentation': 'archive',
-                                                 'record_generation': 'generator'}}, '1.2.3-test')
+                                                'record_generation': 'generator'}}, '1.2.3-test')
             while not SUT.log_queue.empty():
                 SUT.log_entry(SUT.log_queue.get_nowait())
 
@@ -569,19 +577,44 @@ class TestLogger(unittest.TestCase):
 
             self.assertFalse(SUT.log_thread.is_alive())
 
-    def test_init_uses_the_supplied_logger(self):
-        mock_log = mock.Mock()
-        SUT = LoggerStub(random_string(), queue.Queue(), log=mock_log)
+    def test_init_uses_the_supplied_logger_name(self):
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_log = mock_logging.getLogger.return_value
+            SUT = LoggerStub(random_string(), queue.Queue(), log_name='user.mqttcommon-supplied')
 
-        self.assertIs(SUT.log, mock_log)
+            mock_logging.getLogger.assert_called_with('user.mqttcommon-supplied')
+
+            message = random_string()
+            SUT.info(None, message)
+            SUT.shutdown(timeout=5)
+
+            # The start, the queued message, and the exit all log through the supplied logger.
+            mock_log.info.assert_any_call("test %s %s", SUT.name, message)
+            self.assertEqual(mock_log.info.call_count, 3)
+
+    def test_init_uses_the_supplied_log_keys(self):
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_log = mock_logging.getLogger.return_value
+            SUT = LoggerStub(random_string(), queue.Queue(), log_keys=('thread_id',))
+            SUT.shutdown(timeout=5)
+            mock_log.reset_mock()
+
+            text = random_string()
+            SUT.log_entry({'log_type': 'INFO', 'msg_id': 7, 'name': 'ignored', 'thread_id': 42,
+                           'msg_text': text})
+
+            mock_log.info.assert_called_once_with("test %s %s", '42', text)
+
+    def test_init_keeps_a_preconfigured_logger(self):
+        SUT = ConfiguredLoggerStub(random_string(), queue.Queue())
 
         message = random_string()
         SUT.info(None, message)
         SUT.shutdown(timeout=5)
 
-        # The start, the queued message, and the exit all log through the supplied logger.
-        mock_log.info.assert_any_call("test %s %s", SUT.name, message)
-        self.assertEqual(mock_log.info.call_count, 3)
+        # The start, the queued message, and the exit all log through the preconfigured logger.
+        SUT.log.info.assert_any_call("test %s %s", SUT.name, message)
+        self.assertEqual(SUT.log.info.call_count, 3)
 
     def test_format_args_can_be_overridden(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
