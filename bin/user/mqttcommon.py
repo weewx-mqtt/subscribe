@@ -104,9 +104,11 @@ class Logger:
         The message format is shared; what the format's first argument is is
         the hook: the log_keys ctor argument, a subclass's pin, or an override
         of _format_args. The thread class and the logger are ctor hooks:
-        thread_class and log_name. The throttle is the last hook: is_suppressed
-        delegates to the MessageThrottle a subclass sets on self.throttle before
-        calling super().__init__; with none, entries with no log type are dropped. """
+        thread_class and log_name. The throttle and the trace level are the
+        remaining hooks, set before the thread starts: is_suppressed delegates
+        to self.throttle when a subclass set one (with none, entries with no
+        log type are dropped), and _log_trace logs at self.trace_level when a
+        subclass set one (with none, trace entries log at DEBUG). """
     # The default time shutdown waits for the LoggerThread to flush queued messages.
     SHUTDOWN_TIMEOUT = 10
 
@@ -125,6 +127,11 @@ class Logger:
     weewx_debug = 0
     console = False
     filename = None
+
+    # The level trace entries are logged at. None (the default) logs them at
+    # DEBUG via log.debug; a subclass with a custom TRACE level sets it before
+    # starting its thread and _log_trace logs at it via log.log.
+    trace_level = None
 
     # The message texts, keyed by message id, for the logger thread's start, exit,
     # and invalid entries and the stuck-in-shutdown warning. stuck_entry and a
@@ -291,7 +298,10 @@ class Logger:
 
     def _log_trace(self, entry):
         """ Log a trace entry. This is called by the LoggerThread. """
-        self.log.debug(self.LOG_FORMAT, *self._format_args(entry))
+        if self.trace_level is None:
+            self.log.debug(self.LOG_FORMAT, *self._format_args(entry))
+        else:
+            self.log.log(self.trace_level, self.LOG_FORMAT, *self._format_args(entry))
 
     def _log_debug(self, entry):
         """ Log a debug entry. This is called by the LoggerThread. """

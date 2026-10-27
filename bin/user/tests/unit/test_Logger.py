@@ -196,8 +196,8 @@ class TestLogging(BaseTestClass):
             mode = random_string()
             message = random_string()
 
-            SUT = Logger({'mode': mode})
-            SUT.weewx_debug = 0
+            with mock.patch('user.mqttsubscribe.weewx.debug', 0):
+                SUT = Logger({'mode': mode})
 
             SUT.trace(random.randint(1, 100), message)
             SUT.shutdown()

@@ -632,6 +632,11 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         self.log = logging.getLogger(__name__)
         self._setup_logging()
 
+        # Resolve where trace entries log: at DEBUG when weewx debugging is on,
+        # at the TRACE level otherwise. After _setup_logging, which may clear the setting.
+        if self.weewx_debug > 1:
+            self.trace_level = None
+
         super().__init__(config['mode'], Queue.Queue(), thread_class=LoggerThread)
 
         # Logging is setup, now safe to log a mwssage about using throttling option
@@ -641,13 +646,6 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
     def _log_throttle_summary(self, msg_text):
         """ Queue a throttle suppression summary message. """
         self.error(None, msg_text)
-
-    def _log_trace(self, entry):
-        """ Log a trace entry. This is called by the LoggerThread. """
-        if self.weewx_debug > 1:
-            self.log.debug(self.LOG_FORMAT, *self._format_args(entry))
-        else:
-            self.log.log(self.trace_level, self.LOG_FORMAT, *self._format_args(entry))
 
 class LoggerThread(mqttcommon.LoggerThread):
     """ Thread to manage logging.

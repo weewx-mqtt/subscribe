@@ -736,6 +736,21 @@ class TestLogger(unittest.TestCase):
             mock_log.info.assert_called_once_with("test %s %s", info_name, info_message)
             mock_log.error.assert_called_once_with("test %s %s", error_name, error_message)
 
+    def test_log_entry_uses_the_trace_level_when_set(self):
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_log = mock_logging.getLogger.return_value
+            SUT = self._stopped_logger()
+            SUT.trace_level = 5
+            mock_log.reset_mock()
+
+            trace_name = random_string()
+            trace_message = random_string()
+
+            SUT.log_entry({'name': trace_name, 'log_type': 'TRACE', 'msg_text': trace_message})
+
+            mock_log.log.assert_called_once_with(5, "test %s %s", trace_name, trace_message)
+            mock_log.debug.assert_not_called()
+
     def test_log_entry_with_no_log_type_is_skipped(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_log = mock_logging.getLogger.return_value
