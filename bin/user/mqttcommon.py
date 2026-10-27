@@ -103,9 +103,10 @@ class Logger:
 
         The message format is shared; what the format's first argument is is
         the hook: the log_keys ctor argument, a subclass's pin, or an override
-        of _format_args. The entry contract, throttling, the thread class, and
-        the logger itself are the other hooks: is_suppressed, the thread_class
-        and log_name ctor arguments. """
+        of _format_args. The thread class and the logger are ctor hooks:
+        thread_class and log_name. The throttle is the last hook: is_suppressed
+        delegates to the MessageThrottle a subclass sets on self.throttle before
+        calling super().__init__; with none, entries with no log type are dropped. """
     # The default time shutdown waits for the LoggerThread to flush queued messages.
     SHUTDOWN_TIMEOUT = 10
 
@@ -143,6 +144,12 @@ class Logger:
     # The timestamp of the archive record being processed, stamped onto entries at
     # enqueue time. None when no record is being processed.
     archive_timestamp = None
+
+    # The MessageThrottle that gates suppression: a subclass that wants throttling
+    # builds one in its own ctor and sets it before calling super().__init__. When set,
+    # is_suppressed delegates to it; when None (the default), is_suppressed drops
+    # entries that have no log type.
+    throttle = None
 
     def __init__(self, name, log_queue, thread_class=None, log_name=None, log_keys=None):
         self.name = name
@@ -198,6 +205,8 @@ class Logger:
 
     def is_suppressed(self, entry):
         """ Return True when the entry should not be logged. """
+        if self.throttle is not None:
+            return self.throttle.is_throttled(entry['log_type'], entry['msg_id'])
         return entry['log_type'] is None
 
     def shutdown(self, timeout=SHUTDOWN_TIMEOUT):

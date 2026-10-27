@@ -642,10 +642,6 @@ class Logger(mqttcommon.Logger):  # pylint: disable=too-many-instance-attributes
         """ Queue a throttle suppression summary message. """
         self.error(None, msg_text)
 
-    def is_suppressed(self, entry):
-        """ Return True when the entry is throttled. """
-        return self.throttle.is_throttled(entry['log_type'], entry['msg_id'])
-
     def _log_trace(self, entry):
         """ Log a trace entry. This is called by the LoggerThread. """
         if self.weewx_debug > 1:

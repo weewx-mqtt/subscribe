@@ -628,6 +628,25 @@ class TestLogger(unittest.TestCase):
             mock_logging.FileHandler.assert_called_once_with(filename, mode='w')
             SUT.log.addHandler.assert_called_once_with(mock_logging.FileHandler.return_value)
 
+    def test_is_suppressed_drops_entries_without_a_log_type(self):
+        SUT = LoggerStub(random_string(), queue.Queue())
+        SUT.shutdown(timeout=5)
+
+        self.assertTrue(SUT.is_suppressed(LoggerStub.create_entry(random_string(), None, None, random_string())))
+        self.assertFalse(SUT.is_suppressed(LoggerStub.create_entry(random_string(), 'INFO', None, random_string())))
+
+    def test_is_suppressed_delegates_to_the_throttle(self):
+        SUT = LoggerStub(random_string(), queue.Queue())
+        SUT.shutdown(timeout=5)
+
+        throttle = mock.Mock()
+        throttle.is_throttled.return_value = True
+        SUT.throttle = throttle
+        entry = LoggerStub.create_entry(random_string(), 'INFO', 1234, random_string())
+
+        self.assertTrue(SUT.is_suppressed(entry))
+        throttle.is_throttled.assert_called_once_with('INFO', 1234)
+
     def test_format_args_can_be_overridden(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_log = mock_logging.getLogger.return_value
