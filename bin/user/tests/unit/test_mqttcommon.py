@@ -639,8 +639,10 @@ class TestLogger(unittest.TestCase):
             SUT.shutdown(timeout=5)
 
             # The experimental throttle notice is queued, and logged after the thread's start entry.
+            # It renders with the converged format: mode, the queueing thread's id, no record.
             mock_logging.getLogger.return_value.info.assert_any_call(
-                "(%s) %s", mode, user.mqttcommon.MessageThrottle.NOTICE_EXPERIMENTAL)
+                "(%s) %s", f"{mode}-{threading.get_native_id()}",
+                user.mqttcommon.MessageThrottle.NOTICE_EXPERIMENTAL)
 
     def test_init_keeps_a_preconfigured_logger(self):
         SUT = ConfiguredLoggerStub(random_string(), queue.Queue())

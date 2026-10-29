@@ -594,19 +594,14 @@ DRIVER_VERSION = VERSION
 class ConversionError(ValueError):
     """ Error converting data types. """
 
-# The context keys for subscribe's log lines: the mode (stamped as the entry name),
-# the emitting thread, and the archive record. None (no record captured) is omitted.
-LOG_KEYS = ('name', 'thread_id', 'archive_timestamp')
-
 def create_logger(config, level='NOTSET', filename=None, console=None):
-    """ Create subscribe's logger: config-driven, with subscribe's pins. """
+    """ Create subscribe's logger: config-driven, with subscribe's module logger. """
     return mqttcommon.Logger({
         'config': config,
         'level': level,
         'filename': filename,
         'console': console,
         'log_name': __name__,
-        'log_keys': LOG_KEYS,
     })
 
 class RecordCache():

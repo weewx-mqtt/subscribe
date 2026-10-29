@@ -119,12 +119,15 @@ class Logger:  # pylint: disable=too-many-instance-attributes
 
     # The name of the module logger, the message format, and the context keys.
     # LOG_KEYS names the entry fields, in order, that form the format's first
-    # argument; fields that are None are omitted. The log_name/log_keys options
-    # override these; a subclass may instead pin them, or override
-    # _format_args to compose the first argument.
+    # argument; fields that are None are omitted. The default is the format
+    # converged on across the weewx-mqtt extensions: the component name, the
+    # emitting thread, and the archive record being processed - None fields,
+    # such as archive_timestamp for a consumer that never stamps one, are
+    # omitted. The log_name/log_keys options override these; a subclass may
+    # instead pin them, or override _format_args to compose the first argument.
     LOG_NAME = __name__
     LOG_FORMAT = "(%s) %s"
-    LOG_KEYS = ('name',)
+    LOG_KEYS = ('name', 'thread_id', 'archive_timestamp')
 
     # Diagnostics reported by log_environment: the logging settings _configure
     # applies when a config is supplied.
