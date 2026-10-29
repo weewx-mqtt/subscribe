@@ -741,6 +741,56 @@ class TestLogger(unittest.TestCase):
         self.assertEqual([entry['msg_text'] for entry in entries], texts)
         self.assertEqual([entry['thread_id'] for entry in entries], [threading.get_native_id()] * 4)
 
+    def test_log_methods_stamp_the_queueing_thread_id(self):
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_log = mock_logging.getLogger.return_value
+            SUT = user.mqttcommon.Logger({'name': random_string(), 'log_queue': queue.Queue()})
+
+            debug_message = random_string()
+            info_message = random_string()
+            error_message = random_string()
+            thread_ids = []
+
+            def log_messages():
+                thread_ids.append(threading.get_native_id())
+                SUT.debug(None, debug_message)
+                SUT.info(None, info_message)
+                SUT.error(None, error_message)
+
+            thread = threading.Thread(target=log_messages)
+            thread.start()
+            thread.join()
+
+            SUT.shutdown(timeout=5)
+
+            # The message is logged with the id of the thread that queued it,
+            # not the id of the logger thread, after the logger's name.
+            prefix = f"{SUT.name}-{thread_ids[0]}"
+            mock_log.debug.assert_called_once_with("(%s) %s", prefix, debug_message)
+            mock_log.info.assert_any_call("(%s) %s", prefix, info_message)
+            mock_log.error.assert_called_once_with("(%s) %s", prefix, error_message)
+
+    def test_log_methods_render_the_default_format(self):
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_log = mock_logging.getLogger.return_value
+            name = random_string()
+            # A real Logger with the default options renders the converged format:
+            # the name, the queueing thread's id, and the archive record when one is stamped.
+            SUT = user.mqttcommon.Logger({'name': name, 'log_queue': queue.Queue()})
+
+            no_record_message = random_string()
+            SUT.info(None, no_record_message)
+
+            SUT.archive_timestamp = random.randint(1, 1000000)
+            record_message = random_string()
+            SUT.info(None, record_message)
+
+            SUT.shutdown(timeout=5)
+
+            prefix = f"{name}-{threading.get_native_id()}"
+            mock_log.info.assert_any_call("(%s) %s", prefix, no_record_message)
+            mock_log.info.assert_any_call("(%s) %s", f"{prefix}-{SUT.archive_timestamp}", record_message)
+
     @staticmethod
     def _stopped_logger(name=None, log_queue=None):
         """ Construct a Logger and drain its thread, so log_entry calls are synchronous. """
