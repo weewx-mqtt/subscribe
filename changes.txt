@@ -6,6 +6,8 @@ Enhancements:
   This makes logging thread safe and the throttled message state deterministic.
 - Fail loudly at import when an older 'user.mqttcommon' copy is loaded (an
   install-order overwrite by another weewx-mqtt extension).
+- Log line prefixes use the format converged across the weewx-mqtt extensions,
+  defined by the shared 'user.mqttcommon': (component-thread_id-archive_timestamp).
 
 V3.2.0
 Enhancements:
