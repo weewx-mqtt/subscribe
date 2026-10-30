@@ -382,13 +382,9 @@ class MessageThrottle:  # pylint: disable=too-few-public-methods
     @staticmethod
     def parse_config(config):
         """ Parse the 'throttle' section of the config into the internal representation. """
-        throttle_config = {'category': {}, 'message': {}}
-
-        if 'throttle' in config:
-            throttle_config['category'] = MessageThrottle._parse_categories(config['throttle'])
-            throttle_config['message'] = MessageThrottle._parse_messages(config['throttle'])
-
-        return throttle_config
+        throttle = config.get('throttle', {})
+        return {'category': MessageThrottle._parse_categories(throttle),
+                'message': MessageThrottle._parse_messages(throttle)}
 
     @staticmethod
     def _parse_categories(throttle):
@@ -402,9 +398,10 @@ class MessageThrottle:  # pylint: disable=too-few-public-methods
                 raise ValueError(MessageThrottle.ERROR_CATEGORY_MISSING_MAX.format(category=category))
             if 'duration' not in throttle['category'][category]:
                 raise ValueError(MessageThrottle.ERROR_CATEGORY_MISSING_DURATION.format(category=category))
-            throttle['category'][category]['max'] = _to_int(throttle['category'][category]['max'])
-            throttle['category'][category]['duration'] = _to_int(throttle['category'][category]['duration'])
-            categories[category] = throttle['category'][category]
+            categories[category] = {
+                'max': _to_int(throttle['category'][category]['max']),
+                'duration': _to_int(throttle['category'][category]['duration'])
+            }
 
         return categories
 

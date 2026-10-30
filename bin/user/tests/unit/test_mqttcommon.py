@@ -1167,6 +1167,27 @@ class TestMessageThrottleParseConfig(unittest.TestCase):
 
         self.assertDictEqual(user.mqttcommon.MessageThrottle.parse_config(config), expected_throttle_config)
 
+    def test_parse_config_does_not_mutate_the_input(self):
+        config_dict = {
+            'throttle': {
+                'category': {
+                    'ERROR': {
+                        'max': '10',
+                        'duration': '60',
+                    }
+                }
+            }
+        }
+        config = configobj.ConfigObj(config_dict)
+
+        parsed = user.mqttcommon.MessageThrottle.parse_config(config)
+
+        # The configured values are left as they are; the parsed copy holds the ints.
+        self.assertEqual(config['throttle']['category']['ERROR']['max'], '10')
+        self.assertEqual(config['throttle']['category']['ERROR']['duration'], '60')
+        self.assertEqual(parsed['category']['ERROR']['max'], 10)
+        self.assertEqual(parsed['category']['ERROR']['duration'], 60)
+
     def test_invalid_category_specified(self):
         category_name = f"NOT_A_CATEGORY-{random.randint(1000, 9999)}"
         category = {
