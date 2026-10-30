@@ -2005,8 +2005,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
                 raise ValueError(MQTTSubscriber.log_messages[39003].format(clean_start_string=clean_start_string)) from None
 
     def _setup_mqtt(self, mqtt_options, message_callback_provider_name, message_callback_config):
-        self.mqtt_logger = {level: getattr(self.logger, level_name.lower())
-                            for level, level_name in mqttcommon.PAHO_LOG_LEVELS.items()}
+        self.mqtt_logger = mqttcommon.paho_log_methods(self.logger)
 
         self.userdata = {}
         self.userdata['connect'] = False

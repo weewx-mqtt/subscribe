@@ -533,6 +533,12 @@ def parse_protocol(protocol_string):
     return getattr(mqtt, protocol_string, 0)
 
 
+def paho_log_methods(logger):
+    """ Map the paho mqtt log levels to the logger's methods. """
+    return {level: getattr(logger, level_name.lower())
+            for level, level_name in PAHO_LOG_LEVELS.items()}
+
+
 def create_client(api, *, client_id, protocol, userdata=None, clean_session=None):
     """ Create a paho mqtt client for the selected api variant. """
     if api == API_V1:

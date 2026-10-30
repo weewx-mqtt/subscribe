@@ -65,6 +65,19 @@ class TestParseProtocol(unittest.TestCase):
         self.assertEqual(user.mqttcommon.parse_protocol('invalid'), 0)
 
 
+class TestPahoLogMethods(unittest.TestCase):
+    def test_maps_paho_levels_to_the_logger_methods(self):
+        logger = mock.Mock()
+
+        methods = user.mqttcommon.paho_log_methods(logger)
+
+        self.assertIs(methods[mqtt.MQTT_LOG_INFO], logger.info)
+        self.assertIs(methods[mqtt.MQTT_LOG_NOTICE], logger.info)
+        self.assertIs(methods[mqtt.MQTT_LOG_WARNING], logger.info)
+        self.assertIs(methods[mqtt.MQTT_LOG_ERR], logger.error)
+        self.assertIs(methods[mqtt.MQTT_LOG_DEBUG], logger.debug)
+
+
 class TestCreateClient(unittest.TestCase):
     @staticmethod
     def test_v1():
