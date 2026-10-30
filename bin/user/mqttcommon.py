@@ -57,47 +57,25 @@ class Logger:  # pylint: disable=too-many-instance-attributes
     """ Manage the logging.
         The log queue and the LoggerThread that drains it are owned here.
 
-        The message format is shared; what the format's first argument is is
-        the hook: the log_keys option, a subclass's pin, or an override
-        of _format_args. The logger's name is an option: log_name, and a
-        config option switches on the config-driven setup: the level, the
-        weewx debug setting, the throttle, the TRACE level, and the handlers,
-        all applied before the thread starts. The throttle and the trace
-        level are the remaining hooks, set before the thread starts:
-        is_suppressed delegates to self.throttle when one is set (with none,
-        entries with no log type are dropped), and _log_trace logs at
-        self.trace_level when one is set (with none, trace entries
-        log at DEBUG). """
+        A 'config' switches on the config-driven setup: the level, the weewx
+        debug setting, the throttle, the TRACE level, and the handlers, all
+        applied before the thread starts. The throttle gates is_suppressed
+        (with none, entries with no log type are dropped), and trace entries
+        log at self.trace_level (with none, at DEBUG). """
     # The default time shutdown waits for the LoggerThread to flush queued messages.
     SHUTDOWN_TIMEOUT = 10
 
-    # The name of the module logger, the message format, and the context keys.
-    # LOG_KEYS names the entry fields, in order, that form the format's first
-    # argument; fields that are None are omitted. The default is the format
-    # converged on across the weewx-mqtt extensions: the component name, the
-    # emitting thread, and the archive record being processed - None fields,
-    # such as archive_timestamp for a consumer that never stamps one, are
-    # omitted. The log_name/log_keys options override these; a subclass may
-    # instead pin them, or override _format_args to compose the first argument.
-    LOG_NAME = __name__
+    # The message format and the context keys. LOG_KEYS names the entry fields,
+    # in order, that form the format's first argument; fields that are None are
+    # omitted. The values are the format converged on across the weewx-mqtt
+    # extensions: the component name, the emitting thread, and the archive
+    # record being processed - None fields, such as archive_timestamp for a
+    # consumer that never stamps one, are omitted.
     LOG_FORMAT = "(%s) %s"
     LOG_KEYS = ('name', 'thread_id', 'archive_timestamp')
 
-    # Diagnostics reported by log_environment: the logging settings _configure
-    # applies when a config is supplied.
-    level = 0
-    weewx_debug = 0
-    console = False
-    filename = None
-
-    # The level trace entries are logged at. None (the default) logs them at
-    # DEBUG via log.debug; _configure sets it, before starting the thread, when
-    # a config is supplied and _log_trace then logs at it via log.log.
-    trace_level = None
-
     # The message texts, keyed by message id, for the logger thread's start, exit,
-    # and invalid entries and the stuck-in-shutdown warning. stuck_entry and the
-    # LoggerThread's entry builders look these up.
+    # and invalid entries and the stuck-in-shutdown warning.
     log_messages = {
         # trace message
         # debug messages
@@ -115,36 +93,31 @@ class Logger:  # pylint: disable=too-many-instance-attributes
     # logger instance, which stamp_entry prefers.
     archive_timestamp = None
 
-    # The MessageThrottle that gates suppression: the config path builds one in
-    # _configure. When set, is_suppressed delegates to it; when None (the default),
-    # is_suppressed drops entries that have no log type. A subclass may instead
-    # build one before calling super().__init__.
-    throttle = None
-
     def __init__(self, options=None):
         """ Create the logger and start its drain thread.
 
             options keys: 'name' or 'config' - at least one is required, and
             'name' defaults to the config's 'mode' - plus 'log_queue' (built
-            when omitted), 'log_name', and 'log_keys'. A 'config' also
-            switches on the config-driven setup, applied before the thread
-            starts: level, filename, console, the weewx debug setting, the
-            throttle, the TRACE level, and the handlers. """
+            when omitted) and 'log_name'. A 'config' also switches on the
+            config-driven setup, applied before the thread starts: level,
+            filename, console, the weewx debug setting, the throttle, the
+            TRACE level, and the handlers. """
         options = {} if options is None else options
         config = options.get('config')
         name = options.get('name')
         if name is None and config is None:
             raise ValueError("a logger requires a 'name' or a 'config' option")
         self.name = name if name is not None else config['mode']
-        # log_name/log_keys identify the extension's module logger and context keys; omitted,
-        # the LOG_NAME/LOG_KEYS defaults or a subclass's pins apply. A subclass that already
-        # configured its logger (before its thread starts) keeps it.
-        log_keys = options.get('log_keys')
-        self.log_keys = log_keys if log_keys is not None else self.LOG_KEYS
-        if not hasattr(self, 'log'):
-            self.log = logging.getLogger(options.get('log_name') or self.LOG_NAME)
+        self.log = logging.getLogger(options.get('log_name') or __name__)
         # The queue must exist before _configure: it queues the throttle notice.
         self.log_queue = options.get('log_queue') or queue.Queue()
+        # The config-driven settings, with their defaults when no config is supplied.
+        self.level = 0
+        self.weewx_debug = 0
+        self.console = False
+        self.filename = None
+        self.trace_level = None
+        self.throttle = None
         if config is not None:
             # check that the level configured is valid
             self.level = logging._checkLevel(options.get('level', 'NOTSET'))
@@ -316,7 +289,7 @@ class Logger:  # pylint: disable=too-many-instance-attributes
 
     def _format_args(self, entry):
         """ Return the format arguments for an entry; the message is always last. """
-        return ('-'.join(str(entry[key]) for key in self.log_keys if entry[key] is not None), entry['msg_text'])
+        return ('-'.join(str(entry[key]) for key in self.LOG_KEYS if entry[key] is not None), entry['msg_text'])
 
     def _log_trace(self, entry):
         """ Log a trace entry. This is called by the LoggerThread. """
