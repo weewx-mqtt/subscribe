@@ -87,12 +87,6 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         124004: "Unable to shut down logger thread {name}.",
     }
 
-    # The timestamp of the archive record being processed, stamped onto entries at
-    # enqueue time. None when no record is being processed. The class attribute is
-    # the default; a consumer whose event handlers track a record sets it on its
-    # logger instance, which stamp_entry prefers.
-    archive_timestamp = None
-
     def __init__(self, options=None):
         """ Create the logger and start its drain thread.
 
@@ -118,6 +112,9 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         self.filename = None
         self.trace_level = None
         self.throttle = None
+        # The timestamp of the archive record being processed, carried by the entries
+        # produced while it is set. A consumer whose event handlers track a record sets it.
+        self.archive_timestamp = None
         if config is not None:
             # check that the level configured is valid
             self.level = logging._checkLevel(options.get('level', 'NOTSET'))
@@ -161,40 +158,33 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         if 'throttle' in config:
             self.info(122001, MessageThrottle.NOTICE_EXPERIMENTAL)
 
-    @classmethod
-    def create_entry(cls, name, log_type, msg_id, msg_text):
-        """ Create a log entry, capturing the emitting thread and the archive timestamp. """
+    @staticmethod
+    def create_entry(name, log_type, msg_id, msg_text, archive_timestamp=None):
+        """ Create a log entry, capturing the emitting thread and the archive record context. """
         return {
             'name': name,
             'log_type': log_type,
             'msg_id': msg_id,
             'msg_text': msg_text,
             'thread_id': threading.get_native_id(),
-            'archive_timestamp': cls.archive_timestamp,
+            'archive_timestamp': archive_timestamp,
         }
-
-    def stamp_entry(self, entry):
-        """ Stamp an entry with the archive timestamp this logger is processing, and
-            return it. create_entry stamps the class attribute; the consumer's event
-            handlers set the timestamp on their logger instance, which takes precedence. """
-        entry['archive_timestamp'] = self.archive_timestamp
-        return entry
 
     def trace(self, msg_id, msg_text):
         """ Queue a trace message. """
-        self.log_queue.put(self.stamp_entry(self.create_entry(self.name, 'TRACE', msg_id, msg_text)))
+        self.log_queue.put(self.create_entry(self.name, 'TRACE', msg_id, msg_text, self.archive_timestamp))
 
     def debug(self, msg_id, msg_text):
         """ Queue a debug message. """
-        self.log_queue.put(self.stamp_entry(self.create_entry(self.name, 'DEBUG', msg_id, msg_text)))
+        self.log_queue.put(self.create_entry(self.name, 'DEBUG', msg_id, msg_text, self.archive_timestamp))
 
     def info(self, msg_id, msg_text):
         """ Queue an informational message. """
-        self.log_queue.put(self.stamp_entry(self.create_entry(self.name, 'INFO', msg_id, msg_text)))
+        self.log_queue.put(self.create_entry(self.name, 'INFO', msg_id, msg_text, self.archive_timestamp))
 
     def error(self, msg_id, msg_text):
         """ Queue an error message. """
-        self.log_queue.put(self.stamp_entry(self.create_entry(self.name, 'ERROR', msg_id, msg_text)))
+        self.log_queue.put(self.create_entry(self.name, 'ERROR', msg_id, msg_text, self.archive_timestamp))
 
     def log_entry(self, entry):
         """ Log a queued entry. This is called by the LoggerThread. """
@@ -224,8 +214,9 @@ class Logger:  # pylint: disable=too-many-instance-attributes
 
     def stuck_entry(self):
         """ Return the entry logged when the logger thread is stuck in shutdown. """
-        return self.stamp_entry(self.create_entry(self.name, 'ERROR', None,
-                                                  self.log_messages[124004].format(name=self.log_thread.name)))
+        return self.create_entry(self.name, 'ERROR', None,
+                                 self.log_messages[124004].format(name=self.log_thread.name),
+                                 self.archive_timestamp)
 
     def log_environment(self, config_dict, version):
         """ Log the environment we are running in. """
@@ -348,19 +339,19 @@ class LoggerThread(threading.Thread):
 
     def _start_entry(self):
         """ Return the entry logged when the thread starts. """
-        entry = self.logger.create_entry(self.logger.name, 'INFO', 122002, Logger.log_messages[122002])
-        return self.logger.stamp_entry(entry)
+        return self.logger.create_entry(self.logger.name, 'INFO', 122002, Logger.log_messages[122002],
+                                        self.logger.archive_timestamp)
 
     def _exit_entry(self):
         """ Return the entry logged when the thread exits. """
-        entry = self.logger.create_entry(self.logger.name, 'INFO', 122003, Logger.log_messages[122003])
-        return self.logger.stamp_entry(entry)
+        return self.logger.create_entry(self.logger.name, 'INFO', 122003, Logger.log_messages[122003],
+                                        self.logger.archive_timestamp)
 
     def _invalid_entry(self, entry):
         """ Return the error entry logged for an entry that could not be logged. """
-        invalid = self.logger.create_entry(self.logger.name, 'ERROR', 124003,
-                                           Logger.log_messages[124003].format(entry=entry))
-        return self.logger.stamp_entry(invalid)
+        return self.logger.create_entry(self.logger.name, 'ERROR', 124003,
+                                        Logger.log_messages[124003].format(entry=entry),
+                                        self.logger.archive_timestamp)
 
 
 # These mirror weeutil.weeutil.to_int/option_as_list so that mqttcommon stays importable

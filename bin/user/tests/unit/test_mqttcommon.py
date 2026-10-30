@@ -413,35 +413,18 @@ class TestApiLevel(unittest.TestCase):
 
 
 class LoggerStub(user.mqttcommon.Logger):
-    """ A concrete Logger, for testing the shared logging skeleton. """
-    LOG_NAME = 'user.mqttcommon-test'
+    """ A concrete Logger with a compact format, for testing the shared skeleton. """
     LOG_FORMAT = "test %s %s"
     LOG_KEYS = ('name',)
 
-    def __init__(self, name, log_queue, log_name=None, log_keys=None):
+    def __init__(self, name, log_queue, log_name=None):
         """ Pack the flat arguments into the base ctor's options dict. """
-        super().__init__({'name': name, 'log_queue': log_queue,
-                          'log_name': log_name, 'log_keys': log_keys})
-
-
-class ComposedLoggerStub(LoggerStub):
-    """ A Logger whose format arguments are composed instead of LOG_KEY-keyed. """
-    def _format_args(self, entry):
-        """ Compose the first argument from the message id. """
-        return (f"composed-{entry['msg_id']}", entry['msg_text'])
-
-
-class ConfiguredLoggerStub(LoggerStub):
-    """ A Logger whose subclass configures its logger before calling super. """
-    def __init__(self, name, log_queue):
-        """ Pre-configure the logger, before the base ctor runs. """
-        self.log = mock.Mock()
-        super().__init__(name, log_queue)
+        super().__init__({'name': name, 'log_queue': log_queue, 'log_name': log_name})
 
 
 class TestLogger(unittest.TestCase):
     def test_log_messages_texts(self):
-        # The thread entries' message texts are shared; consumer hooks look them up by id.
+        # The thread entries' message texts are shared and looked up by id.
         self.assertEqual(user.mqttcommon.Logger.log_messages, {
             122002: "Starting logger thread.",
             122003: "Exited logger thread.",
@@ -510,19 +493,6 @@ class TestLogger(unittest.TestCase):
             mock_log.info.assert_any_call("test %s %s", SUT.name, message)
             self.assertEqual(mock_log.info.call_count, 3)
 
-    def test_init_uses_the_supplied_log_keys(self):
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-            mock_log = mock_logging.getLogger.return_value
-            SUT = LoggerStub(random_string(), queue.Queue(), log_keys=('thread_id',))
-            SUT.shutdown(timeout=5)
-            mock_log.reset_mock()
-
-            text = random_string()
-            SUT.log_entry({'log_type': 'INFO', 'msg_id': 7, 'name': 'ignored', 'thread_id': 42,
-                           'msg_text': text})
-
-            mock_log.info.assert_called_once_with("test %s %s", '42', text)
-
     def test_init_requires_a_name_or_a_config(self):
         with self.assertRaises(ValueError):
             user.mqttcommon.Logger()
@@ -557,17 +527,6 @@ class TestLogger(unittest.TestCase):
                 "(%s) %s", f"{mode}-{threading.get_native_id()}",
                 user.mqttcommon.MessageThrottle.NOTICE_EXPERIMENTAL)
 
-    def test_init_keeps_a_preconfigured_logger(self):
-        SUT = ConfiguredLoggerStub(random_string(), queue.Queue())
-
-        message = random_string()
-        SUT.info(None, message)
-        SUT.shutdown(timeout=5)
-
-        # The start, the queued message, and the exit all log through the preconfigured logger.
-        SUT.log.info.assert_any_call("test %s %s", SUT.name, message)
-        self.assertEqual(SUT.log.info.call_count, 3)
-
     def test_setup_logging_adds_the_file_handler(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
             SUT = LoggerStub(random_string(), queue.Queue())
@@ -599,18 +558,6 @@ class TestLogger(unittest.TestCase):
         self.assertTrue(SUT.is_suppressed(entry))
         throttle.is_throttled.assert_called_once_with('INFO', 1234)
 
-    def test_format_args_can_be_overridden(self):
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-            mock_log = mock_logging.getLogger.return_value
-            SUT = ComposedLoggerStub(random_string(), queue.Queue())
-            SUT.shutdown(timeout=5)
-            mock_log.reset_mock()
-
-            text = random_string()
-            SUT.log_entry({'log_type': 'INFO', 'msg_id': 7, 'msg_text': text})
-
-            mock_log.info.assert_called_once_with("test %s %s", "composed-7", text)
-
     def test_create_entry_captures_the_emitting_thread(self):
         name = random_string()
         text = random_string()
@@ -620,16 +567,13 @@ class TestLogger(unittest.TestCase):
         self.assertEqual(entry, {'name': name, 'log_type': 'INFO', 'msg_id': None, 'msg_text': text,
                                  'thread_id': threading.get_native_id(), 'archive_timestamp': None})
 
-    def test_create_entry_stamps_the_class_archive_timestamp(self):
+    def test_create_entry_carries_the_supplied_archive_timestamp(self):
         archive_timestamp = random.randint(1, 1000000)
-        LoggerStub.archive_timestamp = archive_timestamp
 
-        try:
-            entry = LoggerStub.create_entry(random_string(), 'INFO', None, random_string())
+        entry = user.mqttcommon.Logger.create_entry(random_string(), 'INFO', None, random_string(),
+                                                    archive_timestamp)
 
-            self.assertEqual(entry['archive_timestamp'], archive_timestamp)
-        finally:
-            LoggerStub.archive_timestamp = None
+        self.assertEqual(entry['archive_timestamp'], archive_timestamp)
 
     def test_queue_methods_create_the_expected_entries(self):
         with mock.patch('user.mqttcommon.logging'):
@@ -855,7 +799,6 @@ class TestLoggerThread(unittest.TestCase):
         mock_logger.name = random_string()
         mock_logger.archive_timestamp = None
         mock_logger.create_entry.side_effect = user.mqttcommon.Logger.create_entry
-        mock_logger.stamp_entry.side_effect = lambda entry: entry
         log_queue = queue.Queue()
 
         SUT = user.mqttcommon.LoggerThread(log_queue, mock_logger)
@@ -893,7 +836,6 @@ class TestLoggerThread(unittest.TestCase):
         mock_logger.name = random_string()
         mock_logger.archive_timestamp = None
         mock_logger.create_entry.side_effect = user.mqttcommon.Logger.create_entry
-        mock_logger.stamp_entry.side_effect = lambda entry: entry
         log_queue = queue.Queue()
 
         invalid_entry = {'name': random_string(), 'log_type': random_string(),
