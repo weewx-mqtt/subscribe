@@ -4,7 +4,6 @@
 #    See the file LICENSE.txt for your full rights.
 #
 """ Common code for the weewx-mqtt extensions. """
-import abc
 import copy
 import locale
 import logging
@@ -54,64 +53,19 @@ SSL_PROTOCOLS = (
 )
 
 
-class QueueLoggerThread(threading.Thread, abc.ABC):
-    """ Drain a log queue and hand the entries to the concrete logger.
-
-        The queue loop, the daemon flag, and the thread rename are shared so they
-        cannot drift between the extensions; the entry format and the start, exit,
-        and invalid entries are the concrete class's responsibility. The hooks are
-        invoked from the thread itself, so entries may use the thread's name and
-        native id. """
-
-    def __init__(self, log_queue, logger):
-        threading.Thread.__init__(self)
-        self.daemon = True
-        self.log_queue = log_queue
-        self.logger = logger
-
-    def run(self):
-        """ Log the start entry, then the queued entries until the None sentinel arrives. """
-        threading.current_thread().name = f"{self.__class__.__name__}-{threading.get_native_id()}"
-        self.logger.log_entry(self.start_entry())
-
-        while True:
-            entry = self.log_queue.get()
-            if entry is None:
-                break
-            try:
-                self.logger.log_entry(entry)
-            except (TypeError, KeyError):
-                self.logger.log_entry(self.invalid_entry(entry))
-
-        self.logger.log_entry(self.exit_entry())
-
-    @abc.abstractmethod
-    def start_entry(self):
-        """ Return the entry logged when the thread starts. """
-
-    @abc.abstractmethod
-    def exit_entry(self):
-        """ Return the entry logged when the thread exits. """
-
-    @abc.abstractmethod
-    def invalid_entry(self, entry):
-        """ Return the error entry logged for an entry that could not be logged. """
-
-
 class Logger:  # pylint: disable=too-many-instance-attributes
     """ Manage the logging.
         The log queue and the LoggerThread that drains it are owned here.
 
         The message format is shared; what the format's first argument is is
         the hook: the log_keys option, a subclass's pin, or an override
-        of _format_args. The thread class and the logger are options:
-        thread_class and log_name, and a config option switches on the
-        config-driven setup: the level, the weewx debug setting, the
-        throttle, the TRACE level, and the handlers, all applied before
-        the thread starts. The throttle and the trace level are the
-        remaining hooks, set before the thread starts: is_suppressed
-        delegates to self.throttle when one is set (with none, entries
-        with no log type are dropped), and _log_trace logs at
+        of _format_args. The logger's name is an option: log_name, and a
+        config option switches on the config-driven setup: the level, the
+        weewx debug setting, the throttle, the TRACE level, and the handlers,
+        all applied before the thread starts. The throttle and the trace
+        level are the remaining hooks, set before the thread starts:
+        is_suppressed delegates to self.throttle when one is set (with none,
+        entries with no log type are dropped), and _log_trace logs at
         self.trace_level when one is set (with none, trace entries
         log at DEBUG). """
     # The default time shutdown waits for the LoggerThread to flush queued messages.
@@ -142,9 +96,8 @@ class Logger:  # pylint: disable=too-many-instance-attributes
     trace_level = None
 
     # The message texts, keyed by message id, for the logger thread's start, exit,
-    # and invalid entries and the stuck-in-shutdown warning. stuck_entry and a
-    # subclass's thread hooks look these up; the base thread hooks log their own
-    # msg_id None texts.
+    # and invalid entries and the stuck-in-shutdown warning. stuck_entry and the
+    # LoggerThread's entry builders look these up.
     log_messages = {
         # trace message
         # debug messages
@@ -173,10 +126,10 @@ class Logger:  # pylint: disable=too-many-instance-attributes
 
             options keys: 'name' or 'config' - at least one is required, and
             'name' defaults to the config's 'mode' - plus 'log_queue' (built
-            when omitted), 'thread_class', 'log_name', and 'log_keys'. A
-            'config' also switches on the config-driven setup, applied before
-            the thread starts: level, filename, console, the weewx debug
-            setting, the throttle, the TRACE level, and the handlers. """
+            when omitted), 'log_name', and 'log_keys'. A 'config' also
+            switches on the config-driven setup, applied before the thread
+            starts: level, filename, console, the weewx debug setting, the
+            throttle, the TRACE level, and the handlers. """
         options = {} if options is None else options
         config = options.get('config')
         name = options.get('name')
@@ -202,8 +155,7 @@ class Logger:  # pylint: disable=too-many-instance-attributes
             'INFO': self._log_info,
             'ERROR': self._log_error,
         }
-        # thread_class lets a caller drain with its own LoggerThread (its entry texts).
-        self.log_thread = (options.get('thread_class') or LoggerThread)(self.log_queue, self)
+        self.log_thread = LoggerThread(self.log_queue, self)
         self.log_thread.start()
 
     def _configure(self, config, options):
@@ -386,27 +338,52 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         self.log.error(self.LOG_FORMAT, *self._format_args(entry))
 
 
-class LoggerThread(QueueLoggerThread):
-    """ Thread to manage logging.
-        This has to be a thread because WeeWX 'owns' the logger.
-        So logging has to happen in that process and not a subprocess.
-        The queue loop is inherited from QueueLoggerThread; this is the only consumer of
-        the logger's queue, so queued messages and the throttled message state are only
-        ever accessed by this thread. The start, exit, and invalid entries use the
-        logger's name, the shared log_messages texts and ids, and are stamped with the
-        logger's archive timestamp. """
+class LoggerThread(threading.Thread):
+    """ Drain a log queue and hand the entries to the logger.
 
-    def start_entry(self):
+        This has to be a thread because WeeWX 'owns' the logger, so logging
+        has to happen in that process and not a subprocess. It is the only
+        consumer of the logger's queue, so queued messages and the throttled
+        message state are only ever accessed by this thread. The queue loop,
+        the daemon flag, and the thread rename are here so they cannot drift
+        between the extensions. The start, exit, and invalid entries use the
+        logger's name, the shared log_messages texts and ids, and are stamped
+        with the logger's archive timestamp. The entry builders run on the
+        thread itself, so entries use the thread's name and native id. """
+
+    def __init__(self, log_queue, logger):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.log_queue = log_queue
+        self.logger = logger
+
+    def run(self):
+        """ Log the start entry, then the queued entries until the None sentinel arrives. """
+        threading.current_thread().name = f"{self.__class__.__name__}-{threading.get_native_id()}"
+        self.logger.log_entry(self._start_entry())
+
+        while True:
+            entry = self.log_queue.get()
+            if entry is None:
+                break
+            try:
+                self.logger.log_entry(entry)
+            except (TypeError, KeyError):
+                self.logger.log_entry(self._invalid_entry(entry))
+
+        self.logger.log_entry(self._exit_entry())
+
+    def _start_entry(self):
         """ Return the entry logged when the thread starts. """
         entry = self.logger.create_entry(self.logger.name, 'INFO', 122002, Logger.log_messages[122002])
         return self.logger.stamp_entry(entry)
 
-    def exit_entry(self):
+    def _exit_entry(self):
         """ Return the entry logged when the thread exits. """
         entry = self.logger.create_entry(self.logger.name, 'INFO', 122003, Logger.log_messages[122003])
         return self.logger.stamp_entry(entry)
 
-    def invalid_entry(self, entry):
+    def _invalid_entry(self, entry):
         """ Return the error entry logged for an entry that could not be logged. """
         invalid = self.logger.create_entry(self.logger.name, 'ERROR', 124003,
                                            Logger.log_messages[124003].format(entry=entry))
