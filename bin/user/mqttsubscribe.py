@@ -594,16 +594,11 @@ DRIVER_VERSION = VERSION
 class ConversionError(ValueError):
     """ Error converting data types. """
 
-def create_logger(config, level='NOTSET', filename=None, console=None):
+def create_logger(name, throttle=None, level='NOTSET', filename=None, console=None):
     """ Create subscribe's logger: config-driven, with subscribe's module logger. """
-    return mqttcommon.Logger({
-        'name': config['name'],
-        'config': config,
-        'level': level,
-        'filename': filename,
-        'console': console,
-        'log_name': __name__,
-    })
+    config = {} if throttle is None else {'throttle': throttle}
+    return mqttcommon.Logger(name, config=config, level=level, filename=filename,
+                             console=console, log_name=__name__)
 
 class RecordCache():
     """ Manage the cache. """
@@ -2222,7 +2217,7 @@ class MQTTSubscribeService(StdService):
         logging_level = service_dict.get('logging_level', 'NOTSET')
         console = to_bool(service_dict.get('console', False))
 
-        self.logger = create_logger({'name': 'Service', 'throttle': service_dict.get('logging', {}).get('throttle', {})},
+        self.logger = create_logger('Service', service_dict.get('logging', {}).get('throttle', {}),
                                     level=logging_level,
                                     filename=logging_filename,
                                     console=console)
@@ -2390,7 +2385,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         console = to_bool(stn_dict.get('console', False))
         logging_filename = stn_dict.get('logging_filename', None)
         logging_level = stn_dict.get('logging_level', 'NOTSET').upper()
-        self.logger = create_logger({'name': 'Driver'}, level=logging_level, filename=logging_filename, console=console)
+        self.logger = create_logger('Driver', level=logging_level, filename=logging_filename, console=console)
         self.logger.log_environment(config_dict, VERSION)
 
         self.max_loop_interval = to_int(stn_dict.get('max_loop_interval', 0))
@@ -2972,7 +2967,7 @@ class Parser():
 
         message_callback_config = self.config_dict.get('message_callback', None)
 
-        logger = create_logger({'name': 'Service'}, level=options.logging_level, filename=options.logging_file, console=options.console)
+        logger = create_logger('Service', level=options.logging_level, filename=options.logging_file, console=options.console)
         self.manager = TopicManager(None, topics_dict, logger)
         self.message_callback_provider = MessageCallbackProvider(message_callback_config, logger, self.manager)
 

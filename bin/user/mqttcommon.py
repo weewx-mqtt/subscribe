@@ -83,25 +83,19 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         124004: "Unable to shut down logger thread {name}.",
     }
 
-    def __init__(self, options=None):
+    def __init__(self, name, *, log_queue=None, log_name=None, config=None,  # pylint: disable=too-many-arguments
+                 level='NOTSET', filename=None, console=None):
         """ Create the logger and start its drain thread.
 
-            options keys: 'name' (required), plus 'log_queue' (built when
-            omitted) and 'log_name'. A 'config' switches on the config-driven
-            setup, applied before the thread starts: level, filename, console,
-            the weewx debug setting, the throttle, the TRACE level, and the
-            handlers. """
-        options = {} if options is None else options
-        name = options.get('name')
-        if name is None:
-            raise ValueError("a logger requires a 'name' option")
+            A 'config' switches on the config-driven setup, applied before the
+            thread starts: level, filename, console, the weewx debug setting,
+            the throttle, the TRACE level, and the handlers. """
         if not name:
             raise ValueError("a logger's name must not be empty")
         self.name = name
-        config = options.get('config')
-        self.log = logging.getLogger(options.get('log_name') or __name__)
+        self.log = logging.getLogger(log_name or __name__)
         # The queue must exist before _configure: it queues the throttle notice.
-        self.log_queue = options.get('log_queue') or queue.Queue()
+        self.log_queue = log_queue or queue.Queue()
         # The config-driven settings, with their defaults when no config is supplied.
         self.level = 0
         self.weewx_debug = 0
@@ -114,8 +108,8 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         self.archive_timestamp = None
         if config is not None:
             # check that the level configured is valid
-            self.level = logging._checkLevel(options.get('level', 'NOTSET'))
-            self._configure(config, options)
+            self.level = logging._checkLevel(level)
+            self._configure(config, filename, console)
         self.log_functions = {
             'TRACE': self._log_trace,
             'DEBUG': self._log_debug,
@@ -125,13 +119,13 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         self.log_thread = LoggerThread(self.log_queue, self)
         self.log_thread.start()
 
-    def _configure(self, config, options):
+    def _configure(self, config, filename, console):
         """ Apply the config-driven settings, before the thread starts. """
         # Imported here so that mqttcommon stays importable without weewx.
         import weewx  # pylint: disable=import-outside-toplevel
 
-        self.console = options.get('console')
-        self.filename = options.get('filename')
+        self.console = console
+        self.filename = filename
         self.weewx_debug = weewx.debug
 
         throttle_config = MessageThrottle.parse_config(config)
@@ -207,13 +201,10 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         self.log_thread.join(timeout)
         if self.log_thread.is_alive():
             # The thread is stuck, a queued message would not be logged so log it directly.
-            self._log_error(self.stuck_entry())
-
-    def stuck_entry(self):
-        """ Return the entry logged when the logger thread is stuck in shutdown. """
-        return self.create_entry(self.name, 'ERROR', None,
-                                 self.log_messages[124004].format(name=self.log_thread.name),
-                                 self.archive_timestamp)
+            self._log_error(self.create_entry(
+                self.name, 'ERROR', None,
+                self.log_messages[124004].format(name=self.log_thread.name),
+                self.archive_timestamp))
 
     def log_environment(self, config_dict, version):
         """ Log the environment we are running in. """

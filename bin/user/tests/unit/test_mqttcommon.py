@@ -412,15 +412,6 @@ class TestApiLevel(unittest.TestCase):
         self.assertEqual(user.mqttcommon.MQTTCOMMON_API, (1, 0))
 
 
-class LoggerStub(user.mqttcommon.Logger):
-    """ A concrete Logger with a compact format, for testing the shared skeleton. """
-    LOG_FORMAT = "test %s %s"
-
-    def __init__(self, name, log_queue, log_name=None):
-        """ Pack the flat arguments into the base ctor's options dict. """
-        super().__init__({'name': name, 'log_queue': log_queue, 'log_name': log_name})
-
-
 class TestLogger(unittest.TestCase):
     def test_log_messages_texts(self):
         # The thread entries' message texts are shared and looked up by id.
@@ -436,7 +427,7 @@ class TestLogger(unittest.TestCase):
                 mock.patch.dict(sys.modules, {'weewx': mock.MagicMock(__version__='stub')}):
             mock_log = mock_logging.getLogger.return_value
             name = random_string()
-            SUT = LoggerStub(name, queue.Queue())
+            SUT = user.mqttcommon.Logger(name, log_queue=queue.Queue())
             # Drain the thread so the queued environment entries dispatch synchronously.
             SUT.shutdown(timeout=5)
             mock_log.reset_mock()
@@ -450,13 +441,13 @@ class TestLogger(unittest.TestCase):
             self.assertEqual(mock_log.debug.call_count, 6)
             self.assertEqual(mock_log.info.call_count, 6)
             prefix = f"{name}-{threading.get_native_id()}"
-            mock_log.info.assert_any_call("test %s %s", prefix, "Version is 1.2.3-test")
-            mock_log.info.assert_any_call("test %s %s", prefix, "Log level: 0")
-            mock_log.info.assert_any_call("test %s %s", prefix, "Log debug setting: 0")
-            mock_log.info.assert_any_call("test %s %s", prefix, "Log console: False")
-            mock_log.info.assert_any_call("test %s %s", prefix, "Log file: None")
-            mock_log.debug.assert_any_call("test %s %s", prefix, "Record Augmentation is: archive")
-            mock_log.debug.assert_any_call("test %s %s", prefix, "Record Generation is: generator")
+            mock_log.info.assert_any_call("(%s) %s", prefix, "Version is 1.2.3-test")
+            mock_log.info.assert_any_call("(%s) %s", prefix, "Log level: 0")
+            mock_log.info.assert_any_call("(%s) %s", prefix, "Log debug setting: 0")
+            mock_log.info.assert_any_call("(%s) %s", prefix, "Log console: False")
+            mock_log.info.assert_any_call("(%s) %s", prefix, "Log file: None")
+            mock_log.debug.assert_any_call("(%s) %s", prefix, "Record Augmentation is: archive")
+            mock_log.debug.assert_any_call("(%s) %s", prefix, "Record Generation is: generator")
 
     def test_init_starts_a_daemon_logger_thread(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
@@ -464,7 +455,7 @@ class TestLogger(unittest.TestCase):
             log_queue = queue.Queue()
             name = random_string()
 
-            SUT = LoggerStub(name, log_queue)
+            SUT = user.mqttcommon.Logger(name, log_queue=log_queue)
 
             self.assertEqual(SUT.name, name)
             self.assertIs(SUT.log_queue, log_queue)
@@ -481,7 +472,8 @@ class TestLogger(unittest.TestCase):
     def test_init_uses_the_supplied_logger_name(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_log = mock_logging.getLogger.return_value
-            SUT = LoggerStub(random_string(), queue.Queue(), log_name='user.mqttcommon-supplied')
+            SUT = user.mqttcommon.Logger(
+                random_string(), log_queue=queue.Queue(), log_name='user.mqttcommon-supplied')
 
             mock_logging.getLogger.assert_called_with('user.mqttcommon-supplied')
 
@@ -490,53 +482,51 @@ class TestLogger(unittest.TestCase):
             SUT.shutdown(timeout=5)
 
             # The start, the queued message, and the exit all log through the supplied logger.
-            mock_log.info.assert_any_call("test %s %s",
+            mock_log.info.assert_any_call("(%s) %s",
                                           f"{SUT.name}-{threading.get_native_id()}", message)
             self.assertEqual(mock_log.info.call_count, 3)
 
     def test_init_requires_a_name(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             user.mqttcommon.Logger()
-        with self.assertRaises(ValueError):
-            user.mqttcommon.Logger({})
-        with self.assertRaises(ValueError):
-            user.mqttcommon.Logger({'config': {'throttle': {}}})
+        with self.assertRaises(TypeError):
+            user.mqttcommon.Logger(config={'throttle': {}})
 
     def test_init_rejects_an_empty_name(self):
         with self.assertRaises(ValueError):
-            user.mqttcommon.Logger({'name': ''})
+            user.mqttcommon.Logger('')
 
     def test_init_builds_a_log_queue_when_omitted(self):
         with mock.patch('user.mqttcommon.logging'):
-            SUT = user.mqttcommon.Logger({'name': random_string()})
+            SUT = user.mqttcommon.Logger(random_string())
 
             self.assertIsInstance(SUT.log_queue, queue.Queue)
             SUT.shutdown(timeout=5)
 
     def test_init_config_applies_the_config_setup(self):
-        mode = random_string()
+        name = random_string()
         with mock.patch('user.mqttcommon.logging') as mock_logging, \
                 mock.patch.dict(sys.modules, {'weewx': mock.MagicMock(debug=0)}):
             mock_logging._checkLevel.return_value = 0
             config = {'throttle': {}}
 
-            SUT = user.mqttcommon.Logger({'name': mode, 'config': config})
+            SUT = user.mqttcommon.Logger(name, config=config)
 
-            self.assertEqual(SUT.name, mode)
+            self.assertEqual(SUT.name, name)
             self.assertIsNotNone(SUT.throttle)
             # weewx debugging off leaves the TRACE level set.
             self.assertEqual(SUT.trace_level, 5)
             SUT.shutdown(timeout=5)
 
             # The experimental throttle notice is queued, and logged after the thread's start entry.
-            # It renders with the converged format: mode, the queueing thread's id, no record.
+            # It renders with the converged format: the name, the queueing thread's id, no record.
             mock_logging.getLogger.return_value.info.assert_any_call(
-                "(%s) %s", f"{mode}-{threading.get_native_id()}",
+                "(%s) %s", f"{name}-{threading.get_native_id()}",
                 user.mqttcommon.MessageThrottle.NOTICE_EXPERIMENTAL)
 
     def test_setup_logging_adds_the_file_handler(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
-            SUT = LoggerStub(random_string(), queue.Queue())
+            SUT = user.mqttcommon.Logger(random_string(), log_queue=queue.Queue())
             SUT.shutdown(timeout=5)
             filename = random_string()
 
@@ -547,20 +537,20 @@ class TestLogger(unittest.TestCase):
             SUT.log.addHandler.assert_called_once_with(mock_logging.FileHandler.return_value)
 
     def test_is_suppressed_drops_entries_without_a_log_type(self):
-        SUT = LoggerStub(random_string(), queue.Queue())
+        SUT = user.mqttcommon.Logger(random_string(), log_queue=queue.Queue())
         SUT.shutdown(timeout=5)
 
-        self.assertTrue(SUT.is_suppressed(LoggerStub.create_entry(random_string(), None, None, random_string())))
-        self.assertFalse(SUT.is_suppressed(LoggerStub.create_entry(random_string(), 'INFO', None, random_string())))
+        self.assertTrue(SUT.is_suppressed(user.mqttcommon.Logger.create_entry(random_string(), None, None, random_string())))
+        self.assertFalse(SUT.is_suppressed(user.mqttcommon.Logger.create_entry(random_string(), 'INFO', None, random_string())))
 
     def test_is_suppressed_delegates_to_the_throttle(self):
-        SUT = LoggerStub(random_string(), queue.Queue())
+        SUT = user.mqttcommon.Logger(random_string(), log_queue=queue.Queue())
         SUT.shutdown(timeout=5)
 
         throttle = mock.Mock()
         throttle.is_throttled.return_value = True
         SUT.throttle = throttle
-        entry = LoggerStub.create_entry(random_string(), 'INFO', 1234, random_string())
+        entry = user.mqttcommon.Logger.create_entry(random_string(), 'INFO', 1234, random_string())
 
         self.assertTrue(SUT.is_suppressed(entry))
         throttle.is_throttled.assert_called_once_with('INFO', 1234)
@@ -586,7 +576,7 @@ class TestLogger(unittest.TestCase):
         with mock.patch('user.mqttcommon.logging'):
             name = random_string()
             texts = [random_string() for _ in range(4)]
-            SUT = LoggerStub(name, queue.Queue())
+            SUT = user.mqttcommon.Logger(name, log_queue=queue.Queue())
             # Drain the thread so the entries stay queued for assertion.
             SUT.shutdown(timeout=5)
 
@@ -608,7 +598,7 @@ class TestLogger(unittest.TestCase):
     def test_log_methods_stamp_the_queueing_thread_id(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_log = mock_logging.getLogger.return_value
-            SUT = user.mqttcommon.Logger({'name': random_string(), 'log_queue': queue.Queue()})
+            SUT = user.mqttcommon.Logger(random_string(), log_queue=queue.Queue())
 
             debug_message = random_string()
             info_message = random_string()
@@ -640,7 +630,7 @@ class TestLogger(unittest.TestCase):
             name = random_string()
             # A real Logger with the default options renders the converged format:
             # the name, the queueing thread's id, and the archive record when one is stamped.
-            SUT = user.mqttcommon.Logger({'name': name, 'log_queue': queue.Queue()})
+            SUT = user.mqttcommon.Logger(name, log_queue=queue.Queue())
 
             no_record_message = random_string()
             SUT.info(None, no_record_message)
@@ -658,8 +648,8 @@ class TestLogger(unittest.TestCase):
     @staticmethod
     def _stopped_logger(name=None, log_queue=None):
         """ Construct a Logger and drain its thread, so log_entry calls are synchronous. """
-        logger = LoggerStub(name or random_string(),
-                            log_queue if log_queue is not None else queue.Queue())
+        logger = user.mqttcommon.Logger(
+            name or random_string(), log_queue=log_queue)
         logger.shutdown(timeout=5)
         return logger
 
@@ -689,10 +679,10 @@ class TestLogger(unittest.TestCase):
                            'thread_id': thread_id, 'archive_timestamp': None})
 
             self.assertEqual(mock_log.debug.call_count, 2)
-            mock_log.debug.assert_any_call("test %s %s", f"{trace_name}-{thread_id}", trace_message)
-            mock_log.debug.assert_any_call("test %s %s", f"{debug_name}-{thread_id}", debug_message)
-            mock_log.info.assert_called_once_with("test %s %s", f"{info_name}-{thread_id}", info_message)
-            mock_log.error.assert_called_once_with("test %s %s", f"{error_name}-{thread_id}", error_message)
+            mock_log.debug.assert_any_call("(%s) %s", f"{trace_name}-{thread_id}", trace_message)
+            mock_log.debug.assert_any_call("(%s) %s", f"{debug_name}-{thread_id}", debug_message)
+            mock_log.info.assert_called_once_with("(%s) %s", f"{info_name}-{thread_id}", info_message)
+            mock_log.error.assert_called_once_with("(%s) %s", f"{error_name}-{thread_id}", error_message)
 
     def test_log_entry_uses_the_trace_level_when_set(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
@@ -708,7 +698,7 @@ class TestLogger(unittest.TestCase):
             SUT.log_entry({'name': trace_name, 'log_type': 'TRACE', 'msg_text': trace_message,
                            'thread_id': thread_id, 'archive_timestamp': None})
 
-            mock_log.log.assert_called_once_with(5, "test %s %s", f"{trace_name}-{thread_id}", trace_message)
+            mock_log.log.assert_called_once_with(5, "(%s) %s", f"{trace_name}-{thread_id}", trace_message)
             mock_log.debug.assert_not_called()
 
     def test_log_entry_with_no_log_type_is_skipped(self):
@@ -740,7 +730,7 @@ class TestShutdown(unittest.TestCase):
     def test_shutdown_drains_the_queue(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_log = mock_logging.getLogger.return_value
-            SUT = LoggerStub(random_string(), queue.Queue())
+            SUT = user.mqttcommon.Logger(random_string(), log_queue=queue.Queue())
 
             first = user.mqttcommon.Logger.create_entry(random_string(), 'INFO', None, random_string())
             second = user.mqttcommon.Logger.create_entry(random_string(), 'ERROR', None, random_string())
@@ -760,7 +750,7 @@ class TestShutdown(unittest.TestCase):
     def test_shutdown_is_idempotent(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_log = mock_logging.getLogger.return_value
-            SUT = LoggerStub(random_string(), queue.Queue())
+            SUT = user.mqttcommon.Logger(random_string(), log_queue=queue.Queue())
 
             SUT.shutdown(timeout=5)
             leftover = {'name': random_string(), 'log_type': 'INFO', 'msg_text': random_string()}
@@ -779,7 +769,7 @@ class TestShutdown(unittest.TestCase):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_log = mock_logging.getLogger.return_value
             name = random_string()
-            SUT = LoggerStub(name, queue.Queue())
+            SUT = user.mqttcommon.Logger(name, log_queue=queue.Queue())
 
             # Replace log_entry to simulate a stuck WeeWX log handler.
             block_entered = threading.Event()
@@ -798,7 +788,7 @@ class TestShutdown(unittest.TestCase):
             SUT.shutdown(timeout=0.05)
 
             expected_text = user.mqttcommon.Logger.log_messages[124004].format(name=SUT.log_thread.name)
-            mock_log.error.assert_called_once_with("test %s %s",
+            mock_log.error.assert_called_once_with("(%s) %s",
                                                    f"{name}-{threading.get_native_id()}", expected_text)
             self.assertTrue(SUT.log_thread.is_alive())
 
