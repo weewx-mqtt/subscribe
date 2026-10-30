@@ -8,7 +8,6 @@ import unittest
 import mock
 
 import configobj
-import copy
 import random
 import sys
 import threading
@@ -45,7 +44,7 @@ class TestInintialization(BaseTestClass):
             mock_logger.parent = mock_parent_logger
             mock_logging.getLogger.return_value = mock_logger
 
-            SUT = Logger({'mode': random_string()}, level=random_string())
+            SUT = Logger({'name': random_string()}, level=random_string())
 
             mock_logging.addLevelName.assert_called_once_with(log_level, 'TRACE')
             SUT.log.setLevel.assert_called_once_with(log_level)
@@ -66,7 +65,7 @@ class TestInintialization(BaseTestClass):
             mode = random_string()
             filename = random_string()
 
-            SUT = Logger({'mode': mode}, filename=filename)
+            SUT = Logger({'name': mode}, filename=filename)
 
             mock_logging.Formatter.assert_called_once()
             mock_logging.FileHandler.assert_called_once()
@@ -81,14 +80,14 @@ class TestInintialization(BaseTestClass):
             mock_logging._checkLevel.return_value = 0
             mode = random_string()
 
-            SUT = Logger({'mode': mode}, console=True)
+            SUT = Logger({'name': mode}, console=True)
 
             SUT.log.addHandler.assert_called_once()
 
     def test_throttle_notice_is_logged(self):
         mode = random_string()
         config_dict = {
-            'mode': mode,
+            'name': mode,
             'throttle': {},
         }
         config = configobj.ConfigObj(config_dict)
@@ -112,7 +111,7 @@ class TestLogging(BaseTestClass):
             mode = random_string()
             message_text = random_string()
 
-            SUT = Logger({'mode': mode})
+            SUT = Logger({'name': mode})
 
             SUT.error(random.randint(1, 100), message_text)
             SUT.shutdown()
@@ -127,7 +126,7 @@ class TestLogging(BaseTestClass):
             mode = random_string()
             message = random_string()
 
-            SUT = Logger({'mode': mode})
+            SUT = Logger({'name': mode})
 
             SUT.info(random.randint(1, 100), message)
             SUT.shutdown()
@@ -144,7 +143,7 @@ class TestLogging(BaseTestClass):
             archive_timestamp = int(time.time())
             message = random_string()
 
-            SUT = Logger({'mode': mode})
+            SUT = Logger({'name': mode})
             SUT.archive_timestamp = archive_timestamp
 
             SUT.info(random.randint(1, 100), message)
@@ -161,7 +160,7 @@ class TestLogging(BaseTestClass):
             mode = random_string()
             message = random_string()
 
-            SUT = Logger({'mode': mode})
+            SUT = Logger({'name': mode})
 
             SUT.debug(random.randint(1, 100), message)
             SUT.shutdown()
@@ -177,7 +176,7 @@ class TestLogging(BaseTestClass):
             mode = random_string()
             message = random_string()
 
-            SUT = Logger({'mode': mode})
+            SUT = Logger({'name': mode})
 
             SUT.trace(random.randint(1, 100), message)
             SUT.shutdown()
@@ -193,7 +192,7 @@ class TestLogging(BaseTestClass):
             message = random_string()
 
             sys.modules['weewx'].debug = 0
-            SUT = Logger({'mode': mode})
+            SUT = Logger({'name': mode})
 
             SUT.trace(random.randint(1, 100), message)
             SUT.shutdown()
@@ -205,7 +204,7 @@ class TestQueue(BaseTestClass):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_logging._checkLevel.return_value = 0
 
-            SUT = Logger({'mode': random_string()})
+            SUT = Logger({'name': random_string()})
 
             with self.assertRaises(KeyError):
                 SUT.log_entry({'log_type': random_string(), 'msg_id': None, 'msg_text': random_string()})
@@ -221,7 +220,7 @@ class TestQueue(BaseTestClass):
             mock_logging._checkLevel.return_value = 0
             mock_log = mock_logging.getLogger.return_value
 
-            SUT = Logger({'mode': random_string()})
+            SUT = Logger({'name': random_string()})
 
             SUT.info(random.randint(1, 100), random_string())
             SUT.debug(random.randint(1, 100), random_string())
@@ -238,7 +237,7 @@ class TestQueue(BaseTestClass):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_logging._checkLevel.return_value = 0
 
-            SUT = Logger({'mode': random_string()})
+            SUT = Logger({'name': random_string()})
 
             SUT.shutdown()
             SUT.shutdown()
@@ -251,7 +250,7 @@ class TestQueue(BaseTestClass):
             mock_log = mock_logging.getLogger.return_value
             mode = random_string()
 
-            SUT = Logger({'mode': mode})
+            SUT = Logger({'name': mode})
 
             # Replace log_entry to simulate a stuck log handler.
             block_entered = threading.Event()
@@ -290,7 +289,7 @@ class TestThrottling(BaseTestClass):
         window = int(now // duration)
 
         config_dict = {
-            'mode': mode,
+            'name': mode,
             'throttle': {
                 'messages': {
                     msg_id: {
@@ -334,8 +333,6 @@ class TestThrottling(BaseTestClass):
                 self.assertEqual(len(SUT.throttle.logged_ids), 1)
                 self.assertDictEqual(SUT.throttle.logged_ids, logged_ids)
                 SUT.log.error.assert_called_once_with(SUT.LOG_FORMAT, f"{mode}-{thread_id}", message_text)
-
-
 
 
 if __name__ == '__main__':

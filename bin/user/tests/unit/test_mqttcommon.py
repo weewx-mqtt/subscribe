@@ -494,19 +494,17 @@ class TestLogger(unittest.TestCase):
                                           f"{SUT.name}-{threading.get_native_id()}", message)
             self.assertEqual(mock_log.info.call_count, 3)
 
-    def test_init_requires_a_name_or_a_config(self):
+    def test_init_requires_a_name(self):
         with self.assertRaises(ValueError):
             user.mqttcommon.Logger()
         with self.assertRaises(ValueError):
             user.mqttcommon.Logger({})
+        with self.assertRaises(ValueError):
+            user.mqttcommon.Logger({'config': {'throttle': {}}})
 
     def test_init_rejects_an_empty_name(self):
         with self.assertRaises(ValueError):
             user.mqttcommon.Logger({'name': ''})
-        with self.assertRaises(ValueError):
-            user.mqttcommon.Logger({'config': {'mode': None}})
-        with self.assertRaises(ValueError):
-            user.mqttcommon.Logger({'config': {'mode': ''}})
 
     def test_init_builds_a_log_queue_when_omitted(self):
         with mock.patch('user.mqttcommon.logging'):
@@ -520,9 +518,9 @@ class TestLogger(unittest.TestCase):
         with mock.patch('user.mqttcommon.logging') as mock_logging, \
                 mock.patch.dict(sys.modules, {'weewx': mock.MagicMock(debug=0)}):
             mock_logging._checkLevel.return_value = 0
-            config = {'mode': mode, 'throttle': {}}
+            config = {'throttle': {}}
 
-            SUT = user.mqttcommon.Logger({'config': config})
+            SUT = user.mqttcommon.Logger({'name': mode, 'config': config})
 
             self.assertEqual(SUT.name, mode)
             self.assertIsNotNone(SUT.throttle)

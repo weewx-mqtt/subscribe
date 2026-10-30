@@ -86,20 +86,19 @@ class Logger:  # pylint: disable=too-many-instance-attributes
     def __init__(self, options=None):
         """ Create the logger and start its drain thread.
 
-            options keys: 'name' or 'config' - at least one is required, and
-            'name' defaults to the config's 'mode' - plus 'log_queue' (built
-            when omitted) and 'log_name'. A 'config' also switches on the
-            config-driven setup, applied before the thread starts: level,
-            filename, console, the weewx debug setting, the throttle, the
-            TRACE level, and the handlers. """
+            options keys: 'name' (required), plus 'log_queue' (built when
+            omitted) and 'log_name'. A 'config' switches on the config-driven
+            setup, applied before the thread starts: level, filename, console,
+            the weewx debug setting, the throttle, the TRACE level, and the
+            handlers. """
         options = {} if options is None else options
-        config = options.get('config')
         name = options.get('name')
-        if name is None and config is None:
-            raise ValueError("a logger requires a 'name' or a 'config' option")
-        self.name = name if name is not None else config['mode']
-        if not self.name:
-            raise ValueError("a logger's name, or its config's 'mode', must not be empty")
+        if name is None:
+            raise ValueError("a logger requires a 'name' option")
+        if not name:
+            raise ValueError("a logger's name must not be empty")
+        self.name = name
+        config = options.get('config')
         self.log = logging.getLogger(options.get('log_name') or __name__)
         # The queue must exist before _configure: it queues the throttle notice.
         self.log_queue = options.get('log_queue') or queue.Queue()
