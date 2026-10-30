@@ -65,14 +65,10 @@ class Logger:  # pylint: disable=too-many-instance-attributes
     # The default time shutdown waits for the LoggerThread to flush queued messages.
     SHUTDOWN_TIMEOUT = 10
 
-    # The message format and the context keys. LOG_KEYS names the entry fields,
-    # in order, that form the format's first argument; fields that are None are
-    # omitted. The values are the format converged on across the weewx-mqtt
-    # extensions: the component name, the emitting thread, and the archive
-    # record being processed - None fields, such as archive_timestamp for a
-    # consumer that never stamps one, are omitted.
+    # The message format: the component name, the emitting thread, and the archive
+    # record being processed. The archive record is appended only when there is one;
+    # the name and the thread id are always present.
     LOG_FORMAT = "(%s) %s"
-    LOG_KEYS = ('name', 'thread_id', 'archive_timestamp')
 
     # The message texts, keyed by message id, for the logger thread's start, exit,
     # and invalid entries and the stuck-in-shutdown warning.
@@ -102,6 +98,8 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         if name is None and config is None:
             raise ValueError("a logger requires a 'name' or a 'config' option")
         self.name = name if name is not None else config['mode']
+        if not self.name:
+            raise ValueError("a logger's name, or its config's 'mode', must not be empty")
         self.log = logging.getLogger(options.get('log_name') or __name__)
         # The queue must exist before _configure: it queues the throttle notice.
         self.log_queue = options.get('log_queue') or queue.Queue()
@@ -280,7 +278,10 @@ class Logger:  # pylint: disable=too-many-instance-attributes
 
     def _format_args(self, entry):
         """ Return the format arguments for an entry; the message is always last. """
-        return ('-'.join(str(entry[key]) for key in self.LOG_KEYS if entry[key] is not None), entry['msg_text'])
+        prefix = f"{entry['name']}-{entry['thread_id']}"
+        if entry['archive_timestamp'] is not None:
+            prefix = f"{prefix}-{entry['archive_timestamp']}"
+        return (prefix, entry['msg_text'])
 
     def _log_trace(self, entry):
         """ Log a trace entry. This is called by the LoggerThread. """

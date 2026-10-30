@@ -415,7 +415,6 @@ class TestApiLevel(unittest.TestCase):
 class LoggerStub(user.mqttcommon.Logger):
     """ A concrete Logger with a compact format, for testing the shared skeleton. """
     LOG_FORMAT = "test %s %s"
-    LOG_KEYS = ('name',)
 
     def __init__(self, name, log_queue, log_name=None):
         """ Pack the flat arguments into the base ctor's options dict. """
@@ -450,13 +449,14 @@ class TestLogger(unittest.TestCase):
             # The weewx/python/platform/locale/paho values are environment-specific; the rest is exact.
             self.assertEqual(mock_log.debug.call_count, 6)
             self.assertEqual(mock_log.info.call_count, 6)
-            mock_log.info.assert_any_call("test %s %s", name, "Version is 1.2.3-test")
-            mock_log.info.assert_any_call("test %s %s", name, "Log level: 0")
-            mock_log.info.assert_any_call("test %s %s", name, "Log debug setting: 0")
-            mock_log.info.assert_any_call("test %s %s", name, "Log console: False")
-            mock_log.info.assert_any_call("test %s %s", name, "Log file: None")
-            mock_log.debug.assert_any_call("test %s %s", name, "Record Augmentation is: archive")
-            mock_log.debug.assert_any_call("test %s %s", name, "Record Generation is: generator")
+            prefix = f"{name}-{threading.get_native_id()}"
+            mock_log.info.assert_any_call("test %s %s", prefix, "Version is 1.2.3-test")
+            mock_log.info.assert_any_call("test %s %s", prefix, "Log level: 0")
+            mock_log.info.assert_any_call("test %s %s", prefix, "Log debug setting: 0")
+            mock_log.info.assert_any_call("test %s %s", prefix, "Log console: False")
+            mock_log.info.assert_any_call("test %s %s", prefix, "Log file: None")
+            mock_log.debug.assert_any_call("test %s %s", prefix, "Record Augmentation is: archive")
+            mock_log.debug.assert_any_call("test %s %s", prefix, "Record Generation is: generator")
 
     def test_init_starts_a_daemon_logger_thread(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
@@ -490,7 +490,8 @@ class TestLogger(unittest.TestCase):
             SUT.shutdown(timeout=5)
 
             # The start, the queued message, and the exit all log through the supplied logger.
-            mock_log.info.assert_any_call("test %s %s", SUT.name, message)
+            mock_log.info.assert_any_call("test %s %s",
+                                          f"{SUT.name}-{threading.get_native_id()}", message)
             self.assertEqual(mock_log.info.call_count, 3)
 
     def test_init_requires_a_name_or_a_config(self):
@@ -498,6 +499,14 @@ class TestLogger(unittest.TestCase):
             user.mqttcommon.Logger()
         with self.assertRaises(ValueError):
             user.mqttcommon.Logger({})
+
+    def test_init_rejects_an_empty_name(self):
+        with self.assertRaises(ValueError):
+            user.mqttcommon.Logger({'name': ''})
+        with self.assertRaises(ValueError):
+            user.mqttcommon.Logger({'config': {'mode': None}})
+        with self.assertRaises(ValueError):
+            user.mqttcommon.Logger({'config': {'mode': ''}})
 
     def test_init_builds_a_log_queue_when_omitted(self):
         with mock.patch('user.mqttcommon.logging'):
@@ -670,17 +679,22 @@ class TestLogger(unittest.TestCase):
             info_message = random_string()
             error_name = random_string()
             error_message = random_string()
+            thread_id = threading.get_native_id()
 
-            SUT.log_entry({'name': trace_name, 'log_type': 'TRACE', 'msg_text': trace_message})
-            SUT.log_entry({'name': debug_name, 'log_type': 'DEBUG', 'msg_text': debug_message})
-            SUT.log_entry({'name': info_name, 'log_type': 'INFO', 'msg_text': info_message})
-            SUT.log_entry({'name': error_name, 'log_type': 'ERROR', 'msg_text': error_message})
+            SUT.log_entry({'name': trace_name, 'log_type': 'TRACE', 'msg_text': trace_message,
+                           'thread_id': thread_id, 'archive_timestamp': None})
+            SUT.log_entry({'name': debug_name, 'log_type': 'DEBUG', 'msg_text': debug_message,
+                           'thread_id': thread_id, 'archive_timestamp': None})
+            SUT.log_entry({'name': info_name, 'log_type': 'INFO', 'msg_text': info_message,
+                           'thread_id': thread_id, 'archive_timestamp': None})
+            SUT.log_entry({'name': error_name, 'log_type': 'ERROR', 'msg_text': error_message,
+                           'thread_id': thread_id, 'archive_timestamp': None})
 
             self.assertEqual(mock_log.debug.call_count, 2)
-            mock_log.debug.assert_any_call("test %s %s", trace_name, trace_message)
-            mock_log.debug.assert_any_call("test %s %s", debug_name, debug_message)
-            mock_log.info.assert_called_once_with("test %s %s", info_name, info_message)
-            mock_log.error.assert_called_once_with("test %s %s", error_name, error_message)
+            mock_log.debug.assert_any_call("test %s %s", f"{trace_name}-{thread_id}", trace_message)
+            mock_log.debug.assert_any_call("test %s %s", f"{debug_name}-{thread_id}", debug_message)
+            mock_log.info.assert_called_once_with("test %s %s", f"{info_name}-{thread_id}", info_message)
+            mock_log.error.assert_called_once_with("test %s %s", f"{error_name}-{thread_id}", error_message)
 
     def test_log_entry_uses_the_trace_level_when_set(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
@@ -691,10 +705,12 @@ class TestLogger(unittest.TestCase):
 
             trace_name = random_string()
             trace_message = random_string()
+            thread_id = threading.get_native_id()
 
-            SUT.log_entry({'name': trace_name, 'log_type': 'TRACE', 'msg_text': trace_message})
+            SUT.log_entry({'name': trace_name, 'log_type': 'TRACE', 'msg_text': trace_message,
+                           'thread_id': thread_id, 'archive_timestamp': None})
 
-            mock_log.log.assert_called_once_with(5, "test %s %s", trace_name, trace_message)
+            mock_log.log.assert_called_once_with(5, "test %s %s", f"{trace_name}-{thread_id}", trace_message)
             mock_log.debug.assert_not_called()
 
     def test_log_entry_with_no_log_type_is_skipped(self):
@@ -728,8 +744,8 @@ class TestShutdown(unittest.TestCase):
             mock_log = mock_logging.getLogger.return_value
             SUT = LoggerStub(random_string(), queue.Queue())
 
-            first = {'name': random_string(), 'log_type': 'INFO', 'msg_text': random_string()}
-            second = {'name': random_string(), 'log_type': 'ERROR', 'msg_text': random_string()}
+            first = user.mqttcommon.Logger.create_entry(random_string(), 'INFO', None, random_string())
+            second = user.mqttcommon.Logger.create_entry(random_string(), 'ERROR', None, random_string())
             SUT.log_queue.put(first)
             SUT.log_queue.put(second)
 
@@ -784,7 +800,8 @@ class TestShutdown(unittest.TestCase):
             SUT.shutdown(timeout=0.05)
 
             expected_text = user.mqttcommon.Logger.log_messages[124004].format(name=SUT.log_thread.name)
-            mock_log.error.assert_called_once_with("test %s %s", name, expected_text)
+            mock_log.error.assert_called_once_with("test %s %s",
+                                                   f"{name}-{threading.get_native_id()}", expected_text)
             self.assertTrue(SUT.log_thread.is_alive())
 
             # Release the thread and wait for it to exit.
