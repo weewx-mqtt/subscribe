@@ -2240,8 +2240,6 @@ class MQTTSubscribeService(StdService):
         if 'archive_topic' in service_dict:
             raise ValueError(MQTTSubscribeService.log_messages[29002].format(archive_topic=service_dict['archive_topic']))
 
-        self.next_archive_timestamp = 0
-
         self.end_ts = 0  # prime for processing loop packet
 
         self.subscriber = MQTTSubscriber(service_dict, self.logger)
@@ -2341,11 +2339,14 @@ class MQTTSubscribeService(StdService):
         self.logger.debug(21003, MQTTSubscribeService.log_messages[21003].format(
             dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
             record=to_sorted_string(event.record)))
-        self.next_archive_timestamp = int(event.record['dateTime'] + event.record['interval'] * 120)
+        # The record now being accumulated ends one interval after this one; from here on
+        # the lines carry that record's timestamp.
+        self.logger.archive_timestamp = int(event.record['dateTime'] + event.record['interval'] * 60)
 
-    def end_archive_period(self, _event):
+    def end_archive_period(self, event):
         """ Handle the end archive period event."""
-        self.logger.archive_timestamp = self.next_archive_timestamp
+        # The record that just ended is the one being processed until it is written.
+        self.logger.archive_timestamp = int(event.end)
 
 def loader(config_dict, engine):
     """ Load and return the driver. """
@@ -2401,7 +2402,6 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         self._archive_interval = to_int(stn_dict.get('archive_interval', 300))
         self.archive_topic = stn_dict.get('archive_topic', None)
         self.prev_archive_start = 0
-        self.next_archive_timestamp = 0
 
         engine.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
         engine.bind(weewx.END_ARCHIVE_PERIOD, self.end_archive_period)
@@ -2437,11 +2437,14 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         self.logger.debug(11002, MQTTSubscribeDriver.log_messages[11002].format(
             dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
             record=to_sorted_string(event.record)))
-        self.next_archive_timestamp = int(event.record['dateTime'] + event.record['interval'] * 120)
+        # The record now being accumulated ends one interval after this one; from here on
+        # the lines carry that record's timestamp.
+        self.logger.archive_timestamp = int(event.record['dateTime'] + event.record['interval'] * 60)
 
-    def end_archive_period(self, _event):
+    def end_archive_period(self, event):
         """ Handle the end archive period event."""
-        self.logger.archive_timestamp = self.next_archive_timestamp
+        # The record that just ended is the one being processed until it is written.
+        self.logger.archive_timestamp = int(event.end)
 
     def genLoopPackets(self):  # need to override parent
         """ Called to generate loop packets. """

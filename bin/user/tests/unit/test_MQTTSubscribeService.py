@@ -391,6 +391,25 @@ class Testnew_archive_record(unittest.TestCase):
             SUT.new_archive_record(mock_new_archive_record_event)
 
             self.assertDictEqual(mock_new_archive_record_event.record, self.final_record_data)
+            # The lines that follow carry the timestamp of the record being accumulated.
+            self.assertEqual(SUT.logger.archive_timestamp,
+                             int(self.record_data['dateTime'] + self.record_data['interval'] * 60))
+
+        SUT.shutDown()
+
+    def test_end_archive_period(self):
+        end_period_ts = int(time.time())
+        self.setup_archive_queue_tests(end_period_ts - 300, end_period_ts, random_string())
+
+        mock_end_archive_period_event = mock.MagicMock()
+        mock_end_archive_period_event.end = end_period_ts
+
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
+            SUT = user.mqttsubscribe.MQTTSubscribeService(self.mock_StdEngine, self.config_dict)
+            SUT.end_archive_period(mock_end_archive_period_event)
+
+            # Until the record is written, the lines carry the record that just ended.
+            self.assertEqual(SUT.logger.archive_timestamp, end_period_ts)
 
         SUT.shutDown()
 

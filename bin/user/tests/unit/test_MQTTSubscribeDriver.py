@@ -50,8 +50,7 @@ class TestclosePort(unittest.TestCase):
             SUT.closePort()
             SUT.subscriber.disconnect.assert_called_once()
 
-    @staticmethod
-    def test_new_archive_record():
+    def test_new_archive_record(self):
         mock_engine = mock.Mock()
         stn_dict = {}
         stn_dict['topic'] = random_string()
@@ -72,6 +71,27 @@ class TestclosePort(unittest.TestCase):
             SUT.logger.debug.assert_called_with(11002,
                                                 (f"data-> final record is {timestamp_to_string(event.record['dateTime'])}: "
                                                  f"{to_sorted_string(event.record)}"))
+            # The lines that follow carry the timestamp of the record being accumulated.
+            self.assertEqual(SUT.logger.archive_timestamp,
+                             int(event.record['dateTime'] + event.record['interval'] * 60))
+
+    def test_end_archive_period(self):
+        mock_engine = mock.Mock()
+        stn_dict = {}
+        stn_dict['topic'] = random_string()
+        config_dict = {}
+        config_dict['MQTTSubscribeDriver'] = stn_dict
+
+        end = int(time.time())
+        event = weewx.Event(weewx.END_ARCHIVE_PERIOD, end=end)
+
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
+            with mock.patch('user.mqttcommon.Logger', spec=Logger):
+                SUT = MQTTSubscribeDriver(config_dict, mock_engine)
+                SUT.end_archive_period(event)
+
+            # Until the record is written, the lines carry the record that just ended.
+            self.assertEqual(SUT.logger.archive_timestamp, end)
 
 class TestArchiveInterval(unittest.TestCase):
     def setUp(self):
