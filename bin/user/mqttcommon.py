@@ -312,8 +312,8 @@ class LoggerThread(threading.Thread):
         the daemon flag, and the thread rename are here so they cannot drift
         between the extensions. The start, exit, and invalid entries use the
         logger's name, the shared log_messages texts and ids, and are stamped
-        with the logger's archive timestamp. The entry builders run on the
-        thread itself, so entries use the thread's name and native id. """
+        with the logger's archive timestamp. They are created on the thread
+        itself, so they carry the thread's name and native id. """
 
     def __init__(self, log_queue, logger):
         threading.Thread.__init__(self)
@@ -324,7 +324,8 @@ class LoggerThread(threading.Thread):
     def run(self):
         """ Log the start entry, then the queued entries until the None sentinel arrives. """
         threading.current_thread().name = f"{self.__class__.__name__}-{threading.get_native_id()}"
-        self.logger.log_entry(self._start_entry())
+        self.logger.log_entry(self.logger.create_entry(
+            self.logger.name, 'INFO', 122002, Logger.log_messages[122002], self.logger.archive_timestamp))
 
         while True:
             entry = self.log_queue.get()
@@ -333,25 +334,12 @@ class LoggerThread(threading.Thread):
             try:
                 self.logger.log_entry(entry)
             except (TypeError, KeyError):
-                self.logger.log_entry(self._invalid_entry(entry))
+                self.logger.log_entry(self.logger.create_entry(
+                    self.logger.name, 'ERROR', 124003, Logger.log_messages[124003].format(entry=entry),
+                    self.logger.archive_timestamp))
 
-        self.logger.log_entry(self._exit_entry())
-
-    def _start_entry(self):
-        """ Return the entry logged when the thread starts. """
-        return self.logger.create_entry(self.logger.name, 'INFO', 122002, Logger.log_messages[122002],
-                                        self.logger.archive_timestamp)
-
-    def _exit_entry(self):
-        """ Return the entry logged when the thread exits. """
-        return self.logger.create_entry(self.logger.name, 'INFO', 122003, Logger.log_messages[122003],
-                                        self.logger.archive_timestamp)
-
-    def _invalid_entry(self, entry):
-        """ Return the error entry logged for an entry that could not be logged. """
-        return self.logger.create_entry(self.logger.name, 'ERROR', 124003,
-                                        Logger.log_messages[124003].format(entry=entry),
-                                        self.logger.archive_timestamp)
+        self.logger.log_entry(self.logger.create_entry(
+            self.logger.name, 'INFO', 122003, Logger.log_messages[122003], self.logger.archive_timestamp))
 
 
 # These mirror weeutil.weeutil.to_int/option_as_list so that mqttcommon stays importable
