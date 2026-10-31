@@ -1985,7 +1985,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
     @staticmethod
     def _resolve_api(protocol, protocol_string, api):
-        ''' Resolve the paho mqtt api variant to communicate with, defaulting to the selection for the protocol. '''
+        ''' Resolve the paho mqtt api variant to use. '''
         if api is None:
             api = mqttcommon.select_api(protocol)
         if api == mqttcommon.API_V1 and protocol not in mqttcommon.MQTT3_PROTOCOLS:
@@ -2334,13 +2334,12 @@ class MQTTSubscribeService(StdService):
         self.logger.debug(21003, MQTTSubscribeService.log_messages[21003].format(
             dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
             record=to_sorted_string(event.record)))
-        # The record now being accumulated ends one interval after this one; from here on
-        # the lines carry that record's timestamp.
+        # Lines from here on belong to the record now being accumulated.
         self.logger.archive_timestamp = int(event.record['dateTime'] + event.record['interval'] * 60)
 
     def end_archive_period(self, event):
         """ Handle the end archive period event."""
-        # The record that just ended is the one being processed until it is written.
+        # The ended record is the one being written until the next one starts.
         self.logger.archive_timestamp = int(event.end)
 
 def loader(config_dict, engine):
@@ -2432,13 +2431,12 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         self.logger.debug(11002, MQTTSubscribeDriver.log_messages[11002].format(
             dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
             record=to_sorted_string(event.record)))
-        # The record now being accumulated ends one interval after this one; from here on
-        # the lines carry that record's timestamp.
+        # Lines from here on belong to the record now being accumulated.
         self.logger.archive_timestamp = int(event.record['dateTime'] + event.record['interval'] * 60)
 
     def end_archive_period(self, event):
         """ Handle the end archive period event."""
-        # The record that just ended is the one being processed until it is written.
+        # The ended record is the one being written until the next one starts.
         self.logger.archive_timestamp = int(event.end)
 
     def genLoopPackets(self):  # need to override parent

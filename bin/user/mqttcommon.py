@@ -65,13 +65,10 @@ class Logger:  # pylint: disable=too-many-instance-attributes
     # The default time shutdown waits for the LoggerThread to flush queued messages.
     SHUTDOWN_TIMEOUT = 10
 
-    # The message format: the component name, the emitting thread, and the archive
-    # record being processed. The archive record is appended only when there is one;
-    # the name and the thread id are always present.
+    # The archive record is appended only while one is being processed.
     LOG_FORMAT = "(%s) %s"
 
-    # The message texts, keyed by message id, for the logger thread's start, exit,
-    # and invalid entries and the stuck-in-shutdown warning.
+    # Messages the logger thread logs itself.
     log_messages = {
         # trace message
         # debug messages
@@ -103,8 +100,7 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         self.filename = None
         self.trace_level = None
         self.throttle = None
-        # The timestamp of the archive record being processed, carried by the entries
-        # produced while it is set. A consumer whose event handlers track a record sets it.
+        # The archive record stamped on lines while one is being processed.
         self.archive_timestamp = None
         if config is not None:
             # check that the level configured is valid
@@ -138,14 +134,12 @@ class Logger:  # pylint: disable=too-many-instance-attributes
 
         self._setup_logging()
 
-        # Resolve where trace entries log: at DEBUG when weewx debugging is on,
-        # at the TRACE level otherwise. After _setup_logging, which may clear the setting.
+        # Resolved after _setup_logging, which may clear the setting; with weewx
+        # debugging on, trace already logs at DEBUG.
         if self.weewx_debug > 1:
             self.trace_level = None
 
-        # Logging is setup, now safe to log a message about using throttling option.
-        # It is queued before the thread starts; the thread logs its start entry
-        # before it drains the queue, so the logged order is start, then notice.
+        # Queued before the thread starts, so the start entry is logged first.
         if 'throttle' in config:
             self.info(122001, MessageThrottle.NOTICE_EXPERIMENTAL)
 

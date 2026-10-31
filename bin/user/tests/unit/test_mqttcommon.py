@@ -532,7 +532,6 @@ class TestLogger(unittest.TestCase):
             SUT.shutdown(timeout=5)
 
             # The experimental throttle notice is queued, and logged after the thread's start entry.
-            # It renders with the converged format: the name, the queueing thread's id, no record.
             mock_logging.getLogger.return_value.info.assert_any_call(
                 "(%s) %s", f"{name}-{threading.get_native_id()}",
                 user.mqttcommon.MessageThrottle.NOTICE_EXPERIMENTAL)
@@ -641,8 +640,6 @@ class TestLogger(unittest.TestCase):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
             mock_log = mock_logging.getLogger.return_value
             name = random_string()
-            # A real Logger with the default options renders the converged format:
-            # the name, the queueing thread's id, and the archive record when one is stamped.
             SUT = user.mqttcommon.Logger(name, log_queue=queue.Queue())
 
             no_record_message = random_string()
@@ -1195,7 +1192,6 @@ class TestMessageThrottleParseConfig(unittest.TestCase):
 
         parsed = user.mqttcommon.MessageThrottle.parse_config(config)
 
-        # The configured values are left as they are; the parsed copy holds the ints.
         self.assertEqual(config['throttle']['category']['ERROR']['max'], '10')
         self.assertEqual(config['throttle']['category']['ERROR']['duration'], '60')
         self.assertEqual(parsed['category']['ERROR']['max'], 10)
