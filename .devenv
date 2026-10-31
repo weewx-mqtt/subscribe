@@ -3,5 +3,15 @@ export WEEWX_MODULE_NAME=mqttsubscribe
 export WEEWX_PYENV_VERSION='3.10'
 
 export WEEWX_TOOL_PATH=~/weewx_dev/weewx-extensions/development-tools/tools
-export WEEWX_PYTHONPATH=bin:../weewx/src
+
+# What the analyze-test workflow lints.
+export WEEWX_LINT_PATHS='./bin/user/mqttsubscribe.py ./bin/user/mqttcommon.py'
+
+# weewx from PyPI, like CI; the sibling checkout until it is installed.
+if PYTHONPATH= python3 -c 'import weewx' >/dev/null 2>&1; then
+    export WEEWX_PYTHONPATH=bin
+else
+    export WEEWX_PYTHONPATH=bin:../weewx/src
+fi
+
 PATH=$WEEWX_TOOL_PATH:$PATH

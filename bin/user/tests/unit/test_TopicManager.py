@@ -653,6 +653,12 @@ class TestQueueSizeCheck(unittest.TestCase):
         self.assertEqual(mock_logger.error.call_count, orig_queue_size - max_queue + 1)
         self.assertEqual(len(queue), max_queue - 1)
 
+
+def midday_epoch():
+    """ Today at noon; the offset tests below must not land in a DST transition's ambiguous hour. """
+    return int(datetime.datetime.now().replace(hour=12, minute=0, second=0, microsecond=0).timestamp())
+
+
 class TestAppendData(unittest.TestCase):
     topic = random_string()
     config_dict = {}
@@ -771,8 +777,8 @@ class TestAppendData(unittest.TestCase):
         datetime_format = "%Y-%m-%d %H:%M:%S"
         offset_format = "hhmm"
 
-        current_epoch = int(time.time())
-        offset_hour = random.randint(1, 23)
+        current_epoch = midday_epoch()
+        offset_hour = random.randint(1, 9)
         offset_minute = random.randint(1, 59)
         offset_hour_str = str(offset_hour).rjust(2, '0')
         offset_minute_str = str(offset_minute).rjust(2, '0')
@@ -812,8 +818,8 @@ class TestAppendData(unittest.TestCase):
         datetime_format = "%B %d %Y %H:%M:%S"
         offset_format = "hh:mm"
 
-        current_epoch = int(time.time())
-        offset_hour = random.randint(1, 23)
+        current_epoch = midday_epoch()
+        offset_hour = random.randint(1, 7)
         offset_minute = random.randint(1, 59)
         offset_hour_str = str(offset_hour).rjust(2, '0')
         offset_minute_str = str(offset_minute).rjust(2, '0')
@@ -853,7 +859,7 @@ class TestAppendData(unittest.TestCase):
 
         datetime_format = "%Y-%m-%d %H:%M:%S"
 
-        current_epoch = int(time.time())
+        current_epoch = midday_epoch()
 
         current_datetime = datetime.datetime.fromtimestamp(current_epoch).strftime(datetime_format)
 
