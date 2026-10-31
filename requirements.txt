@@ -1,0 +1,4 @@
+# Pinned so local lint results match CI, whose base install of pylint is
+# unpinned. CI honours this file after that install, so the pin wins.
+# pylint 4 requires Python >= 3.10; the CI matrix's 3.9 job skips this line.
+pylint==4.1.3; python_version >= "3.10"
