@@ -21,7 +21,7 @@ def loader(config_dict, engine):
     station = Simulator(engine, config_dict)
     return station
 
-class Simulator(weewx.drivers.simulator.Simulator, weewx.engine.StdService):
+class Simulator(weewx.drivers.simulator.Simulator, weewx.engine.StdService):  # pylint: disable=abstract-method
     ''' A simulator driver to be used when testing WeeWX/MQTTSubscribe.'''
     def __init__(self, engine, config_dict):
         start_ts, resume_ts = weewx.drivers.simulator.extract_starts(config_dict, DRIVER_NAME)
@@ -46,7 +46,7 @@ class Simulator(weewx.drivers.simulator.Simulator, weewx.engine.StdService):
     def end_simulation(self):
         ''' End this simulation. '''
         # self.engine.shutDown()
-        raise Exception("Max archive records has been achieved.")
+        raise Exception("Max archive records has been achieved.")  # pylint: disable=broad-exception-raised
 
     def pre_loop(self, _event):
         ''' Handle the pre_loop event. '''

@@ -7,4 +7,7 @@ max-cognitive-complexity = 10
 # E125, E402, W504
 ignore = E302,E305,W504,E402,E125,E221,E226,E251,E275
 
+# Tests can be long; the complexity limit is for production code.
+per-file-ignores = bin/user/tests/*: CCR001
+
 exclude = weewx

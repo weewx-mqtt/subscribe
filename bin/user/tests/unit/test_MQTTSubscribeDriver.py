@@ -258,10 +258,10 @@ class TestgenLoopPackets(unittest.TestCase):
                     SUT.start_loop_period_ts = start_loop_period_ts
 
                     gen = SUT.genLoopPackets()
-                    bar = next(gen, None)
+                    packet = next(gen, None)
 
                     self.assertEqual(mock_manager.return_value.get_data.call_count, 1)
-                    self.assertDictEqual(bar, {
+                    self.assertDictEqual(packet, {
                         'dateTime': start_loop_period_ts,
                         'MQTTSubscribe': None,
                         'usUnits': 1,

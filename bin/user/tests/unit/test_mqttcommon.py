@@ -501,9 +501,9 @@ class TestLogger(unittest.TestCase):
 
     def test_init_requires_a_name(self):
         with self.assertRaises(TypeError):
-            user.mqttcommon.Logger()
+            user.mqttcommon.Logger()  # pylint: disable=no-value-for-parameter
         with self.assertRaises(TypeError):
-            user.mqttcommon.Logger(config={'throttle': {}})
+            user.mqttcommon.Logger(config={'throttle': {}})  # pylint: disable=no-value-for-parameter
 
     def test_init_rejects_an_empty_name(self):
         with self.assertRaises(ValueError):
