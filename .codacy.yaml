@@ -1,0 +1,8 @@
+exclude_paths:
+  - ".codacy/**"
+  - ".github/**"
+  - ".vscode/**"
+  - "docs/**"
+  - ".codacy.yaml"
+  - ".env"
+  - "bin/user/tests/**"
