@@ -678,11 +678,6 @@ class RecordCache():
         if key in self.cached_values and timestamp < self.cached_values[key]['invalidated']:
             self.cached_values[key]['invalidated'] = timestamp
 
-    # def update_timestamp(self, key, timestamp):
-    #    """ Update the ts. """
-    #    if key in self.cached_values:
-    #        self.cached_values[key]['timestamp'] = timestamp
-
     def remove_value(self, key):
         """ Remove a cached value.
             If a key/value is no longer valid, use invalidate_value with current timestamp.
@@ -818,8 +813,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         field_defaults['conversion_error_to_none'] = to_bool(config.get('conversion_error_to_none', False))
 
         default_message_dict = config.get('message', configobj.ConfigObj())
-        # if 'type' option is not set, this not 'topic'
-        # so, no default 'message' configuration exists
+        # A 'message' stanza is only a default when it has a 'type'.
         if default_message_dict.get('type', None) is None:
             default_message_dict = configobj.ConfigObj({})
 
@@ -861,9 +855,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
             topic_dict = config.get(topic, {})
             callback_config_name = topic_dict.get('callback_config_name', topic_defaults['callback_config_name'])
 
-            # if 'type' option is set, this not a 'topic'
-            # it is actually a 'callback (message)' configuration stanza
-            # and it has already been retrieved into default_message_config
+            # Callback stanzas carry 'type'; they are not topics.
             if topic == callback_config_name and topic_dict.get('type', None) is not None:
                 continue
 
@@ -873,8 +865,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
             unit_system = weewx.units.unit_constants[unit_system_name]
 
             self.subscribed_topics[topic] = {}
-            # ignore is set at the topic level in addtion to the field level
-            # This allows it to be set to false at the topic level, changing MQTTSubscribe from an 'opt out' to 'opt in' strategy
+            # A topic can opt in even when its fields opt out.
             self.subscribed_topics[topic]['ignore'] = to_bool(topic_dict.get('ignore', field_defaults['ignore']))
             self.subscribed_topics[topic]['subscribe'] = to_bool(topic_dict.get('subscribe', True))
 
@@ -908,8 +899,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         message_dict = configobj.ConfigObj({})
         message_dict.merge(default_message_dict)
 
-        # if 'type' option is set, this a 'callback configuration (message)' section
-        # So merge the default message settings
+        # Callback sections merge the default message settings.
         if message_type is not None:
             message_dict.merge(temp_message_dict)
         self.subscribed_topics[topic][self.message_config_name] = message_dict
@@ -988,8 +978,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
                                           self.subscribed_topics[topic]['fields'][field])
 
     def _configure_topic_as_field(self, field_defaults, topic, topic_dict):
-        # See if any field options are directly under the topic.
-        # And if so, use the topic as the field name.
+        # Options directly under the topic make the topic itself the field.
         for (key, _) in topic_dict.items():
             if key not in self.topic_options:
                 self.subscribed_topics[topic]['fields'][topic] = self._configure_field(topic_dict, topic_dict, topic, field_defaults)
@@ -1002,9 +991,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
                 break
 
     def _add_collector_queue(self, topic_defaults):
-        # Add the collector queue as a subscribed topic so that data can retrieved from it
-        # Yes, this is a bit of a hack.
-        # Note, it would not be too hard to allow additional fields via the [fields] configuration option
+        # The collector queue is a subscribed topic; a bit of a hack.
         self.collected_units = weewx.units.unit_constants[topic_defaults['unit_system_name']]
         self.collected_fields = ['windGust', 'windGustDir', 'windDir', 'windSpeed']
         self.collected_queue = deque()
@@ -2139,14 +2126,6 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
     def _on_connect(self, client, userdata, flags, rc, _properties):
         # https://pypi.org/project/paho-mqtt/#on-connect
-        # rc:
-        # 0: Connection successful
-        # 1: Connection refused - incorrect protocol version
-        # 2: Connection refused - invalid client identifier
-        # 3: Connection refused - server unavailable
-        # 4: Connection refused - bad username or password
-        # 5: Connection refused - not authorised
-        # 6-255: Currently unused.
         if self.api == mqttcommon.API_V2_MQTT3:
             threading.current_thread().name = f"MQTTSubscribe-{threading.get_native_id()}"
 

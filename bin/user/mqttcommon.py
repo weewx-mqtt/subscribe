@@ -18,10 +18,8 @@ import configobj
 import paho.mqtt
 import paho.mqtt.client as mqtt
 
-# The mqttcommon API level. Bump it when a change requires consumers to have a newer
-# copy than older extensions ship (new shared functions, etc). Each consumer verifies
-# at import that the loaded copy meets its required level, so a stale copy - an
-# install-order overwrite - fails loudly instead of with a mysterious error later.
+# Bump when adding shared code consumers must have; each verifies it at import,
+# so a stale copy fails loudly.
 MQTTCOMMON_API = (1, 0)
 
 API_V1 = 'v1'
@@ -38,10 +36,8 @@ PAHO_LOG_LEVELS = {
     mqtt.MQTT_LOG_DEBUG: 'DEBUG'
 }
 
-# Some versions of these constants are dependent on the OpenSSL install,
-# so only the ones that are available can be used. The legacy protocols are
-# only reached when a user explicitly configures 'tls_version' for an old
-# broker. The default is 'tlsv12'.
+# Dependent on the OpenSSL install, so only the available constants can be used.
+# The legacy protocols are reached only by an explicit 'tls_version'.
 SSL_PROTOCOLS = (
     ('tls', 'PROTOCOL_TLS'),
     ('tlsv1', 'PROTOCOL_TLSv1'),
@@ -211,8 +207,6 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         self.debug(0, f"Platform {platform.platform()}")
         self.debug(0, f"Locale is '{locale.setlocale(locale.LC_ALL)}'")
 
-        # Too easy to leak sensitive information
-        # self.debug(config_dict)
         archive_dict = config_dict.get('StdArchive', {})
         record_augmentation = archive_dict.get('record_augmentation', None)
         record_generation = archive_dict.get('record_generation', None)
@@ -251,8 +245,7 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         """ recursively get parent handlers """
         handlers = []
         for handler in logger.handlers:
-            # Unfortunately cannot make a deep copy, but this seems safe
-            # we only change the logging level...
+            # Deep copy fails; only the level is changed, so a shallow copy is safe.
             handlers.append(copy.copy(handler))
 
         if logger.propagate and logger.parent is not None:
