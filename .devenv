@@ -1,5 +1,5 @@
 # Do not inherit settings from another repository's .devenv.
-unset WEEWX_LINT_PATHS WEEWX_TEST_SUITES WEEWX_HTML WEEWX_RESULTS_DIR
+unset WEEWX_LINT_PATHS WEEWX_TEST_SUITES WEEWX_HTML WEEWX_RESULTS_DIR WEEWX_COMMON_REPOS WEEWX_COMMON_SRC
 
 export WEEWX_MODULE_NAME=mqttsubscribe
 
@@ -9,6 +9,9 @@ export WEEWX_TOOL_PATH=~/weewx_dev/weewx-extensions/development-tools/tools
 
 # What the analyze-test workflow lints.
 export WEEWX_LINT_PATHS='./bin/user/mqttsubscribe.py ./bin/user/mqttcommon.py'
+
+# The shared repositories this repository vendors.
+export WEEWX_COMMON_REPOS='https://github.com/weewx-mqtt/mqttcommon'
 
 # The suites the analyze-test workflow runs.
 export WEEWX_TEST_SUITES='unit func integ e2e'
