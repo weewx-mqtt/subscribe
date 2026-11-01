@@ -594,6 +594,13 @@ DRIVER_VERSION = VERSION
 class ConversionError(ValueError):
     """ Error converting data types. """
 
+def compile_expression(source):
+    """ Compile a conversion expression from the configuration into a function.
+
+        The source is the station owner's own configuration, not untrusted input.
+    """
+    return eval(source)  # nosec B307 - configuration, not untrusted input pylint: disable=eval-used
+
 def create_logger(name, throttle=None, level='NOTSET', filename=None, console=None):
     """ Create subscribe's logger: config-driven, with subscribe's module logger. """
     config = {} if throttle is None else {'throttle': throttle}
@@ -938,9 +945,8 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
             self.subscribed_topics[topic]['conversion_func']['source'] = 'lambda x: to_int(x)'
         else:
             self.subscribed_topics[topic]['conversion_func']['source'] = 'lambda x: x'
-        # pylint: disable=eval-used
-        self.subscribed_topics[topic]['conversion_func']['compiled'] = eval(self.subscribed_topics[topic]['conversion_func']['source'])
-        # pylint: enable=eval-used
+        conversion_func = self.subscribed_topics[topic]['conversion_func']
+        conversion_func['compiled'] = compile_expression(conversion_func['source'])
 
     def _configure_topic_fields(self, field_defaults, callback_config_name, topic, topic_dict):
         for field in topic_dict.sections:
@@ -1081,7 +1087,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         field['conversion_func'] = {}
         field['conversion_type'] = conversion_type  # todo - hack so that a field configuration can be used as a default for its subfields
         field['conversion_func']['source'] = TopicManager._get_conversion_source(conversion_func, conversion_type)
-        field['conversion_func']['compiled'] = eval(field['conversion_func']['source'])  # pylint: disable=eval-used
+        field['conversion_func']['compiled'] = compile_expression(field['conversion_func']['source'])
         field['conversion_error_to_none'] = (field_dict).get('conversion_error_to_none', conversion_error_to_none)
         if 'units' in field_dict:
             if field_dict['units'] in weewx.units.conversionDict and field['name'] in weewx.units.obs_group_dict:
@@ -1807,7 +1813,7 @@ class ManageWeewxConfig():
                 if unit not in weewx.units.conversionDict:
                     weewx.units.conversionDict[unit] = {}
 
-                weewx.units.conversionDict[unit][to_unit] = eval(conversion[to_unit])  # pylint: disable=eval-used
+                weewx.units.conversionDict[unit][to_unit] = compile_expression(conversion[to_unit])
 
     def update_unit_config(self, weewx_config):
         ''' Update the unit sections of the WeeWX configuration.'''

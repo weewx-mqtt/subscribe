@@ -33,7 +33,7 @@ class MessageCallbackProvider(user.mqttsubscribe.AbstractMessageCallbackProvider
         observations = {}
         conversion_func = {
             'source': 'lambda x: to_float(x)',
-            'compiled': eval('lambda x: to_float(x)')  # pylint: disable=eval-used
+            'compiled': eval('lambda x: to_float(x)')  # nosec B307 - example expression pylint: disable=eval-used
         }
 
         for child in parent:
