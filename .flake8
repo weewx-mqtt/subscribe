@@ -7,7 +7,12 @@ max-cognitive-complexity = 10
 # E125, E402, W504
 ignore = E302,E305,W504,E402,E125,E221,E226,E251,E275
 
-# Tests can be long; the complexity limit is for production code.
-per-file-ignores = bin/user/tests/*: CCR001
+per-file-ignores =
+    # Tests can be long; the complexity limit is for production code.
+    bin/user/tests/*: CCR001
+    # Captured expectations and fixtures, not code. Only the pyflakes checks
+    # still apply, so a genuinely broken file is still reported.
+    bin/user/tests/data/*: E,W
+    bin/user/tests/*/data/*: E,W
 
 exclude = weewx
