@@ -16,3 +16,4 @@ localtools/
 bin/user/tests/data/output.conf
 act-artifacts/
 sql/
+results/

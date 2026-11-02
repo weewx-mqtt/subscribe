@@ -43,7 +43,7 @@ class TestDefaultConfiguration(unittest.TestCase):
     
     # Controls the MQTT logging.
     # Default is false.
-    log = false
+    log_mqtt = false
     
     # password for broker authentication.
     # Default is None.
@@ -195,7 +195,8 @@ class TestValidateTopicsSection(unittest.TestCase):
         SUT._validate_topics_section(topic_name,
                                      f'{section}-topics-',
                                      configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
-                                     section_configspec=configobj.ConfigObj(CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
+                                     section_configspec=configobj.ConfigObj(
+                                         CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
                                      section_deprecated_options=MQTTSubscribeConfiguration.deprecated_options
                                      .get('MQTTSubscribe', {})
                                      .get('topics', {})
@@ -226,7 +227,8 @@ class TestValidateTopicsSection(unittest.TestCase):
         SUT._validate_topics_section(topic_name,
                                      f'{section}-topics-',
                                      configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
-                                     section_configspec=configobj.ConfigObj(CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
+                                     section_configspec=configobj.ConfigObj(
+                                         CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
                                      section_deprecated_options=MQTTSubscribeConfiguration.deprecated_options
                                      .get('MQTTSubscribe', {})
                                      .get('topics', {})
@@ -257,7 +259,8 @@ class TestValidateTopicsSection(unittest.TestCase):
         SUT._validate_topics_section(topic_name,
                                      f'{section}-topics-',
                                      configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
-                                     section_configspec=configobj.ConfigObj(CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
+                                     section_configspec=configobj.ConfigObj(
+                                         CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
                                      section_deprecated_options=MQTTSubscribeConfiguration.deprecated_options
                                      .get('MQTTSubscribe', {})
                                      .get('topics', {})

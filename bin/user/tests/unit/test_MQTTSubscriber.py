@@ -17,7 +17,8 @@ from test_weewx_stubs import random_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.mqttsubscribe import MQTTSubscriber, Logger
+from user.mqttcommon import Logger
+from user.mqttsubscribe import MQTTSubscriber
 
 mock_client = None
 
@@ -571,7 +572,7 @@ class TestDeprecatedOptions(unittest.TestCase):
 
         with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
             with mock.patch('user.mqttsubscribe.TopicManager'):
-                with mock.patch('user.mqttsubscribe.Logger', spec=Logger) as mock_logger:
+                with mock.patch('user.mqttcommon.Logger', spec=Logger) as mock_logger:
                     MQTTSubscriberTest(config, mock_logger)
 
                 self.assertEqual(mock_logger.info.call_count, 15)
@@ -711,6 +712,23 @@ class TestDeprecatedOptions(unittest.TestCase):
 
                 self.assertEqual(SUT.logger.info.call_count, 14)
                 mock_logger.info.assert_any_call(32015, "'use_topic_as_fieldname' option is no longer needed and can be removed.")
+
+    def test_log_is_deprecated(self):
+        global mock_client
+        config_dict = {}
+        config_dict['message_callback'] = {}
+        config_dict['topics'] = {}
+        config_dict['log'] = 'true'
+        config = configobj.ConfigObj(config_dict)
+
+        mock_logger = mock.Mock(spec=Logger)
+
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                mock_client = mock.Mock()
+                MQTTSubscriberTest(config, mock_logger)
+
+                mock_logger.info.assert_any_call(32015, "'log' is deprecated, use 'log_mqtt'")
 
 class TestStart(unittest.TestCase):
     def setUp(self):

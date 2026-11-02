@@ -1,3 +1,14 @@
+V3.2.1 (draft)
+Enhancements:
+- Added the 'log_mqtt' option, it replaces the 'log' option.
+  'log' is deprecated, remains supported, and is scheduled to be removed in V4.
+- Log messages are now queued and written by a dedicated logger thread.
+  This makes logging thread safe and the throttled message state deterministic.
+- Fail loudly at import when an older 'user.mqttcommon' copy is loaded (an
+  install-order overwrite by another weewx-mqtt extension).
+- Log line prefixes use the format converged across the weewx-mqtt extensions,
+  defined by the shared 'user.mqttcommon': (component-thread_id-archive_timestamp).
+
 V3.2.0
 Enhancements:
 - Rename MQTTSubscribe.py to mqttsubscribe.py (improved maintainability).

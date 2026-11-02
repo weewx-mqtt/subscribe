@@ -41,12 +41,12 @@ def on_connect_v1(client, userdata, _flags, _rc):
     # 5: Connection refused - not authorised
     # 6-255: Currently unused.
     for topic in userdata['topics']:
-        (result, mid) = client.subscribe(topic)
+        (_result, _mid) = client.subscribe(topic)
     userdata['connected_flag'] = True
 
 def on_connect_v2(client, userdata, _flags, _reason_code, _properties):
     for topic in userdata['topics']:
-        (result, mid) = client.subscribe(topic)
+        (_result, _mid) = client.subscribe(topic)
     userdata['connected_flag'] = True
 
 def on_message(client, userdata, msg):

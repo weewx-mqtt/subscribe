@@ -18,7 +18,7 @@ import time
 
 from io import StringIO
 
-from user.mqttsubscribe import Logger, MessageCallbackProvider, TopicManager
+from user.mqttsubscribe import create_logger as Logger, MessageCallbackProvider, TopicManager
 
 def random_string(length=32):
     return ''.join([random.choice(string.ascii_letters + string.digits) for n in range(length)])
@@ -33,7 +33,7 @@ class Msg:
 class TestJSONMessage(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.logger = Logger({'mode': 'FuncTest'}, level='ERROR', console=True)
+        cls.logger = Logger('FuncTest', level='ERROR', console=True)
 
         cls.topic = random_string()
         cls.config_str = '''

@@ -56,7 +56,8 @@ class MQTTSubscribeServiceInstaller(ExtensionInstaller):
             'description': 'Source WeeWX data from MQTT.',
             'author': "Rich Bell",
             'author_email': "bellrichm@gmail.com",
-            'files': [('bin/user', ['bin/user/mqttsubscribe.py'])]
+            'files': [('bin/user', ['bin/user/mqttsubscribe.py',
+                                    'bin/user/mqttcommon.py'])]
         }
 
         MQTTSubscribe_dict = configobj.ConfigObj(StringIO(MQTTSUBSCRIBE_CONFIG))  # pylint: disable = invalid-name

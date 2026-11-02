@@ -18,7 +18,9 @@ from test_weewx_stubs import random_string
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
-from user.mqttsubscribe import MQTTSubscriberV2MQTT3, Logger
+import user.mqttcommon
+from user.mqttcommon import Logger
+from user.mqttsubscribe import MQTTSubscriber
 
 
 @unittest.skipIf(not hasattr(paho.mqtt.client, 'CallbackAPIVersion'), "paho-mqtt is v1, skipping tests.")
@@ -47,16 +49,15 @@ class TestCallbacks(unittest.TestCase):
         config = configobj.ConfigObj(config_dict)
 
         flags = random_string()
-        reason_code = paho.mqtt.reasoncodes.ReasonCode(paho.mqtt.packettypes.PacketTypes.CONNACK,
-                                                       identifier=random.randint(131, 138))
+        rc = random.randint(1, 10)
 
         with mock.patch('user.mqttsubscribe.TopicManager'):
-            SUT = MQTTSubscriberV2MQTT3(config, mock_logger)
+            SUT = MQTTSubscriber(config, mock_logger, api=user.mqttcommon.API_V2_MQTT3)
 
-            SUT._on_connect(None, {}, flags, reason_code, None)
+            SUT._on_connect(None, {}, flags, rc, None)
 
             self.assertEqual(SUT.logger.info.call_count, 16)
-            mock_logger.info.assert_any_call(72001, f"Connected with result code {reason_code.value}")
+            mock_logger.info.assert_any_call(72001, f"Connected with result code {rc}")
             mock_logger.info.assert_any_call(72002, f"Connected flags {flags}")
 
     @staticmethod
@@ -68,17 +69,16 @@ class TestCallbacks(unittest.TestCase):
         config_dict['topics'] = {}
         config = configobj.ConfigObj(config_dict)
 
-        reason_code = paho.mqtt.reasoncodes.ReasonCode(paho.mqtt.packettypes.PacketTypes.CONNACK,
-                                                       identifier=random.randint(131, 138))
+        rc = random.randint(1, 10)
 
         with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
             with mock.patch('user.mqttsubscribe.TopicManager'):
                 with mock.patch('user.mqttsubscribe.mqtt.Client'):
-                    SUT = MQTTSubscriberV2MQTT3(config, mock_logger)
+                    SUT = MQTTSubscriber(config, mock_logger, api=user.mqttcommon.API_V2_MQTT3)
 
-                    SUT._on_disconnect(None, None, None, reason_code, None)
+                    SUT._on_disconnect(None, None, rc, None)
 
-                    SUT.logger.info.assert_called_with(72003, f"Disconnected with result code {int(reason_code.value)}")
+                    SUT.logger.info.assert_called_with(72003, f"Disconnected with result code {int(rc)}")
 
     @staticmethod
     def test_on_subscribe():
@@ -90,20 +90,18 @@ class TestCallbacks(unittest.TestCase):
         config = configobj.ConfigObj(config_dict)
 
         mid = random.randint(1, 10)
-        reason_code = paho.mqtt.reasoncodes.ReasonCode(paho.mqtt.packettypes.PacketTypes.CONNACK,
-                                                       identifier=random.randint(131, 138))
-        reason_codes = [reason_code]
+        codes = [random.randint(0, 1)]
 
         with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
             with mock.patch('user.mqttsubscribe.TopicManager'):
                 with mock.patch('user.mqttsubscribe.mqtt.Client'):
-                    SUT = MQTTSubscriberV2MQTT3(config, mock_logger)
+                    SUT = MQTTSubscriber(config, mock_logger, api=user.mqttcommon.API_V2_MQTT3)
 
-                    SUT._on_subscribe(None, None, mid, reason_codes, None)
+                    SUT._on_subscribe(None, None, mid, codes, None)
 
                     SUT.logger.info.assert_called_with(72004,
-                                                       (f"Subscribed to mid: {mid} is size {len(reason_codes)} has a reason_code of "
-                                                        f"{reason_codes[0].value}"))
+                                                       (f"Subscribed to mid: {mid} is size {len(codes)} has a reason_code of "
+                                                        f"{codes[0]}"))
 
     @staticmethod
     def test_on_log():
@@ -121,7 +119,7 @@ class TestCallbacks(unittest.TestCase):
             with mock.patch('user.mqttsubscribe.TopicManager'):
                 with mock.patch('user.mqttsubscribe.mqtt.Client'):
 
-                    SUT = MQTTSubscriberV2MQTT3(config, mock_logger)
+                    SUT = MQTTSubscriber(config, mock_logger, api=user.mqttcommon.API_V2_MQTT3)
 
                     SUT._on_log(None, None, level, msg)
 
@@ -144,7 +142,7 @@ class TestCallbacks(unittest.TestCase):
             with mock.patch('user.mqttsubscribe.TopicManager'):
                 with mock.patch('user.mqttsubscribe.mqtt.Client'):
 
-                    SUT = MQTTSubscriberV2MQTT3(config, mock_logger)
+                    SUT = MQTTSubscriber(config, mock_logger, api=user.mqttcommon.API_V2_MQTT3)
 
                     self.assertEqual(SUT.client.on_log, SUT._on_log)
 
@@ -165,7 +163,48 @@ class TestCallbacks(unittest.TestCase):
             with mock.patch('user.mqttsubscribe.TopicManager'):
                 with mock.patch('user.mqttsubscribe.mqtt.Client'):
 
-                    SUT = MQTTSubscriberV2MQTT3(config, mock_logger)
+                    SUT = MQTTSubscriber(config, mock_logger, api=user.mqttcommon.API_V2_MQTT3)
+
+                    self.assertNotEqual(SUT.client.on_log, SUT._on_log)
+
+    def test_mqtt_log_mqtt_set(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        config_dict = {
+            'message_callback': {},
+            'topics': {
+                random_string(): {}
+            },
+            'log_mqtt': True
+        }
+
+        config = configobj.ConfigObj(config_dict)
+
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
+                    SUT = MQTTSubscriber(config, mock_logger, api=user.mqttcommon.API_V2_MQTT3)
+
+                    self.assertEqual(SUT.client.on_log, SUT._on_log)
+
+    def test_mqtt_log_mqtt_takes_precedence_over_log(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        config_dict = {
+            'message_callback': {},
+            'topics': {
+                random_string(): {}
+            },
+            'log': True,
+            'log_mqtt': False
+        }
+
+        config = configobj.ConfigObj(config_dict)
+
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
+                    SUT = MQTTSubscriber(config, mock_logger, api=user.mqttcommon.API_V2_MQTT3)
 
                     self.assertNotEqual(SUT.client.on_log, SUT._on_log)
 

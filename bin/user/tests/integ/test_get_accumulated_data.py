@@ -13,7 +13,7 @@ import configobj
 import utils
 
 import weewx
-from user.mqttsubscribe import TopicManager, Logger
+from user.mqttsubscribe import TopicManager, create_logger as Logger
 
 class TestAccumulatedData(unittest.TestCase):
     def runit(self, payload, file_pointer, check_results=True):
@@ -23,7 +23,7 @@ class TestAccumulatedData(unittest.TestCase):
         config_dict = configobj.ConfigObj(test_data['config'])['MQTTSubscribeService']
         testruns = test_data['testruns']
 
-        logger = Logger({'mode': 'IntegTest'})
+        logger = Logger('IntegTest')
         topics_dict = config_dict.get('topics', {})
         manager = TopicManager(None, topics_dict, logger)
 

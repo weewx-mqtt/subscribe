@@ -56,7 +56,7 @@ def to_bool(value):
     try:
         if value.lower() in ['true', 'yes']:
             return True
-        elif value.lower() in ['false', 'no']:
+        if value.lower() in ['false', 'no']:
             return False
     except AttributeError:
         pass
@@ -79,8 +79,7 @@ def to_int(value):
 def timestamp_to_string(ts, format_str="%Y-%m-%d %H:%M:%S %Z"):
     if ts is not None:
         return f"{time.strftime(format_str, time.localtime(ts))} ({int(ts)})"
-    else:
-        return "******* N/A *******     (    N/A   )"
+    return "******* N/A *******     (    N/A   )"
 
 def startOfInterval(time_ts, interval):
     start_interval_ts = int(time_ts / interval) * interval
@@ -133,8 +132,8 @@ class Event:
     def __init__(self, event_type, **argv):
         self.event_type = event_type
 
-        for key in argv:
-            setattr(self, key, argv[key])
+        for key, value in argv.items():
+            setattr(self, key, value)
 class accum:
     def Accum(self):
         pass

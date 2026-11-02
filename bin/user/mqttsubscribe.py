@@ -42,7 +42,12 @@ CONFIG_SPEC_TEXT = """ \
 
     # Controls the MQTT logging.
     # Default is false.
+    # DEPRECATED - use log_mqtt.
     log = false
+
+    # Controls the MQTT logging.
+    # Default is false.
+    log_mqtt = false
 
     # password for broker authentication.
     # Default is None.
@@ -540,14 +545,9 @@ import argparse
 import copy
 import datetime
 import json
-import locale
-import logging
-import math
 import os
-import platform
 import random
 import re
-import ssl
 import sys
 import threading
 import time
@@ -555,7 +555,6 @@ import traceback
 from collections import deque
 
 import configobj
-import paho
 import paho.mqtt.client as mqtt
 from paho.mqtt.client import connack_string
 
@@ -569,6 +568,8 @@ user_root = os.getenv('USER_ROOT')
 if user_root is not None:
     sys.path.append(user_root + '/..')
 
+from user import mqttcommon
+
 import weeutil
 import weeutil.logger
 from weeutil.weeutil import to_bool, to_float, to_int, to_sorted_string
@@ -580,6 +581,12 @@ import weewx.drivers
 from weewx.engine import StdEngine, StdService
 # pylint: enable=wrong-import-position
 
+# All the weewx-mqtt extensions ship their own copy of mqttcommon. Fail loudly when the
+# loaded copy is older than this extension needs, instead of with a mysterious error later.
+if getattr(mqttcommon, 'MQTTCOMMON_API', (0, 0)) < (1, 0):
+    raise ImportError("user.mqttcommon is too old. An older weewx-mqtt extension likely overwrote it during"
+                      " install; reinstall or upgrade all the weewx-mqtt extensions.")
+
 VERSION = "3.2.1-rc01a"
 DRIVER_NAME = 'MQTTSubscribeDriver'
 DRIVER_VERSION = VERSION
@@ -587,306 +594,18 @@ DRIVER_VERSION = VERSION
 class ConversionError(ValueError):
     """ Error converting data types. """
 
-class Logger():  # pylint: disable=too-many-instance-attributes
-    """ The logging class. """
-    # This is the timestamp of the archive record being processed.
-    # It is 'captured' via the NEW_ARCHIVE_RECORD event but due to WeeWX processing, updated via the END_ARCHIVE_PERIOD.
-    # It is added to every log message.
-    archive_timestamp = -1
-    log_messages = {
-        # trace message
-        # debug messages
-        # informational messages
-        122001: "Throttling messages is an experimental option. It has limited support and may cause one to miss important messages.",
-        # error messages
-        124001: "{count} messages have been suppressed in window id: {window}.",
-        124002: "{count} messages have been suppressed of {max}.",
-        # exception messages
-        129001: "{message_id} has been configured multiple times",
-        129003: "{category} is not valid. Valid categories are {valid_categories}",
-        129004: "{category} is missing 'max' configuration option.",
-        129005: "{category} is missing 'duration' configuration option.",
-        129006: "{message} is missing 'max' configuration option.",
-        129007: "{message} is missing 'duration' configuration option.",
-    }
+def compile_expression(source):
+    """ Compile a conversion expression from the configuration into a function.
 
-    MSG_FORMAT = "(%s-%s) %s %s"
+        The source is the station owner's own configuration, not untrusted input.
+    """
+    return eval(source)  # nosec B307 - configuration, not untrusted input pylint: disable=eval-used
 
-    valid_categories = ['ALL', 'ERROR', 'INFO', 'DEBUG', 'TRACE']
-
-    def __init__(self, config, level='NOTSET', filename=None, console=None):
-        self.console = console
-        self.mode = config['mode']
-        self.filename = filename
-        self.weewx_debug = weewx.debug
-
-        self.logged_ids = {}
-        self.throttle_config = self._parse_throttle_config(config)
-
-        # Setup custom TRACE level
-        self.trace_level = 5
-        if logging.getLevelName(self.trace_level) == 'Level 5':
-            logging.addLevelName(self.trace_level, "TRACE")
-
-        # check that the level configured is valid
-        self.level = logging._checkLevel(level)
-
-        self._logmsg = logging.getLogger(__name__)
-        self._setup_logging()
-
-        # Logging is setup, now safe to log a mwssage about using throttling option
-        if 'throttle' in config:
-            self.info(122001, Logger.log_messages[122001])
-
-    def _parse_throttle_config(self, config):
-        """ Parse the 'throttle' section of the config into the internal representation. """
-        throttle_config = {'category': {}, 'message': {}}
-
-        if 'throttle' in config:
-            throttle_config['category'] = self._parse_throttle_categories(config['throttle'])
-            throttle_config['message'] = self._parse_throttle_messages(config['throttle'])
-
-        return throttle_config
-
-    @staticmethod
-    def _parse_throttle_categories(throttle):
-        """ Parse the 'category' section of the throttle config. """
-        categories = {}
-        for category in throttle.get('category', configobj.ConfigObj({})).sections:
-            if category not in Logger.valid_categories:
-                raise ValueError(Logger.log_messages[129003].format(category=category, valid_categories=Logger.valid_categories))
-            if 'max' not in throttle['category'][category]:
-                raise ValueError(Logger.log_messages[129004].format(category=category))
-            if 'duration' not in throttle['category'][category]:
-                raise ValueError(Logger.log_messages[129005].format(category=category))
-            throttle['category'][category]['max'] = to_int(throttle['category'][category]['max'])
-            throttle['category'][category]['duration'] = to_int(throttle['category'][category]['duration'])
-            categories[category] = throttle['category'][category]
-
-        return categories
-
-    def _parse_throttle_messages(self, throttle):
-        """ Parse the 'messages' section of the throttle config. """
-        messages = {}
-        for message in throttle.get('messages', configobj.ConfigObj({})).sections:
-            Logger._validate_throttle_message(throttle['messages'][message], message)
-
-            if 'messages' in throttle['messages'][message]:
-                message_ids = weeutil.weeutil.option_as_list(throttle['messages'][message]['messages'])
-            else:
-                message_ids = [message]
-
-            for message_id in message_ids:
-                message_id_int = to_int(message_id)
-                if message_id_int in messages:
-                    raise ValueError(Logger.log_messages[129001].format(message_id=message_id))
-                messages[message_id_int] = {
-                    'duration': to_int(throttle['messages'][message]['duration']),
-                    'max': to_int(throttle['messages'][message]['max'])
-                }
-
-        return messages
-
-    @staticmethod
-    def _validate_throttle_message(message_config, message):
-        """ Validate a 'messages' section of the throttle config. """
-        if 'max' not in message_config:
-            raise ValueError(Logger.log_messages[129006].format(message=message))
-        if 'duration' not in message_config:
-            raise ValueError(Logger.log_messages[129007].format(message=message))
-
-    def _setup_logging(self):
-        """ Setup the weewx message handlers. """
-        if self.console:
-            self._logmsg.addHandler(logging.StreamHandler(sys.stdout))
-
-        if self.level > 0:
-            self.weewx_debug = 0
-            self._logmsg.propagate = 0
-            self._logmsg.setLevel(self.level)
-            # Get a copy of all the handlers
-            handlers = self.get_handlers(self._logmsg.parent)
-            for handler in handlers:
-                handler.setLevel(self.level)
-                self._logmsg.addHandler(handler)
-        else:
-            self.weewx_debug = weewx.debug
-
-        if self.filename is not None:
-            formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s", "%Y-%m-%d %H:%M:%S")
-            file_handler = logging.FileHandler(self.filename, mode='w')
-            file_handler.setLevel(self.level)
-            file_handler.setFormatter(formatter)
-            self._logmsg.addHandler(file_handler)
-
-    def _is_throttled(self, logging_level, msg_id):
-        if msg_id is None:
-            return False
-        if msg_id in self.throttle_config['message']:
-            return self._check_message(msg_id, self.throttle_config['message'][msg_id])
-        if logging_level in self.throttle_config['category']:
-            return self._check_message(msg_id, self.throttle_config['category'][logging_level])
-        if 'ALL' in self.throttle_config['category']:
-            return self._check_message(msg_id, self.throttle_config['category']['ALL'])
-
-        return False
-
-    def _check_message(self, msg_id, throttle_config):
-        if throttle_config['max'] is None:
-            return False
-
-        if throttle_config['duration'] == 0:
-            return self._check_message_duration_zero(msg_id, throttle_config)
-
-        return self._check_message_window(msg_id, throttle_config)
-
-    def _check_message_duration_zero(self, msg_id, throttle_config):
-        if msg_id not in self.logged_ids:
-            self.logged_ids[msg_id] = {}
-            self.logged_ids[msg_id]['count'] = 0
-
-        if self.logged_ids[msg_id]['count'] > throttle_config['max']:
-            if self.logged_ids[msg_id]['count'] % throttle_config['max'] == 0:
-                self.logged_ids[msg_id]['count'] += 1
-                self.error(None, Logger.log_messages[124002].format(count=self.logged_ids[msg_id]['count'], max=throttle_config['max']))
-                return False
-
-        self.logged_ids[msg_id]['count'] += 1
-        return True
-
-    def _check_message_window(self, msg_id, throttle_config):
-        now = int(time.time())
-        window = int(now // throttle_config['duration'])
-
-        if msg_id not in self.logged_ids:
-            self.logged_ids[msg_id] = {}
-            self.logged_ids[msg_id]['window'] = window
-            self.logged_ids[msg_id]['count'] = 1
-            return False
-
-        if window != self.logged_ids[msg_id]['window']:
-            self.logged_ids[msg_id]['count'] = 0
-            self.logged_ids[msg_id]['window'] = window
-
-        self.logged_ids[msg_id]['count'] += 1
-
-        if self.logged_ids[msg_id]['count'] > throttle_config['max']:
-            if self.logged_ids[msg_id]['count'] % throttle_config['max'] == 0:
-                self.error(None, Logger.log_messages[124001].format(
-                    count=self.logged_ids[msg_id]['count'] - throttle_config['max'],
-                    window=window))
-                return False
-            return True
-
-        return False
-
-    def _check_message_sliding(self, msg_id, throttle_config):  # Currently not being used - pragma: no cover
-        if throttle_config['max'] is None:
-            return False
-
-        if throttle_config['duration'] == 0:
-            return self._check_message_sliding_duration_zero(msg_id, throttle_config)
-
-        return self._check_message_sliding_window(msg_id, throttle_config)
-
-    def _check_message_sliding_duration_zero(self, msg_id, throttle_config):  # Currently not being used - pragma: no cover
-        if msg_id not in self.logged_ids:
-            self.logged_ids[msg_id] = {}
-            self.logged_ids[msg_id]['count'] = 0
-
-        if self.logged_ids[msg_id]['count'] % throttle_config['max'] == 0:
-            self.logged_ids[msg_id]['count'] += 1
-            self.error(None, Logger.log_messages[124002].format(count=self.logged_ids[msg_id]['count'], max=throttle_config['max']))
-            return False
-
-        self.logged_ids[msg_id]['count'] += 1
-        return True
-
-    def _check_message_sliding_window(self, msg_id, throttle_config):  # Currently not being used - pragma: no cover
-        now = int(time.time())
-        window = int(now // throttle_config['duration'])
-
-        if msg_id not in self.logged_ids:
-            self.logged_ids[msg_id] = {}
-            self.logged_ids[msg_id]['window'] = window
-            self.logged_ids[msg_id]['count'] = 1
-            self.logged_ids[msg_id]['previous_count'] = 0
-            return False
-
-        if window != self.logged_ids[msg_id]['window']:
-            self.logged_ids[msg_id]['previous_count'] = self.logged_ids[msg_id]['count']
-            self.logged_ids[msg_id]['count'] = 0
-            self.logged_ids[msg_id]['window'] = window
-
-        self.logged_ids[msg_id]['count'] += 1
-        window_elapsed = (now % throttle_config['duration']) / throttle_config['duration']
-        threshold = math.floor(self.logged_ids[msg_id]['previous_count'] * (1 - window_elapsed) + self.logged_ids[msg_id]['count'])
-
-        if threshold > throttle_config['max']:
-            if threshold % throttle_config['max'] == 0:
-                self.error(None, Logger.log_messages[124001].format(count=threshold))
-                return False
-            return True
-
-        return False
-
-    def get_handlers(self, logger):
-        """ recursively get parent handlers """
-        handlers = []
-        for handler in logger.handlers:
-            # Unfortunately cannot make a deep copy, but this seems safe
-            # we only change the logging level...
-            handlers.append(copy.copy(handler))
-
-        if logger.propagate and logger.parent is not None:
-            handlers.extend(self.get_handlers(logger.parent))
-
-        return handlers
-
-    def log_environment(self, config_dict):
-        """ Log the environment we are running in. """
-        # Since WeeWX logs this, only log it when debugging
-        self.debug(0, f"Using weewx version {weewx.__version__}")
-        self.debug(0, f"Using Python {sys.version}")
-        self.debug(0, f"Platform {platform.platform()}")
-        self.debug(0, f"Locale is '{locale.setlocale(locale.LC_ALL)}'")
-
-        # Too easy to leak sensitive information
-        # self.debug(config_dict)
-        archive_dict = config_dict.get('StdArchive', {})
-        record_augmentation = archive_dict.get('record_augmentation', None)
-        record_generation = archive_dict.get('record_generation', None)
-        self.info(0, f"Version is {VERSION}")
-        self.info(0, f"Using paho.mqtt {paho.mqtt.__version__}")
-        self.info(0, f"Log level: {int(self.level)}")
-        self.info(0, f"Log debug setting: {int(self.weewx_debug)}")
-        self.info(0, f"Log console: {self.console}")
-        self.info(0, f"Log file: {self.filename}")
-        self.debug(0, f"Record Augmentation is: {record_augmentation}")
-        self.debug(0, f"Record Generation is: {record_generation}")
-
-    def trace(self, msg_id, msg_text):
-        """ Log trace messages. """
-        if not self._is_throttled('TRACE', msg_id):
-            if self.weewx_debug > 1:
-                self._logmsg.debug(self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
-            else:
-                self._logmsg.log(self.trace_level, self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
-
-    def debug(self, msg_id, msg_text):
-        """ Log debug messages. """
-        if not self._is_throttled('DEBUG', msg_id):
-            self._logmsg.debug(self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
-
-    def info(self, msg_id, msg_text):
-        """ Log informational messages. """
-        if not self._is_throttled('INFO', msg_id):
-            self._logmsg.info(self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
-
-    def error(self, msg_id, msg_text):
-        """ Log error messages. """
-        if not self._is_throttled('ERROR', msg_id):
-            self._logmsg.error(self.MSG_FORMAT, self.mode, threading.get_native_id(), Logger.archive_timestamp, msg_text)
+def create_logger(name, throttle=None, level='NOTSET', filename=None, console=None):
+    """ Create subscribe's logger: config-driven, with subscribe's module logger. """
+    config = {} if throttle is None else {'throttle': throttle}
+    return mqttcommon.Logger(name, config=config, level=level, filename=filename,
+                             console=console, log_name=__name__)
 
 class RecordCache():
     """ Manage the cache. """
@@ -965,11 +684,6 @@ class RecordCache():
         self.logger.trace(100004, RecordCache.log_messages[100004].format(key=key, timestamp=timestamp, cache_value=self.dump_key(key)))
         if key in self.cached_values and timestamp < self.cached_values[key]['invalidated']:
             self.cached_values[key]['invalidated'] = timestamp
-
-    # def update_timestamp(self, key, timestamp):
-    #    """ Update the ts. """
-    #    if key in self.cached_values:
-    #        self.cached_values[key]['timestamp'] = timestamp
 
     def remove_value(self, key):
         """ Remove a cached value.
@@ -1106,8 +820,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         field_defaults['conversion_error_to_none'] = to_bool(config.get('conversion_error_to_none', False))
 
         default_message_dict = config.get('message', configobj.ConfigObj())
-        # if 'type' option is not set, this not 'topic'
-        # so, no default 'message' configuration exists
+        # A 'message' stanza is only a default when it has a 'type'.
         if default_message_dict.get('type', None) is None:
             default_message_dict = configobj.ConfigObj({})
 
@@ -1149,9 +862,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
             topic_dict = config.get(topic, {})
             callback_config_name = topic_dict.get('callback_config_name', topic_defaults['callback_config_name'])
 
-            # if 'type' option is set, this not a 'topic'
-            # it is actually a 'callback (message)' configuration stanza
-            # and it has already been retrieved into default_message_config
+            # Callback stanzas carry 'type'; they are not topics.
             if topic == callback_config_name and topic_dict.get('type', None) is not None:
                 continue
 
@@ -1161,8 +872,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
             unit_system = weewx.units.unit_constants[unit_system_name]
 
             self.subscribed_topics[topic] = {}
-            # ignore is set at the topic level in addtion to the field level
-            # This allows it to be set to false at the topic level, changing MQTTSubscribe from an 'opt out' to 'opt in' strategy
+            # A topic can opt in even when its fields opt out.
             self.subscribed_topics[topic]['ignore'] = to_bool(topic_dict.get('ignore', field_defaults['ignore']))
             self.subscribed_topics[topic]['subscribe'] = to_bool(topic_dict.get('subscribe', True))
 
@@ -1196,8 +906,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         message_dict = configobj.ConfigObj({})
         message_dict.merge(default_message_dict)
 
-        # if 'type' option is set, this a 'callback configuration (message)' section
-        # So merge the default message settings
+        # Callback sections merge the default message settings.
         if message_type is not None:
             message_dict.merge(temp_message_dict)
         self.subscribed_topics[topic][self.message_config_name] = message_dict
@@ -1236,9 +945,8 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
             self.subscribed_topics[topic]['conversion_func']['source'] = 'lambda x: to_int(x)'
         else:
             self.subscribed_topics[topic]['conversion_func']['source'] = 'lambda x: x'
-        # pylint: disable=eval-used
-        self.subscribed_topics[topic]['conversion_func']['compiled'] = eval(self.subscribed_topics[topic]['conversion_func']['source'])
-        # pylint: enable=eval-used
+        conversion_func = self.subscribed_topics[topic]['conversion_func']
+        conversion_func['compiled'] = compile_expression(conversion_func['source'])
 
     def _configure_topic_fields(self, field_defaults, callback_config_name, topic, topic_dict):
         for field in topic_dict.sections:
@@ -1276,8 +984,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
                                           self.subscribed_topics[topic]['fields'][field])
 
     def _configure_topic_as_field(self, field_defaults, topic, topic_dict):
-        # See if any field options are directly under the topic.
-        # And if so, use the topic as the field name.
+        # Options directly under the topic make the topic itself the field.
         for (key, _) in topic_dict.items():
             if key not in self.topic_options:
                 self.subscribed_topics[topic]['fields'][topic] = self._configure_field(topic_dict, topic_dict, topic, field_defaults)
@@ -1290,9 +997,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
                 break
 
     def _add_collector_queue(self, topic_defaults):
-        # Add the collector queue as a subscribed topic so that data can retrieved from it
-        # Yes, this is a bit of a hack.
-        # Note, it would not be too hard to allow additional fields via the [fields] configuration option
+        # The collector queue is a subscribed topic; a bit of a hack.
         self.collected_units = weewx.units.unit_constants[topic_defaults['unit_system_name']]
         self.collected_fields = ['windGust', 'windGustDir', 'windDir', 'windSpeed']
         self.collected_queue = deque()
@@ -1382,7 +1087,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         field['conversion_func'] = {}
         field['conversion_type'] = conversion_type  # todo - hack so that a field configuration can be used as a default for its subfields
         field['conversion_func']['source'] = TopicManager._get_conversion_source(conversion_func, conversion_type)
-        field['conversion_func']['compiled'] = eval(field['conversion_func']['source'])  # pylint: disable=eval-used
+        field['conversion_func']['compiled'] = compile_expression(field['conversion_func']['source'])
         field['conversion_error_to_none'] = (field_dict).get('conversion_error_to_none', conversion_error_to_none)
         if 'units' in field_dict:
             if field_dict['units'] in weewx.units.conversionDict and field['name'] in weewx.units.obs_group_dict:
@@ -2108,7 +1813,7 @@ class ManageWeewxConfig():
                 if unit not in weewx.units.conversionDict:
                     weewx.units.conversionDict[unit] = {}
 
-                weewx.units.conversionDict[unit][to_unit] = eval(conversion[to_unit])  # pylint: disable=eval-used
+                weewx.units.conversionDict[unit][to_unit] = compile_expression(conversion[to_unit])
 
     def update_unit_config(self, weewx_config):
         ''' Update the unit sections of the WeeWX configuration.'''
@@ -2132,6 +1837,13 @@ class ManageWeewxConfig():
 
 class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
     """ Manage MQTT sunscriptions. """
+    # The message ids of the paho callback log messages, per api variant.
+    callback_message_ids = {
+        mqttcommon.API_V1: (62001, 62002, 62003, 62004),
+        mqttcommon.API_V2_MQTT3: (72001, 72002, 72003, 72004),
+        mqttcommon.API_V2_MQTT5: (82001, 82002, 82003, 82004),
+    }
+
     log_messages = {
         # trace message
         # debug messages
@@ -2158,6 +1870,19 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         32017: "Waiting for MQTT connection.",
         32018: "MQTT initialization complete.",
         32019: "Subscribing to {topic} has a mid {mid} and rc {result}",
+        # paho callback messages, the message ids are per api variant
+        62001: "Connected with result code {rc}",
+        62002: "Connected flags {flags}",
+        62003: "Disconnected with result code {rc}",
+        62004: "Subscribed to mid: {mid} is size {size} has a QOS of {code}",
+        72001: "Connected with result code {rc}",
+        72002: "Connected flags {flags}",
+        72003: "Disconnected with result code {rc}",
+        72004: "Subscribed to mid: {mid} is size {size} has a reason_code of {code}",
+        82001: "Connected with result code {rc}",
+        82002: "Connected flags {flags}",
+        82003: "Disconnected with result code {rc}",
+        82004: "Subscribed to mid: {mid} is size {size} has a reason_code of {code}",
         # error messages
         34001: "Failed to connect to {host} at {port}. '{exception}'",
         # exception messages
@@ -2168,13 +1893,19 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         39005: "Invalid 'certs_required'., {certs_required}",
         39006: "Invalid 'tls_version'., {tls_version}",
         39007: "Unable to connect. Return code is {connect_rc}, '{connack_string_rc}', flags are {connect_flags}.",
-        39008: "Method 'get_client' is not implemented",
-        39009: "Method 'set_callbacks' is not implemented",
-        39010: "Method 'connect' is not implemented",
+        69001: "Invalid protocol, {protocol_string}.",
     }
 
-    def __init__(self, service_dict, logger):
+    def __init__(self, service_dict, logger, *, api=None):
         self.logger = logger
+
+        protocol_string = service_dict.get('protocol', 'MQTTv311')
+        protocol = mqttcommon.parse_protocol(protocol_string)
+        self.api = self._resolve_api(protocol, protocol_string, api)
+        (self.on_connect_rc_message_id,
+         self.on_connect_flags_message_id,
+         self.on_disconnect_message_id,
+         self.on_subscribe_message_id) = self.callback_message_ids[self.api]
 
         exclude_keys = ['password']
         sanitized_service_dict = {k: service_dict[k] for k in set(list(service_dict.keys())) - set(exclude_keys)}
@@ -2199,9 +1930,6 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
         self._check_deprecated_options(service_dict)
 
-        protocol_string = service_dict.get('protocol', 'MQTTv311')
-        protocol = getattr(mqtt, protocol_string, 0)
-
         clean_start = self._parse_clean_start(service_dict.get('clean_start', 'MQTT_CLEAN_START_FIRST_ONLY'))
 
         mqtt_options = {
@@ -2216,7 +1944,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
             'password': service_dict.get('password', None),
             'min_delay': to_int(service_dict.get('min_delay', 1)),
             'max_delay': to_int(service_dict.get('max_delay', 120)),
-            'log_mqtt': to_bool(service_dict.get('log', False)),
+            'log_mqtt': to_bool(service_dict.get('log_mqtt', service_dict.get('log', False))),
             'tls_dict': service_dict.get('tls'),
         }
 
@@ -2249,6 +1977,16 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         self._setup_mqtt(mqtt_options, message_callback_provider_name, message_callback_config)
 
     @staticmethod
+    def _resolve_api(protocol, protocol_string, api):
+        ''' Resolve the paho mqtt api variant to use. '''
+        if api is None:
+            api = mqttcommon.select_api(protocol)
+        if api == mqttcommon.API_V1 and protocol not in mqttcommon.MQTT3_PROTOCOLS:
+            raise ValueError(MQTTSubscriber.log_messages[69001].format(protocol_string=protocol_string))
+
+        return api
+
+    @staticmethod
     def _parse_clean_start(clean_start_string):
         ''' Resolve the clean_start option to a boolean or an MQTT constant. '''
         try:
@@ -2259,27 +1997,8 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
             except AttributeError:
                 raise ValueError(MQTTSubscriber.log_messages[39003].format(clean_start_string=clean_start_string)) from None
 
-    @classmethod
-    def get_subscriber(cls, service_dict, logger):
-        ''' Factory method to get appropriate MQTTSubscriber for paho mqtt version. '''
-        if hasattr(mqtt, 'CallbackAPIVersion'):
-            protocol_string = service_dict.get('protocol', 'MQTTv311')
-            protocol = getattr(mqtt, protocol_string, 0)
-            if protocol in [mqtt.MQTTv31, mqtt.MQTTv311]:
-                return MQTTSubscriberV2MQTT3(service_dict, logger)
-
-            return MQTTSubscriberV2(service_dict, logger)
-
-        return MQTTSubscriberV1(service_dict, logger)
-
     def _setup_mqtt(self, mqtt_options, message_callback_provider_name, message_callback_config):
-        self.mqtt_logger = {
-            mqtt.MQTT_LOG_INFO: self.logger.info,
-            mqtt.MQTT_LOG_NOTICE: self.logger.info,
-            mqtt.MQTT_LOG_WARNING: self.logger.info,
-            mqtt.MQTT_LOG_ERR: self.logger.error,
-            mqtt.MQTT_LOG_DEBUG: self.logger.debug
-        }
+        self.mqtt_logger = mqttcommon.paho_log_methods(self.logger)
 
         self.userdata = {}
         self.userdata['connect'] = False
@@ -2299,10 +2018,11 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
         self.set_callbacks(mqtt_options)
 
-        if mqtt_options['username'] is not None and mqtt_options['password'] is not None:
-            self.client.username_pw_set(mqtt_options['username'], mqtt_options['password'])
+        mqttcommon.apply_credentials(self.client, mqtt_options['username'], mqtt_options['password'])
 
-        self.client.reconnect_delay_set(min_delay=mqtt_options['min_delay'], max_delay=mqtt_options['max_delay'])
+        mqttcommon.configure_reconnect_delay(self.client,
+                                             min_delay=mqtt_options['min_delay'],
+                                             max_delay=mqtt_options['max_delay'])
 
         try:
             self.connect(mqtt_options)
@@ -2341,59 +2061,12 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
     def config_tls(self, tls_dict):
         """ Configure TLS."""
-        valid_cert_reqs = {
-            'none': ssl.CERT_NONE,
-            'optional': ssl.CERT_OPTIONAL,
-            'required': ssl.CERT_REQUIRED
-        }
+        def format_error(option, value):
+            message_id = 39005 if option == 'certs_required' else 39006
+            message = MQTTSubscriber.log_messages[message_id]
+            return message.format(**{option: value})
 
-        # Some versions are dependent on the OpenSSL install
-        valid_tls_versions = {}
-        try:
-            valid_tls_versions['tls'] = ssl.PROTOCOL_TLS
-        except AttributeError:
-            pass
-        try:
-            valid_tls_versions['tlsv1'] = ssl.PROTOCOL_TLSv1
-        except AttributeError:
-            pass
-        try:
-            valid_tls_versions['tlsv11'] = ssl.PROTOCOL_TLSv1_1
-        except AttributeError:
-            pass
-        try:
-            valid_tls_versions['tlsv12'] = ssl.PROTOCOL_TLSv1_2
-        except AttributeError:
-            pass
-        try:
-            valid_tls_versions['sslv2'] = ssl.PROTOCOL_SSLv2
-        except AttributeError:
-            pass
-        try:
-            valid_tls_versions['sslv23'] = ssl.PROTOCOL_SSLv23
-        except AttributeError:
-            pass
-        try:
-            valid_tls_versions['sslv3'] = ssl.PROTOCOL_SSLv3
-        except AttributeError:
-            pass
-
-        ca_certs = tls_dict.get('ca_certs')
-
-        valid_cert_reqs = valid_cert_reqs.get(tls_dict.get('certs_required', 'required'))
-        if valid_cert_reqs is None:
-            raise ValueError(MQTTSubscriber.log_messages[39005].format(certs_required=tls_dict['certs_required']))
-
-        tls_version = valid_tls_versions.get(tls_dict.get('tls_version', 'tlsv12'))
-        if tls_version is None:
-            raise ValueError(MQTTSubscriber.log_messages[39006].format(tls_version=tls_dict['tls_version']))
-
-        self.client.tls_set(ca_certs=ca_certs,
-                            certfile=tls_dict.get('certfile'),
-                            keyfile=tls_dict.get('keyfile'),
-                            cert_reqs=valid_cert_reqs,
-                            tls_version=tls_version,
-                            ciphers=tls_dict.get('ciphers'))
+        mqttcommon.configure_tls(self.client, tls_dict, format_error=format_error)
 
     def get_data(self, queue, end_ts=sys.maxsize):
         """ Get data off the queue of MQTT data. """
@@ -2433,69 +2106,39 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
     def get_client(self, mqtt_options):
         ''' Get the MQTT client. '''
-        raise NotImplementedError(MQTTSubscriber.log_messages[39008])
+        return mqttcommon.create_client(self.api,
+                                        client_id=mqtt_options['clientid'],
+                                        protocol=mqtt_options['protocol'],
+                                        userdata=self.userdata,
+                                        clean_session=mqtt_options['clean_session'])
 
     def set_callbacks(self, mqtt_options):
         ''' Setup the MQTT callbacks. '''
-        raise NotImplementedError(MQTTSubscriber.log_messages[39009])
-
-    def connect(self, mqtt_options):
-        ''' Connect to the MQTT server. '''
-        raise NotImplementedError(MQTTSubscriber.log_messages[39010])
-
-class MQTTSubscriberV1(MQTTSubscriber):
-    ''' MQTTSubscriber that communicates with paho mqtt v1. '''
-    log_messages = {
-        # trace message
-        # debug messages
-        # informational messages
-        62001: "Connected with result code {rc}",
-        62002: "Connected flags {flags}",
-        62003: "Disconnected with result code {rc}",
-        62004: "Subscribed to mid: {mid} is size {size} has a QOS of {qos}",
-        # error messages
-        # exception messages
-        69001: "Invalid protocol, {protocol_string}.",
-    }
-
-    def __init__(self, service_dict, logger):
-        protocol_string = service_dict.get('protocol', 'MQTTv311')
-        protocol = getattr(mqtt, protocol_string, 0)
-        if protocol not in [mqtt.MQTTv31, mqtt.MQTTv311]:
-            raise ValueError(MQTTSubscriberV1.log_messages[69001].format(protocol_string=protocol_string))
-
-        super().__init__(service_dict, logger)
-
-    def get_client(self, mqtt_options):
-        return mqtt.Client(protocol=mqtt_options['protocol'],  # (v1 signature)
-                           client_id=mqtt_options['clientid'],
-                           userdata=self.userdata,
-                           clean_session=mqtt_options['clean_session'])
-
-    def set_callbacks(self, mqtt_options):
-        self.client.on_subscribe = self._on_subscribe
-        self.client.on_connect = self._on_connect
-        self.client.on_disconnect = self._on_disconnect
+        self.client.on_connect = mqttcommon.adapt_callback(self.api, 'on_connect', self._on_connect)
+        self.client.on_disconnect = mqttcommon.adapt_callback(self.api, 'on_disconnect', self._on_disconnect)
+        self.client.on_subscribe = mqttcommon.adapt_callback(self.api, 'on_subscribe', self._on_subscribe)
         self.client.on_message = self._on_message
 
         if mqtt_options['log_mqtt']:
             self.client.on_log = self._on_log
 
     def connect(self, mqtt_options):
-        self.client.connect(mqtt_options['host'], mqtt_options['port'], mqtt_options['keepalive'])
+        ''' Connect to the MQTT server. '''
+        mqttcommon.connect(self.client, self.api,
+                           host=mqtt_options['host'],
+                           port=mqtt_options['port'],
+                           keepalive=mqtt_options['keepalive'],
+                           clean_start=mqtt_options['clean_start'])
 
-    def _on_connect(self, client, userdata, flags, rc):
+    def _on_connect(self, client, userdata, flags, rc, _properties):
         # https://pypi.org/project/paho-mqtt/#on-connect
-        # rc:
-        # 0: Connection successful
-        # 1: Connection refused - incorrect protocol version
-        # 2: Connection refused - invalid client identifier
-        # 3: Connection refused - server unavailable
-        # 4: Connection refused - bad username or password
-        # 5: Connection refused - not authorised
-        # 6-255: Currently unused.
-        self.logger.info(62001, MQTTSubscriberV1.log_messages[62001].format(rc=rc))
-        self.logger.info(62002, MQTTSubscriberV1.log_messages[62002].format(flags=str(flags)))
+        if self.api == mqttcommon.API_V2_MQTT3:
+            threading.current_thread().name = f"MQTTSubscribe-{threading.get_native_id()}"
+
+        self.logger.info(self.on_connect_rc_message_id,
+                         self.log_messages[self.on_connect_rc_message_id].format(rc=rc))
+        self.logger.info(self.on_connect_flags_message_id,
+                         self.log_messages[self.on_connect_flags_message_id].format(flags=str(flags)))
 
         userdata['connect'] = True
         userdata['connect_rc'] = rc
@@ -2503,123 +2146,13 @@ class MQTTSubscriberV1(MQTTSubscriber):
 
         self._subscribe(client)
 
-    def _on_disconnect(self, _client, _userdata, rc):
-        self.logger.info(62003, MQTTSubscriberV1.log_messages[62003].format(rc=rc))
+    def _on_disconnect(self, _client, _userdata, rc, _properties):
+        self.logger.info(self.on_disconnect_message_id,
+                         self.log_messages[self.on_disconnect_message_id].format(rc=rc))
 
-    def _on_subscribe(self, _client, _userdata, mid, granted_qos):
-        self.logger.info(62004, MQTTSubscriberV1.log_messages[62004].format(mid=mid, size=len(granted_qos), qos=granted_qos[0]))
-
-    def _on_log(self, _client, _userdata, level, msg):
-        self.mqtt_logger[level](None, f"MQTTSubscribe MQTT: {msg}")
-
-    def _on_message(self, _client, _userdata, msg):
-        self.callback(msg)
-
-class MQTTSubscriberV2MQTT3(MQTTSubscriber):
-    ''' MQTTSubscriber that communicates with paho mqtt v2. '''
-    log_messages = {
-        # trace message
-        # debug messages
-        # informational messages
-        72001: "Connected with result code {rc}",
-        72002: "Connected flags {flags}",
-        72003: "Disconnected with result code {rc}",
-        72004: "Subscribed to mid: {mid} is size {size} has a reason_code of {reason_code}",
-        # error messages
-    }
-
-    def get_client(self, mqtt_options):
-        return mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2,  # (only available in v2)
-                           protocol=mqtt_options['protocol'],
-                           client_id=mqtt_options['clientid'],
-                           userdata=self.userdata,
-                           clean_session=mqtt_options['clean_session'])
-
-    def set_callbacks(self, mqtt_options):
-        self.client.on_subscribe = self._on_subscribe
-        self.client.on_connect = self._on_connect
-        self.client.on_disconnect = self._on_disconnect
-        self.client.on_message = self._on_message
-
-        if mqtt_options['log_mqtt']:
-            self.client.on_log = self._on_log
-
-    def connect(self, mqtt_options):
-        self.client.connect(mqtt_options['host'], mqtt_options['port'], mqtt_options['keepalive'])
-
-    def _on_connect(self, client, userdata, flags, reason_code, _properties):
-        self.logger.info(72001, MQTTSubscriberV2MQTT3.log_messages[72001].format(rc=reason_code.value))
-        self.logger.info(72002, MQTTSubscriberV2MQTT3.log_messages[72002].format(flags=str(flags)))
-        threading.current_thread().name = f"MQTTSubscribe-{threading.get_native_id()}"
-
-        userdata['connect'] = True
-        userdata['connect_rc'] = reason_code.value
-        userdata['connect_flags'] = flags
-
-        self._subscribe(client)
-
-    def _on_disconnect(self, _client, _userdata, _flags, reason_code, _properties):
-        self.logger.info(72003, MQTTSubscriberV2MQTT3.log_messages[72003].format(rc=reason_code.value))
-
-    def _on_subscribe(self, _client, _userdata, mid, reason_codes, _properties):
-        self.logger.info(72004, MQTTSubscriberV2MQTT3.log_messages[72004].format(
-            mid=mid, size=len(reason_codes), reason_code=reason_codes[0].value))
-
-    def _on_log(self, _client, _userdata, level, msg):
-        self.mqtt_logger[level](None, f"MQTTSubscribe MQTT: {msg}")
-
-    def _on_message(self, _client, _userdata, msg):
-        self.callback(msg)
-
-class MQTTSubscriberV2(MQTTSubscriber):
-    ''' MQTTSubscriber that communicates with paho mqtt v2. '''
-    log_messages = {
-        # trace message
-        # debug messages
-        # informational messages
-        82001: "Connected with result code {rc}",
-        82002: "Connected flags {flags}",
-        82003: "Disconnected with result code {rc}",
-        82004: "Subscribed to mid: {mid} is size {size} has a reason_code of {rc}",
-        # error messages
-    }
-
-    def get_client(self, mqtt_options):
-        return mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2,  # (only available in v2)
-                           protocol=mqtt_options['protocol'],
-                           client_id=mqtt_options['clientid'],
-                           userdata=self.userdata)
-
-    def set_callbacks(self, mqtt_options):
-        self.client.on_subscribe = self._on_subscribe
-        self.client.on_connect = self._on_connect
-        self.client.on_disconnect = self._on_disconnect
-        self.client.on_message = self._on_message
-
-        if mqtt_options['log_mqtt']:
-            self.client.on_log = self._on_log
-
-    def connect(self, mqtt_options):
-        self.client.connect(host=mqtt_options['host'],
-                            port=mqtt_options['port'],
-                            keepalive=mqtt_options['keepalive'],
-                            clean_start=mqtt_options['clean_start'])
-
-    def _on_connect(self, client, userdata, flags, reason_code, _properties):
-        self.logger.info(82001, MQTTSubscriberV2.log_messages[82001].format(rc=reason_code.value))
-        self.logger.info(82002, MQTTSubscriberV2.log_messages[82002].format(flags=str(flags)))
-
-        userdata['connect'] = True
-        userdata['connect_rc'] = reason_code.value
-        userdata['connect_flags'] = flags
-
-        self._subscribe(client)
-
-    def _on_disconnect(self, _client, _userdata, _flags, reason_code, _properties):
-        self.logger.info(82003, MQTTSubscriberV2.log_messages[82003].format(rc=reason_code.value))
-
-    def _on_subscribe(self, _client, _userdata, mid, reason_codes, _properties):
-        self.logger.info(82004, MQTTSubscriberV2.log_messages[82004].format(mid=mid, size=len(reason_codes), rc=reason_codes[0].value))
+    def _on_subscribe(self, _client, _userdata, mid, codes, _properties):
+        self.logger.info(self.on_subscribe_message_id,
+                         self.log_messages[self.on_subscribe_message_id].format(mid=mid, size=len(codes), code=codes[0]))
 
     def _on_log(self, _client, _userdata, level, msg):
         self.mqtt_logger[level](None, f"MQTTSubscribe MQTT: {msg}")
@@ -2668,11 +2201,11 @@ class MQTTSubscribeService(StdService):
         logging_level = service_dict.get('logging_level', 'NOTSET')
         console = to_bool(service_dict.get('console', False))
 
-        self.logger = Logger({'mode': 'Service', 'throttle': service_dict.get('logging', {}).get('throttle', {})},
-                             level=logging_level,
-                             filename=logging_filename,
-                             console=console)
-        self.logger.log_environment(config_dict)
+        self.logger = create_logger('Service', service_dict.get('logging', {}).get('throttle', {}),
+                                    level=logging_level,
+                                    filename=logging_filename,
+                                    console=console)
+        self.logger.log_environment(config_dict, VERSION)
 
         self.enable = to_bool(service_dict.get('enable', True))
         if not self.enable:
@@ -2687,11 +2220,9 @@ class MQTTSubscribeService(StdService):
         if 'archive_topic' in service_dict:
             raise ValueError(MQTTSubscribeService.log_messages[29002].format(archive_topic=service_dict['archive_topic']))
 
-        self.next_archive_timestamp = 0
-
         self.end_ts = 0  # prime for processing loop packet
 
-        self.subscriber = MQTTSubscriber.get_subscriber(service_dict, self.logger)
+        self.subscriber = MQTTSubscriber(service_dict, self.logger)
 
         self.logger.info(22003, MQTTSubscribeService.log_messages[22003].format(binding=self.binding))
 
@@ -2712,6 +2243,7 @@ class MQTTSubscribeService(StdService):
         """Run when an engine shutdown is requested."""
         if self.subscriber:
             self.subscriber.disconnect()
+        self.logger.shutdown()
 
     def new_loop_packet(self, event):
         """ Handle the new loop packet event. """
@@ -2787,11 +2319,13 @@ class MQTTSubscribeService(StdService):
         self.logger.debug(21003, MQTTSubscribeService.log_messages[21003].format(
             dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
             record=to_sorted_string(event.record)))
-        self.next_archive_timestamp = int(event.record['dateTime'] + event.record['interval'] * 120)
+        # Lines from here on belong to the record now being accumulated.
+        self.logger.archive_timestamp = int(event.record['dateTime'] + event.record['interval'] * 60)
 
-    def end_archive_period(self, _event):
+    def end_archive_period(self, event):
         """ Handle the end archive period event."""
-        Logger.archive_timestamp = self.next_archive_timestamp
+        # The ended record is the one being written until the next one starts.
+        self.logger.archive_timestamp = int(event.end)
 
 def loader(config_dict, engine):
     """ Load and return the driver. """
@@ -2834,8 +2368,8 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         console = to_bool(stn_dict.get('console', False))
         logging_filename = stn_dict.get('logging_filename', None)
         logging_level = stn_dict.get('logging_level', 'NOTSET').upper()
-        self.logger = Logger({'mode': 'Driver'}, level=logging_level, filename=logging_filename, console=console)
-        self.logger.log_environment(config_dict)
+        self.logger = create_logger('Driver', level=logging_level, filename=logging_filename, console=console)
+        self.logger.log_environment(config_dict, VERSION)
 
         self.max_loop_interval = to_int(stn_dict.get('max_loop_interval', 0))
         self.logger.info(12001, MQTTSubscribeDriver.log_messages[12001].format(max_loop_interval=self.max_loop_interval))
@@ -2847,12 +2381,11 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         self._archive_interval = to_int(stn_dict.get('archive_interval', 300))
         self.archive_topic = stn_dict.get('archive_topic', None)
         self.prev_archive_start = 0
-        self.next_archive_timestamp = 0
 
         engine.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
         engine.bind(weewx.END_ARCHIVE_PERIOD, self.end_archive_period)
 
-        self.subscriber = MQTTSubscriber.get_subscriber(stn_dict, self.logger)
+        self.subscriber = MQTTSubscriber(stn_dict, self.logger)
 
         self.queue = next((q for q in self.subscriber.queues if q['name'] == self.archive_topic), None)
 
@@ -2876,17 +2409,20 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
     def closePort(self):  # need to override parent
         """ Called to perform any close/cleanup before termination. """
         self.subscriber.disconnect()
+        self.logger.shutdown()
 
     def new_archive_record(self, event):
         """ Handle the new archive record event. """
         self.logger.debug(11002, MQTTSubscribeDriver.log_messages[11002].format(
             dateTime=weeutil.weeutil.timestamp_to_string(event.record['dateTime']),
             record=to_sorted_string(event.record)))
-        self.next_archive_timestamp = int(event.record['dateTime'] + event.record['interval'] * 120)
+        # Lines from here on belong to the record now being accumulated.
+        self.logger.archive_timestamp = int(event.record['dateTime'] + event.record['interval'] * 60)
 
-    def end_archive_period(self, _event):
+    def end_archive_period(self, event):
         """ Handle the end archive period event."""
-        Logger.archive_timestamp = self.next_archive_timestamp
+        # The ended record is the one being written until the next one starts.
+        self.logger.archive_timestamp = int(event.end)
 
     def genLoopPackets(self):  # need to override parent
         """ Called to generate loop packets. """
@@ -3038,6 +2574,11 @@ class MQTTSubscribeConfiguration():
             'deprecated_severity': 'ERROR',
             'deprecated_msg': "'archive_field_cache' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'",
         },
+        'log': {
+            # Deprecated in 3.2.1
+            'deprecated_severity': 'WARN',
+            'deprecated_msg': "'log' is deprecated, use 'log_mqtt'",
+        },
         'message_callback': {
             # Deprecated in 2.1.0
             'deprecated_severity': 'WARN',
@@ -3116,6 +2657,7 @@ class MQTTSubscribeConfiguration():
             'clientid': ['MQTTSubscribe'],
             'console': ['MQTTSubscribe'],
             'keepalive': ['MQTTSubscribe'],
+            'log': ['MQTTSubscribe'],
             'protocol': ['MQTTSubscribe'],
             'logging': ['MQTTSubscribe'],
             'logging_filename': ['MQTTSubscribe'],
@@ -3407,7 +2949,7 @@ class Parser():
 
         message_callback_config = self.config_dict.get('message_callback', None)
 
-        logger = Logger({'mode': 'Service'}, level=options.logging_level, filename=options.logging_file, console=options.console)
+        logger = create_logger('Service', level=options.logging_level, filename=options.logging_file, console=options.console)
         self.manager = TopicManager(None, topics_dict, logger)
         self.message_callback_provider = MessageCallbackProvider(message_callback_config, logger, self.manager)
 

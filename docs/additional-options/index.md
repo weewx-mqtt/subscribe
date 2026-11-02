@@ -46,6 +46,12 @@ Where xxxx is a random number between 1000 and 9999.
 
 ### log
 
+**Deprecated in version 3.2.1, use `log_mqtt`.**
+
+Set to `true` to turn on MQTT logging. The default is `false`.
+
+### log_mqtt
+
 Set to `true` to turn on MQTT logging. The default is `false`.
 
 ### protocol

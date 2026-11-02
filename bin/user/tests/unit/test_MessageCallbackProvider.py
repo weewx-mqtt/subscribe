@@ -20,7 +20,8 @@ from test_weewx_stubs import random_string
 test_weewx_stubs.setup_stubs()
 
 import user.mqttsubscribe
-from user.mqttsubscribe import TopicManager, Logger
+from user.mqttcommon import Logger
+from user.mqttsubscribe import TopicManager
 
 # todo - mock?
 def to_float(x):

@@ -8,23 +8,24 @@ import unittest
 import mock
 
 import configobj
-import copy
 import random
 import sys
+import threading
 import time
 
 import test_weewx_stubs
 from test_weewx_stubs import BaseTestClass, random_string
 # setup stubs before importing MQTTSubscribe
+import user.mqttcommon
 test_weewx_stubs.setup_stubs()
 
-from user.mqttsubscribe import Logger
+from user.mqttsubscribe import create_logger as Logger
 
 class TestInintialization(BaseTestClass):
     def test_init_set_trace_log_level(self):
         log_level = 5
 
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
 
             mock_logging._checkLevel.return_value = log_level
             mock_logging.getLevelName.return_value = f'Level {int(log_level)}'
@@ -43,806 +44,236 @@ class TestInintialization(BaseTestClass):
             mock_logger.parent = mock_parent_logger
             mock_logging.getLogger.return_value = mock_logger
 
-            SUT = Logger({'mode': random_string()}, level=random_string())
+            SUT = Logger(random_string(), level=random_string())
 
             mock_logging.addLevelName.assert_called_once_with(log_level, 'TRACE')
-            SUT._logmsg.setLevel.assert_called_once_with(log_level)
+            SUT.log.setLevel.assert_called_once_with(log_level)
 
             mock_grandparent_handler.setLevel.assert_called_once_with(log_level)
             mock_parent_handler.setLevel.assert_called_once_with(log_level)
 
-            self.assertEqual(SUT._logmsg.addHandler.call_count, 2)
+            self.assertEqual(SUT.log.addHandler.call_count, 2)
 
     @staticmethod
     def test_init_filename_set():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
 
             mock_logging._checkLevel.return_value = 0
 
             mock_file_handler = mock.Mock()
             mock_logging.FileHandler.return_value = mock_file_handler
-            mode = random_string()
+            name = random_string()
             filename = random_string()
 
-            SUT = Logger({'mode': mode}, filename=filename)
+            SUT = Logger(name, filename=filename)
 
             mock_logging.Formatter.assert_called_once()
             mock_logging.FileHandler.assert_called_once()
             mock_file_handler.setLevel.assert_called_once()
             mock_file_handler.setFormatter.assert_called_once()
-            SUT._logmsg.addHandler.assert_called_once()
+            SUT.log.addHandler.assert_called_once()
 
     @staticmethod
     def test_init_console_set():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
 
             mock_logging._checkLevel.return_value = 0
-            mode = random_string()
+            name = random_string()
 
-            SUT = Logger({'mode': mode}, console=True)
+            SUT = Logger(name, console=True)
 
-            SUT._logmsg.addHandler.assert_called_once()
+            SUT.log.addHandler.assert_called_once()
 
-    def test_throttle_not_in_config(self):
-        config_dict = {
-            'mode': random_string(),
-        }
-        config = configobj.ConfigObj(config_dict)
+    def test_throttle_notice_is_logged(self):
+        name = random_string()
 
-        expected_throttle_config = {
-            'category': {},
-            'message': {},
-        }
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+            thread_id = threading.get_native_id()
 
-        SUT = Logger(config)
-        self.assertDictEqual(SUT.throttle_config, expected_throttle_config)
+            SUT = Logger(name, {})
+            SUT.shutdown()
 
-    def test_empty_throttle_section(self):
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {}
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        expected_throttle_config = {
-            'category': {},
-            'message': {},
-        }
-
-        SUT = Logger(config)
-        self.assertDictEqual(SUT.throttle_config, expected_throttle_config)
-
-    def test_throttle_category_section(self):
-        category = {
-            'ERROR': {
-                'max': random.randint(1, 10),
-                'duration': random.randint(1, 10),
-            }
-        }
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'category': copy.deepcopy(category),
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        expected_throttle_config = {
-            'category': copy.deepcopy(category),
-            'message': {},
-        }
-
-        SUT = Logger(config)
-        self.assertDictEqual(SUT.throttle_config, expected_throttle_config)
-
-    def test_invalid_category_specified(self):
-        category_name = random_string()
-        category = {
-            category_name: {}
-        }
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'category': copy.deepcopy(category),
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-        with self.assertRaises(ValueError) as error:
-            Logger(config)
-
-        self.assertEqual(error.exception.args[0],
-                         f"{category_name} is not valid. Valid categories are ['ALL', 'ERROR', 'INFO', 'DEBUG', 'TRACE']")
-
-    def test_category_missing_max(self):
-        category_name = 'ERROR'
-        category = {
-            category_name: {
-                'duration': random.randint(1, 10),
-            }
-        }
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'category': copy.deepcopy(category),
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        with self.assertRaises(ValueError) as error:
-            Logger(config)
-        self.assertEqual(error.exception.args[0], f"{category_name} is missing 'max' configuration option.")
-
-    def test_category_missing_duration(self):
-        category_name = 'ERROR'
-        category = {
-            category_name: {
-                'max': random.randint(1, 10),
-            }
-        }
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'category': copy.deepcopy(category),
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        with self.assertRaises(ValueError) as error:
-            Logger(config)
-        self.assertEqual(error.exception.args[0], f"{category_name} is missing 'duration' configuration option.")
-
-    def test_messages_missing_max(self):
-        message_id = random_string()
-        message = {
-            message_id: {
-                'duration': random.randint(1, 10),
-            }
-        }
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'messages': copy.deepcopy(message),
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        with self.assertRaises(ValueError) as error:
-            Logger(config)
-        self.assertEqual(error.exception.args[0], f"{message_id} is missing 'max' configuration option.")
-
-    def test_messages_missing_duration(self):
-        message_id = random_string()
-        message = {
-            message_id: {
-                'max': random.randint(1, 10),
-            }
-        }
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'messages': copy.deepcopy(message),
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        with self.assertRaises(ValueError) as error:
-            Logger(config)
-        self.assertEqual(error.exception.args[0], f"{message_id} is missing 'duration' configuration option.")
-
-    def test_no_messages_specified_in_message_section(self):
-        msg_id_int = random.randint(1000, 9999)
-        message_id = str(msg_id_int)
-        message = {
-            message_id: {
-                'duration': random.randint(1, 10),
-                'max': random.randint(1, 10),
-            }
-        }
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'messages': copy.deepcopy(message),
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        expected_throttle_config = {
-            'category': {},
-            'message': {
-                msg_id_int: copy.deepcopy(message[message_id])
-            },
-        }
-
-        SUT = Logger(config)
-        self.assertDictEqual(SUT.throttle_config, expected_throttle_config)
-
-    def test_single_message_specified_in_message_section(self):
-        messages_name = random_string()
-        msg_id_int = random.randint(1000, 9999)
-        message_ids = str(msg_id_int)
-        message = {
-            messages_name: {
-                'duration': random.randint(1, 10),
-                'max': random.randint(1, 10),
-                'messages': message_ids,
-            }
-        }
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'messages': copy.deepcopy(message),
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        expected_throttle_config = {
-            'category': {},
-            'message': {
-                msg_id_int: copy.deepcopy(message[messages_name])
-            },
-        }
-        del expected_throttle_config['message'][msg_id_int]['messages']
-
-        SUT = Logger(config)
-        self.assertDictEqual(SUT.throttle_config, expected_throttle_config)
-
-    def test_multiple_messages_specified_in_message_section(self):
-        messages_name = random_string()
-        message_ids = [str(random.randint(1000, 9999)), str(random.randint(1000, 9999))]
-        duration = random.randint(1, 10)
-        max_count = random.randint(1, 10)
-        message = {
-            messages_name: {
-                'duration': duration,
-                'max': max_count,
-                'messages': message_ids,
-            }
-        }
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'messages': copy.deepcopy(message),
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        expected_throttle_config = {
-            'category': {},
-            'message': {
-            },
-        }
-        for message_id in message_ids:
-            expected_throttle_config['message'][int(message_id)] = {
-                'duration': duration,
-                'max': max_count,
-            }
-
-        SUT = Logger(config)
-        self.assertDictEqual(SUT.throttle_config, expected_throttle_config)
-
-    def test_message_id_in_list_already_specified(self):
-        messages_name = random_string()
-        msg_id_int = random.randint(1000, 9999)
-        message_ids = str(msg_id_int)
-        message = {
-            message_ids: {
-                'duration': random.randint(1, 10),
-                'max': random.randint(1, 10),
-            },
-            messages_name: {
-                'duration': random.randint(1, 10),
-                'max': random.randint(1, 10),
-                'messages': message_ids,
-            },
-        }
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'messages': copy.deepcopy(message),
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        with self.assertRaises(ValueError) as error:
-            Logger(config)
-
-        self.assertEqual(error.exception.args[0], f"{message_ids} has been configured multiple times")
-
-    def test_message_id_already_specified(self):
-        messages_name = random_string()
-        msg_id_int = random.randint(1000, 9999)
-        message_ids = str(msg_id_int)
-        message = {
-            str(messages_name): {
-                'duration': random.randint(1, 10),
-                'max': random.randint(1, 10),
-                'messages': message_ids,
-            },
-            message_ids: {
-                'duration': random.randint(1, 10),
-                'max': random.randint(1, 10),
-            },
-        }
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'messages': copy.deepcopy(message),
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        with self.assertRaises(ValueError) as error:
-            Logger(config)
-
-        self.assertEqual(error.exception.args[0], f"{message_ids} has been configured multiple times")
-
-    def test_is_throttled_all_level_id_set(self):
-        logging_level = 'ERROR'
-        msg_id_int = random.randint(1000, 9999)
-        message_id = str(msg_id_int)
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'category': {
-                    'ALL': {
-                        'duration': random.randint(1, 10),
-                        'max': random.randint(1, 10),
-                    },
-                    logging_level: {
-                        'duration': random.randint(1, 10),
-                        'max': random.randint(1, 10),
-                    },
-                },
-                'messages': {
-                    message_id: {
-                        'duration': random.randint(1, 10),
-                        'max': random.randint(1, 10),
-                    }
-                }
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = Logger(config)
-        with mock.patch.object(Logger, '_check_message') as mock_check_message:
-            SUT._is_throttled(logging_level, msg_id_int)
-
-            mock_check_message.assert_called_once_with(msg_id_int, config_dict['throttle']['messages'][message_id])
-
-    def test_is_throttled_all_level_set(self):
-        logging_level = 'ERROR'
-        msg_id_int = random.randint(1000, 9999)
-        message_id = str(msg_id_int)
-        random_message_id = random_string()
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'category': {
-                    'ALL': {
-                        'duration': random.randint(1, 10),
-                        'max': random.randint(1, 10),
-                    },
-                    logging_level: {
-                        'duration': random.randint(1, 10),
-                        'max': random.randint(1, 10),
-                    },
-                },
-                'messages': {
-                    message_id: {
-                        'duration': random.randint(1, 10),
-                        'max': random.randint(1, 10),
-                    }
-                }
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = Logger(config)
-        with mock.patch.object(Logger, '_check_message') as mock_check_message:
-            SUT._is_throttled(logging_level, random_message_id)
-
-            mock_check_message.assert_called_once_with(random_message_id, config_dict['throttle']['category'][logging_level])
-
-    def test_is_throttled_all_set(self):
-        logging_level = 'ERROR'
-        msg_id_int = random.randint(1000, 9999)
-        message_id = str(msg_id_int)
-        random_message_id = random_string()
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'category': {
-                    'ALL': {
-                        'duration': random.randint(1, 10),
-                        'max': random.randint(1, 10),
-                    },
-                    logging_level: {
-                        'duration': random.randint(1, 10),
-                        'max': random.randint(1, 10),
-                    },
-                },
-                'messages': {
-                    message_id: {
-                        'duration': random.randint(1, 10),
-                        'max': random.randint(1, 10),
-                    }
-                }
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-        SUT = Logger(config)
-        with mock.patch.object(Logger, '_check_message') as mock_check_message:
-            SUT._is_throttled(random_string(), random_message_id)
-
-            mock_check_message.assert_called_once_with(random_message_id, config_dict['throttle']['category']['ALL'])
-
-    def test_is_throttled_no_match(self):
-        logging_level = 'ERROR'
-        msg_id_int = random.randint(1000, 9999)
-        message_id = str(msg_id_int)
-        random_message_id = random_string()
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'category': {
-                    logging_level: {
-                        'duration': random.randint(1, 10),
-                        'max': random.randint(1, 10),
-                    },
-                },
-                'messages': {
-                    message_id: {
-                        'duration': random.randint(1, 10),
-                        'max': random.randint(1, 10),
-                    }
-                }
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        with mock.patch.object(Logger, '_check_message') as mock_check_message:
-            SUT = Logger(config)
-            SUT._is_throttled(random_string(), random_message_id)
-
-            mock_check_message.assert_not_called()
+            SUT.log.info.assert_any_call(SUT.LOG_FORMAT, f"{name}-{thread_id}",
+                                         user.mqttcommon.MessageThrottle.NOTICE_EXPERIMENTAL)
 
 class TestLogging(BaseTestClass):
     @staticmethod
     def test_error_logged():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
-                mock_logging._checkLevel.return_value = 0
-                thread_id = random.randint(10000, 99999)
-                mock_threading.get_native_id.return_value = thread_id
-                mode = random_string()
-                message_text = random_string()
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+            thread_id = threading.get_native_id()
+            name = random_string()
+            message_text = random_string()
 
-                SUT = Logger({'mode': mode})
+            SUT = Logger(name)
 
-                SUT.error(random.randint(1, 100), message_text)
+            SUT.error(random.randint(1, 100), message_text)
+            SUT.shutdown()
 
-                SUT._logmsg.error.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message_text)
+            SUT.log.error.assert_called_once_with(SUT.LOG_FORMAT, f"{name}-{thread_id}", message_text)
 
     @staticmethod
     def test_info_logged():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
-                mock_logging._checkLevel.return_value = 0
-                thread_id = random.randint(10000, 99999)
-                mock_threading.get_native_id.return_value = thread_id
-                mode = random_string()
-                message = random_string()
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+            thread_id = threading.get_native_id()
+            name = random_string()
+            message = random_string()
 
-                SUT = Logger({'mode': mode})
+            SUT = Logger(name)
 
-                SUT.info(random.randint(1, 100), message)
+            SUT.info(random.randint(1, 100), message)
+            SUT.shutdown()
 
-                SUT._logmsg.info.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message)
+            # The logger thread start message is also logged at INFO.
+            SUT.log.info.assert_any_call(SUT.LOG_FORMAT, f"{name}-{thread_id}", message)
+
+    @staticmethod
+    def test_archive_record_context_is_logged():
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+            thread_id = threading.get_native_id()
+            name = random_string()
+            archive_timestamp = int(time.time())
+            message = random_string()
+
+            SUT = Logger(name)
+            SUT.archive_timestamp = archive_timestamp
+
+            SUT.info(random.randint(1, 100), message)
+            SUT.shutdown()
+
+            # The archive timestamp is part of the context while a record is being processed.
+            SUT.log.info.assert_any_call(SUT.LOG_FORMAT, f"{name}-{thread_id}-{archive_timestamp}", message)
 
     @staticmethod
     def test_debug_logged():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
-                mock_logging._checkLevel.return_value = 0
-                thread_id = random.randint(10000, 99999)
-                mock_threading.get_native_id.return_value = thread_id
-                mode = random_string()
-                message = random_string()
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+            thread_id = threading.get_native_id()
+            name = random_string()
+            message = random_string()
 
-                SUT = Logger({'mode': mode})
+            SUT = Logger(name)
 
-                SUT.debug(random.randint(1, 100), message)
+            SUT.debug(random.randint(1, 100), message)
+            SUT.shutdown()
 
-                SUT._logmsg.debug.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message)
+            SUT.log.debug.assert_called_once_with(SUT.LOG_FORMAT, f"{name}-{thread_id}", message)
 
     @staticmethod
     def test_trace_logged_with_debug_set():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
-                sys.modules['weewx'].debug = 2
-                mock_logging._checkLevel.return_value = 0
-                thread_id = random.randint(10000, 99999)
-                mock_threading.get_native_id.return_value = thread_id
-                mode = random_string()
-                message = random_string()
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            sys.modules['weewx'].debug = 2
+            mock_logging._checkLevel.return_value = 0
+            thread_id = threading.get_native_id()
+            name = random_string()
+            message = random_string()
 
-                SUT = Logger({'mode': mode})
+            SUT = Logger(name)
 
-                SUT.trace(random.randint(1, 100), message)
+            SUT.trace(random.randint(1, 100), message)
+            SUT.shutdown()
 
-                SUT._logmsg.debug.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message)
+            SUT.log.debug.assert_called_once_with(SUT.LOG_FORMAT, f"{name}-{thread_id}", message)
 
     @staticmethod
     def test_trace_logged_with_debug_not_set():
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.threading') as mock_threading:
-                mock_logging._checkLevel.return_value = 0
-                thread_id = random.randint(10000, 99999)
-                mock_threading.get_native_id.return_value = thread_id
-                mode = random_string()
-                message = random_string()
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+            thread_id = threading.get_native_id()
+            name = random_string()
+            message = random_string()
 
-                SUT = Logger({'mode': mode})
-                SUT.weewx_debug = 0
+            sys.modules['weewx'].debug = 0
+            SUT = Logger(name)
 
-                SUT.trace(random.randint(1, 100), message)
+            SUT.trace(random.randint(1, 100), message)
+            SUT.shutdown()
 
-                SUT._logmsg.log.assert_called_once_with(5, SUT.MSG_FORMAT, mode, thread_id, -1, message)
+            SUT.log.log.assert_called_once_with(5, SUT.LOG_FORMAT, f"{name}-{thread_id}", message)
+
+class TestQueue(BaseTestClass):
+    def test_log_entry_invalid_entry(self):
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+
+            SUT = Logger(random_string())
+
+            with self.assertRaises(KeyError):
+                SUT.log_entry({'log_type': random_string(), 'msg_id': None, 'msg_text': random_string()})
+            with self.assertRaises(KeyError):
+                SUT.log_entry({})
+            with self.assertRaises(TypeError):
+                SUT.log_entry(random_string())
+
+            SUT.shutdown()
+
+    def test_shutdown_drains_queue(self):
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+            mock_log = mock_logging.getLogger.return_value
+
+            SUT = Logger(random_string())
+
+            SUT.info(random.randint(1, 100), random_string())
+            SUT.debug(random.randint(1, 100), random_string())
+            SUT.error(random.randint(1, 100), random_string())
+
+            SUT.shutdown()
+
+            # The start message, the queued messages, and the exit message are logged in queue order.
+            logged = [call[0] for call in mock_log.method_calls]
+            self.assertEqual(logged, ['info', 'info', 'debug', 'error', 'info'])
+            self.assertFalse(SUT.log_thread.is_alive())
+
+    def test_shutdown_is_idempotent(self):
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+
+            SUT = Logger(random_string())
+
+            SUT.shutdown()
+            SUT.shutdown()
+
+            self.assertFalse(SUT.log_thread.is_alive())
+
+    def test_shutdown_timeout(self):
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            mock_logging._checkLevel.return_value = 0
+            mock_log = mock_logging.getLogger.return_value
+            name = random_string()
+
+            SUT = Logger(name)
+
+            # Replace log_entry to simulate a stuck log handler.
+            block_entered = threading.Event()
+            blocked = threading.Event()
+
+            def block_entry(_entry):
+                block_entered.set()
+                blocked.wait(5)
+
+            SUT.log_entry = block_entry
+
+            SUT.info(random.randint(1, 100), random_string())
+            self.assertTrue(block_entered.wait(5))
+
+            SUT.shutdown(timeout=0.05)
+
+            expected_text = user.mqttcommon.Logger.log_messages[124004].format(name=SUT.log_thread.name)
+            mock_log.error.assert_called_once_with(SUT.LOG_FORMAT, f"{name}-{threading.get_native_id()}", expected_text)
+            self.assertTrue(SUT.log_thread.is_alive())
+
+            # Release the thread and wait for it to exit.
+            blocked.set()
+            SUT.log_thread.join(timeout=5)
+            self.assertFalse(SUT.log_thread.is_alive())
 
 class TestThrottling(BaseTestClass):
-    def test_duration_is_zero(self):
-        msg_id_int = random.randint(1000, 9999)
-        msg_id = str(msg_id_int)
-        duration = 0
-        max_count = random.randint(1, 1000)
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'messages': {
-                    msg_id: {
-                        'duration': duration,
-                        'max': max_count,
-                    }
-                }
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.time') as mock_time:
-                mock_logging._checkLevel.return_value = 0
-
-                SUT = Logger(config)
-
-                SUT.logged_ids = {
-                    msg_id: {
-                        'count': random.randint(1, 10),
-                    }
-                }
-
-                throttle = SUT._check_message(msg_id, SUT.throttle_config['message'][msg_id_int])
-
-                self.assertTrue(throttle, f"SUT logged ids: {SUT.logged_ids}")
-                self.assertEqual(len(SUT.logged_ids), 1)
-                self.assertEqual(mock_time.timer.call_count, 0)
-
-    def test_first_message_duration_is_zero(self):
-        msg_id_int = random.randint(1000, 9999)
-        msg_id = str(msg_id_int)
-        duration = 0
-        max_count = random.randint(1, 1000)
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'messages': {
-                    msg_id: {
-                        'duration': duration,
-                        'max': max_count,
-                    }
-                }
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.time') as mock_time:
-                mock_logging._checkLevel.return_value = 0
-
-                SUT = Logger(config)
-
-                throttle = SUT._check_message(msg_id, SUT.throttle_config['message'][msg_id_int])
-
-                self.assertTrue(throttle)
-                self.assertEqual(len(SUT.logged_ids), 1)
-                self.assertEqual(mock_time.timer.call_count, 0)
-
-    def test_max_is_none(self):
-        msg_id_int = random.randint(1000, 9999)
-        msg_id = str(msg_id_int)
-        duration = random.randint(60, 600)
-        max_count = 'None'
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'messages': {
-                    msg_id: {
-                        'duration': duration,
-                        'max': max_count,
-                    }
-                }
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.time') as mock_time:
-                mock_logging._checkLevel.return_value = 0
-
-                SUT = Logger(config)
-
-                throttle = SUT._check_message(msg_id, SUT.throttle_config['message'][msg_id_int])
-
-                self.assertFalse(throttle)
-                self.assertEqual(len(SUT.logged_ids), 0)
-                self.assertEqual(mock_time.timer.call_count, 0)
-
-    def test_first_time_message_is_logged(self):
-        msg_id_int = random.randint(1000, 9999)
-        msg_id = str(msg_id_int)
-        duration = random.randint(60, 600)
-        max_count = random.randint(1, 1000)
-        now = int(time.time())
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'messages': {
-                    msg_id: {
-                        'duration': duration,
-                        'max': max_count,
-                    }
-                }
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.time') as mock_time:
-                mock_logging._checkLevel.return_value = 0
-                mock_time.time.return_value = now
-
-                SUT = Logger(config)
-
-                throttle = SUT._check_message(msg_id, SUT.throttle_config['message'][msg_id_int])
-
-                logged_ids = {
-                    msg_id: {
-                        'window': int(now // duration),
-                        'count': 1,
-                    }
-                }
-
-                self.assertFalse(throttle)
-                self.assertEqual(len(SUT.logged_ids), 1)
-                self.assertDictEqual(SUT.logged_ids, logged_ids)
-
-    def test_new_window(self):
-        msg_id = random_string()
-        msg_id_int = random.randint(1000, 9999)
-        msg_id = str(msg_id_int)
-        duration = random.randint(60, 600)
-        max_count = random.randint(1, 1000)
-        count = random.randint(1, 100)
-        now = time.time()
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'messages': {
-                    msg_id: {
-                        'duration': duration,
-                        'max': max_count,
-                    }
-                }
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.time') as mock_time:
-                mock_logging._checkLevel.return_value = 0
-                mock_time.time.return_value = now
-
-                SUT = Logger(config)
-
-                SUT.logged_ids = {
-                    msg_id: {
-                        'window': -1,
-                        'count': count,
-                    }
-                }
-
-                throttle = SUT._check_message(msg_id, SUT.throttle_config['message'][msg_id_int])
-
-                logged_ids = {
-                    msg_id: {
-                        'window': int(now // duration),
-                        'count': 1,
-                    }
-                }
-
-                self.assertFalse(throttle)
-                self.assertEqual(len(SUT.logged_ids), 1)
-                self.assertDictEqual(SUT.logged_ids, logged_ids)
-
-    def test_message_within_threshold(self):
-        msg_id_int = random.randint(1000, 9999)
-        msg_id = str(msg_id_int)
-        duration = random.randint(60, 600)
-        count = random.randint(1, 100)
-        max_count = count + 1
-        now = time.time()
-
-        config_dict = {
-            'mode': random_string(),
-            'throttle': {
-                'messages': {
-                    msg_id: {
-                        'duration': duration,
-                        'max': max_count,
-                    }
-                }
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.time') as mock_time:
-                mock_logging._checkLevel.return_value = 0
-                mock_time.time.return_value = now
-
-                SUT = Logger(config)
-
-                SUT.logged_ids = {
-                    msg_id: {
-                        'window': -1,
-                        'count': count,
-                    }
-                }
-
-                throttle = SUT._check_message(msg_id, SUT.throttle_config['message'][msg_id_int])
-
-                logged_ids = {
-                    msg_id: {
-                        'window': int(now // duration),
-                        'count': 1,
-                    }
-                }
-
-                self.assertFalse(throttle)
-                self.assertEqual(len(SUT.logged_ids), 1)
-                self.assertDictEqual(SUT.logged_ids, logged_ids)
-
-    def test_passed_threshold_multiple_times(self):
-        mode = random_string()
+    def test_window_summary_is_logged(self):
+        name = random_string()
         msg_id_int = random.randint(1000, 9999)
         msg_id = str(msg_id_int)
         duration = random.randint(60, 600)
@@ -853,7 +284,6 @@ class TestThrottling(BaseTestClass):
         window = int(now // duration)
 
         config_dict = {
-            'mode': mode,
             'throttle': {
                 'messages': {
                     msg_id: {
@@ -865,94 +295,43 @@ class TestThrottling(BaseTestClass):
         }
         config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.time') as mock_time:
-                with mock.patch('user.mqttsubscribe.threading') as mock_threading:
-                    mock_logging._checkLevel.return_value = 0
-                    mock_time.time.return_value = now
-                    thread_id = random.randint(10000, 99999)
-                    mock_threading.get_native_id.return_value = thread_id
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            with mock.patch('user.mqttcommon.time') as mock_time:
+                mock_logging._checkLevel.return_value = 0
+                mock_time.time.return_value = now
+                thread_id = threading.get_native_id()
 
-                    SUT = Logger(config)
+                SUT = Logger(name, config['throttle'])
 
-                    SUT.logged_ids = {
-                        msg_id: {
-                            'window': window,
-                            'count': count,
-                        }
-                    }
-
-                    throttle = SUT._check_message(msg_id, SUT.throttle_config['message'][msg_id_int])
-
-                    logged_ids = {
-                        msg_id: {
-                            'window': window,
-                            'count': threshold,
-                        }
-                    }
-
-                    message_text = f"{threshold - max_count} messages have been suppressed in window id: {window}."
-
-                    self.assertFalse(throttle)
-                    self.assertEqual(len(SUT.logged_ids), 1)
-                    self.assertDictEqual(SUT.logged_ids, logged_ids)
-                    SUT._logmsg.error.assert_called_once_with(SUT.MSG_FORMAT, mode, thread_id, -1, message_text)
-
-    def test_message_is_over_threshold(self):
-        mode = random_string()
-        msg_id_int = random.randint(1000, 9999)
-        msg_id = str(msg_id_int)
-        duration = random.randint(60, 600)
-        count = random.randint(10, 100)
-        max_count = count - 3
-        now = duration
-
-        config_dict = {
-            'mode': mode,
-            'throttle': {
-                'messages': {
+                SUT.throttle.logged_ids = {
                     msg_id: {
-                        'duration': duration,
-                        'max': max_count,
+                        'window': window,
+                        'count': count,
                     }
                 }
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
 
-        with mock.patch('user.mqttsubscribe.logging') as mock_logging:
-            with mock.patch('user.mqttsubscribe.time') as mock_time:
-                with mock.patch('user.mqttsubscribe.threading') as mock_threading:
-                    mock_logging._checkLevel.return_value = 0
-                    mock_time.time.return_value = now
-                    thread_id = random.randint(10000, 99999)
-                    mock_threading.get_native_id.return_value = thread_id
+                throttle = SUT.throttle._check_message(msg_id, SUT.throttle.throttle_config['message'][msg_id_int])
 
-                    SUT = Logger(config)
-
-                    SUT.logged_ids = {
-                        msg_id: {
-                            'window': int(now // duration),
-                            'count': count,
-                        }
+                logged_ids = {
+                    msg_id: {
+                        'window': window,
+                        'count': threshold,
                     }
+                }
 
-                    throttle = SUT._check_message(msg_id, SUT.throttle_config['message'][msg_id_int])
+                message_text = f"{threshold - max_count} messages have been suppressed in window id: {window}."
 
-                    logged_ids = {
-                        msg_id: {
-                            'window': int(now // duration),
-                            'count': count + 1,
-                        }
-                    }
+                SUT.shutdown()
 
-                    self.assertTrue(throttle, f"SUT logged ids: {SUT.logged_ids} expected: {logged_ids}")
-                    self.assertEqual(len(SUT.logged_ids), 1)
-                    self.assertDictEqual(SUT.logged_ids, logged_ids)
+                self.assertFalse(throttle)
+                self.assertEqual(len(SUT.throttle.logged_ids), 1)
+                self.assertDictEqual(SUT.throttle.logged_ids, logged_ids)
+                SUT.log.error.assert_called_once_with(SUT.LOG_FORMAT, f"{name}-{thread_id}", message_text)
+
 
 if __name__ == '__main__':
     # testcase = sys.argv[1]
-    testcase = 'test_message_is_over_threshold'
+    testcase = 'test_window_summary_is_logged'
 
     test_suite = unittest.TestSuite()
     test_suite.addTest(TestThrottling(testcase))

@@ -1,7 +1,26 @@
+# Do not inherit settings from another repository's .devenv.
+unset WEEWX_LINT_PATHS WEEWX_TEST_SUITES WEEWX_HTML WEEWX_RESULTS_DIR WEEWX_COMMON_REPOS WEEWX_COMMON_SRC
+
 export WEEWX_MODULE_NAME=mqttsubscribe
 
 export WEEWX_PYENV_VERSION='3.10'
 
 export WEEWX_TOOL_PATH=~/weewx_dev/weewx-extensions/development-tools/tools
-export WEEWX_PYTHONPATH=bin:../weewx/src
+
+# What the analyze-test workflow lints.
+export WEEWX_LINT_PATHS='./bin/user/mqttsubscribe.py ./bin/user/mqttcommon.py'
+
+# The shared repositories this repository vendors.
+export WEEWX_COMMON_REPOS='https://github.com/weewx-mqtt/mqttcommon'
+
+# The suites the analyze-test workflow runs.
+export WEEWX_TEST_SUITES='unit func integ e2e'
+
+# weewx from PyPI, like CI; the sibling checkout until it is installed.
+if PYTHONPATH= python3 -c 'import weewx' >/dev/null 2>&1; then
+    export WEEWX_PYTHONPATH=bin
+else
+    export WEEWX_PYTHONPATH=bin:../weewx/src
+fi
+
 PATH=$WEEWX_TOOL_PATH:$PATH
