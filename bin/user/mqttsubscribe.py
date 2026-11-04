@@ -1889,15 +1889,15 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         # paho callback messages, the message ids are per api variant
         62001: "Connected with result code {rc}",
         62002: "Connected flags {flags}",
-        62003: "Disconnected with result code {rc}",
+        62003: "Disconnected with result code {rc}, {error_string}",
         62004: "Subscribed to mid: {mid} is size {size} has a QOS of {code}",
         72001: "Connected with result code {rc}",
         72002: "Connected flags {flags}",
-        72003: "Disconnected with result code {rc}",
+        72003: "Disconnected with result code {rc}, {error_string}",
         72004: "Subscribed to mid: {mid} is size {size} has a reason_code of {code}",
         82001: "Connected with result code {rc}",
         82002: "Connected flags {flags}",
-        82003: "Disconnected with result code {rc}",
+        82003: "Disconnected with result code {rc}, {error_string}",
         82004: "Subscribed to mid: {mid} is size {size} has a reason_code of {code}",
         # error messages
         34001: "Failed to connect to {host} at {port}. '{exception}'",
@@ -2166,8 +2166,11 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         self._subscribe(client)
 
     def _on_disconnect(self, _client, _userdata, rc, _properties):
-        self.logger.info(self.on_disconnect_message_id,
-                         self.log_messages[self.on_disconnect_message_id].format(rc=rc))
+        msg_text = self.log_messages[self.on_disconnect_message_id].format(rc=rc, error_string=mqtt.error_string(rc))
+        if int(rc) == 0:
+            self.logger.info(self.on_disconnect_message_id, msg_text)
+        else:
+            self.logger.error(self.on_disconnect_message_id, msg_text)
 
     def _on_subscribe(self, _client, _userdata, mid, codes, _properties):
         self.logger.info(self.on_subscribe_message_id,

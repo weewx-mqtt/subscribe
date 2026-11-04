@@ -108,7 +108,29 @@ class TestCallbacks(unittest.TestCase):
 
                     SUT._on_disconnect(None, None, rc, None)
 
-                    SUT.logger.info.assert_called_with(62003, f"Disconnected with result code {int(rc)}")
+                    # A non-zero result code is an error, and names the error.
+                    SUT.logger.error.assert_called_with(
+                        62003, f"Disconnected with result code {rc}, {user.mqttsubscribe.mqtt.error_string(rc)}")
+
+    @staticmethod
+    def test_on_disconnect_no_error():
+        mock_logger = mock.Mock(spec=Logger)
+
+        config_dict = {}
+        config_dict['message_callback'] = {}
+        config_dict['topics'] = {}
+        config = configobj.ConfigObj(config_dict)
+
+        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+            with mock.patch('user.mqttsubscribe.TopicManager'):
+                with mock.patch('user.mqttsubscribe.mqtt.Client'):
+                    SUT = MQTTSubscriber(config, mock_logger, api=user.mqttcommon.API_V1)
+
+                    SUT._on_disconnect(None, None, 0, None)
+
+                    # A requested disconnect is informational.
+                    SUT.logger.info.assert_called_with(62003, "Disconnected with result code 0, No error.")
+                    SUT.logger.error.assert_not_called()
 
     @staticmethod
     def test_on_subscribe():

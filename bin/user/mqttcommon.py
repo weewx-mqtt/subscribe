@@ -69,11 +69,11 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         # trace message
         # debug messages
         # informational messages
-        122002: "Starting logger thread.",
-        122003: "Exited logger thread.",
+        122002: "Logger thread is starting.",
+        122003: "Logger thread is shut down.",
         # error messages
         124003: "Invalid log entry: {entry}",
-        124004: "Unable to shut down logger thread {name}.",
+        124004: "Logger thread did not shut down within {timeout} seconds.",
     }
 
     def __init__(self, name, *, log_queue=None, log_name=None, config=None,  # pylint: disable=too-many-arguments
@@ -193,7 +193,7 @@ class Logger:  # pylint: disable=too-many-instance-attributes
             # The thread is stuck, a queued message would not be logged so log it directly.
             self._log_error(self.create_entry(
                 self.name, 'ERROR', None,
-                self.log_messages[124004].format(name=self.log_thread.name),
+                self.log_messages[124004].format(timeout=timeout),
                 self.archive_timestamp))
 
     def log_environment(self, config_dict, version):

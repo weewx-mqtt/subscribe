@@ -78,7 +78,9 @@ class TestCallbacks(unittest.TestCase):
 
                     SUT._on_disconnect(None, None, rc, None)
 
-                    SUT.logger.info.assert_called_with(72003, f"Disconnected with result code {int(rc)}")
+                    # A non-zero result code is an error, and names the error.
+                    SUT.logger.error.assert_called_with(
+                        72003, f"Disconnected with result code {rc}, {user.mqttsubscribe.mqtt.error_string(rc)}")
 
     @staticmethod
     def test_on_subscribe():

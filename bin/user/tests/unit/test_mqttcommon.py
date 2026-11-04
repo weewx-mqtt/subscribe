@@ -429,10 +429,10 @@ class TestLogger(unittest.TestCase):
     def test_log_messages_texts(self):
         # The thread entries' message texts are shared and looked up by id.
         self.assertEqual(user.mqttcommon.Logger.log_messages, {
-            122002: "Starting logger thread.",
-            122003: "Exited logger thread.",
+            122002: "Logger thread is starting.",
+            122003: "Logger thread is shut down.",
             124003: "Invalid log entry: {entry}",
-            124004: "Unable to shut down logger thread {name}.",
+            124004: "Logger thread did not shut down within {timeout} seconds.",
         })
 
     def test_log_environment_logs_the_environment(self):
@@ -480,7 +480,7 @@ class TestLogger(unittest.TestCase):
             self.assertFalse(SUT.log_thread.is_alive())
             # The thread logs its start and its exit, and nothing else.
             messages = [call[0][2] for call in mock_log.info.call_args_list]
-            self.assertEqual(messages, ["Starting logger thread.", "Exited logger thread."])
+            self.assertEqual(messages, ["Logger thread is starting.", "Logger thread is shut down."])
 
     def test_init_uses_the_supplied_logger_name(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
@@ -752,10 +752,10 @@ class TestShutdown(unittest.TestCase):
             # The start message, the queued messages, and the exit message are logged in queue order.
             self.assertFalse(SUT.log_thread.is_alive())
             logged = [(call[0], call[1][2]) for call in mock_log.method_calls if call[0] in ('info', 'error')]
-            self.assertEqual(logged, [('info', "Starting logger thread."),
+            self.assertEqual(logged, [('info', "Logger thread is starting."),
                                       ('info', first['msg_text']),
                                       ('error', second['msg_text']),
-                                      ('info', "Exited logger thread.")])
+                                      ('info', "Logger thread is shut down.")])
 
     def test_shutdown_is_idempotent(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:
@@ -797,7 +797,7 @@ class TestShutdown(unittest.TestCase):
 
             SUT.shutdown(timeout=0.05)
 
-            expected_text = user.mqttcommon.Logger.log_messages[124004].format(name=SUT.log_thread.name)
+            expected_text = user.mqttcommon.Logger.log_messages[124004].format(timeout=0.05)
             mock_log.error.assert_called_once_with("(%s) %s",
                                                    f"{name}-{threading.get_native_id()}", expected_text)
             self.assertTrue(SUT.log_thread.is_alive())
@@ -837,13 +837,13 @@ class TestLoggerThread(unittest.TestCase):
         entries = [call[0][0] for call in mock_logger.log_entry.call_args_list]
         self.assertEqual(len(entries), 5)
         self.assertEqual(entries[0], {'name': mock_logger.name, 'log_type': 'INFO', 'msg_id': 122002,
-                                      'msg_text': "Starting logger thread.", 'thread_id': SUT.native_id,
+                                      'msg_text': "Logger thread is starting.", 'thread_id': SUT.native_id,
                                       'archive_timestamp': None})
         self.assertIs(entries[1], debug_entry)
         self.assertIs(entries[2], no_log_type_entry)
         self.assertIs(entries[3], error_entry)
         self.assertEqual(entries[4], {'name': mock_logger.name, 'log_type': 'INFO', 'msg_id': 122003,
-                                      'msg_text': "Exited logger thread.",
+                                      'msg_text': "Logger thread is shut down.",
                                       'thread_id': SUT.native_id, 'archive_timestamp': None})
 
     def test_run_invalid_entry(self):
@@ -880,7 +880,7 @@ class TestLoggerThread(unittest.TestCase):
                                       'msg_text': f"Invalid log entry: {invalid_entry}",
                                       'thread_id': SUT.native_id, 'archive_timestamp': None})
         self.assertEqual(entries[3], {'name': mock_logger.name, 'log_type': 'INFO', 'msg_id': 122003,
-                                      'msg_text': "Exited logger thread.",
+                                      'msg_text': "Logger thread is shut down.",
                                       'thread_id': SUT.native_id, 'archive_timestamp': None})
 
 

@@ -262,7 +262,7 @@ class TestQueue(BaseTestClass):
 
             SUT.shutdown(timeout=0.05)
 
-            expected_text = user.mqttcommon.Logger.log_messages[124004].format(name=SUT.log_thread.name)
+            expected_text = user.mqttcommon.Logger.log_messages[124004].format(timeout=0.05)
             mock_log.error.assert_called_once_with(SUT.LOG_FORMAT, f"{name}-{threading.get_native_id()}", expected_text)
             self.assertTrue(SUT.log_thread.is_alive())
 
