@@ -37,8 +37,7 @@ class TestclosePort(unittest.TestCase):
         del sys.modules['weewx.drivers']
         del sys.modules['weewx.engine']
 
-    @staticmethod
-    def test_close_port():
+    def test_close_port(self):
         mock_engine = mock.Mock()
         stn_dict = {}
         stn_dict['topic'] = random_string()
@@ -46,9 +45,21 @@ class TestclosePort(unittest.TestCase):
         config_dict['MQTTSubscribeDriver'] = stn_dict
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
-            SUT = MQTTSubscribeDriver(config_dict, mock_engine)
-            SUT.closePort()
-            SUT.subscriber.disconnect.assert_called_once()
+            with mock.patch('user.mqttcommon.Logger'):
+                SUT = MQTTSubscribeDriver(config_dict, mock_engine)
+                SUT.logger.name = 'Driver'
+
+                SUT.closePort()
+
+                SUT.subscriber.disconnect.assert_called_once()
+                # The shutdown is not part of an archive record.
+                self.assertIsNone(SUT.logger.archive_timestamp)
+                # The start, then the completion, then the logger thread.
+                messages = [call[0][0] for call in SUT.logger.info.call_args_list]
+                self.assertEqual(messages[-2:], [12003, 12004])
+                SUT.logger.info.assert_any_call(12003, "Shutting down.")
+                SUT.logger.info.assert_any_call(12004, "Driver is shut down.")
+                SUT.logger.shutdown.assert_called_once_with()
 
     def test_new_archive_record(self):
         mock_engine = mock.Mock()

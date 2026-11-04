@@ -2178,6 +2178,8 @@ class MQTTSubscribeService(StdService):
         22001: "Not enabled, exiting.",
         22002: "Running as both a driver and a service.",
         22003: "binding is {binding}",
+        22004: "Shutting down.",
+        22005: "{name} is shut down.",
         # error messages
         24001: "Ignoring packet has dateTime of {dateTime:f} which is prior to previous packet {end_ts:f}",
         # exception messages
@@ -2241,8 +2243,16 @@ class MQTTSubscribeService(StdService):
 
     def shutDown(self):  # need to override parent
         """Run when an engine shutdown is requested."""
+        if not self.enable:
+            self.logger.shutdown()
+            return
+
+        # The shutdown is not part of an archive record.
+        self.logger.archive_timestamp = None
+        self.logger.info(22004, MQTTSubscribeService.log_messages[22004])
         if self.subscriber:
             self.subscriber.disconnect()
+        self.logger.info(22005, MQTTSubscribeService.log_messages[22005].format(name=self.logger.name))
         self.logger.shutdown()
 
     def new_loop_packet(self, event):
@@ -2353,6 +2363,8 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         # informational messages
         12001: "Max loop interval is: {max_loop_interval}",
         12002: "Wait before retry is {wait_before_retry}",
+        12003: "Shutting down.",
+        12004: "{name} is shut down.",
         # error messages
         14001: "Ignoring record because {archive_start} archival start is before previous archive start {prev_archive_start}: {data}",
         # exception messages:
@@ -2408,7 +2420,11 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
 
     def closePort(self):  # need to override parent
         """ Called to perform any close/cleanup before termination. """
+        # The shutdown is not part of an archive record.
+        self.logger.archive_timestamp = None
+        self.logger.info(12003, MQTTSubscribeDriver.log_messages[12003])
         self.subscriber.disconnect()
+        self.logger.info(12004, MQTTSubscribeDriver.log_messages[12004].format(name=self.logger.name))
         self.logger.shutdown()
 
     def new_archive_record(self, event):

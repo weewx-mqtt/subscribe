@@ -475,6 +475,59 @@ class Testnew_archive_record(unittest.TestCase):
                 SUT.new_archive_record(mock_new_archive_record_event)
                 SUT.cache.update_value.assert_called_once()
 
+class TestshutDown(unittest.TestCase):
+    def setUp(self):
+        # reset stubs for every test
+        test_weewx_stubs.setup_stubs()
+
+    def tearDown(self):
+        # cleanup stubs
+        del sys.modules['weecfg']
+        del sys.modules['weeutil']
+        del sys.modules['weeutil.config']
+        del sys.modules['weeutil.weeutil']
+        del sys.modules['weeutil.logger']
+        del sys.modules['weewx']
+        del sys.modules['weewx.drivers']
+        del sys.modules['weewx.engine']
+
+    def test_logs_the_start_and_the_completion(self):
+        mock_StdEngine = mock.Mock()
+        config_dict = {'MQTTSubscribeService': {}}
+
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
+            with mock.patch('user.mqttcommon.Logger'):
+                SUT = user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
+                SUT.logger.name = 'Service'
+
+                SUT.shutDown()
+
+                SUT.subscriber.disconnect.assert_called_once_with()
+                # The shutdown is not part of an archive record.
+                self.assertIsNone(SUT.logger.archive_timestamp)
+                # The start, then the completion, then the logger thread.
+                messages = [call[0][0] for call in SUT.logger.info.call_args_list]
+                self.assertEqual(messages[-2:], [22004, 22005])
+                SUT.logger.info.assert_any_call(22004, "Shutting down.")
+                SUT.logger.info.assert_any_call(22005, "Service is shut down.")
+                SUT.logger.shutdown.assert_called_once_with()
+
+    def test_does_not_narrate_when_disabled(self):
+        mock_StdEngine = mock.Mock()
+        config_dict = {'MQTTSubscribeService': {'enable': False}}
+
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
+            with mock.patch('user.mqttcommon.Logger'):
+                SUT = user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
+                # Drop the 'Not enabled, exiting.' line logged by __init__.
+                SUT.logger.info.reset_mock()
+
+                SUT.shutDown()
+
+                # A component that never ran does not announce that it is shutting down.
+                SUT.logger.info.assert_not_called()
+                SUT.logger.shutdown.assert_called_once_with()
+
 if __name__ == '__main__':
     # test_suite = unittest.TestSuite()
     # test_suite.addTest(Testnew_loop_packet('test_cache_updated'))
