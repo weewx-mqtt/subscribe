@@ -870,6 +870,8 @@ class Test_disconnect(unittest.TestCase):
                 SUT.disconnect()
 
                 SUT.client.disconnect.assert_called_once()
+                # The network loop must be stopped before the logger thread, so its final entries are queued.
+                SUT.client.loop_stop.assert_called_once()
 
 class TestCallbacks(unittest.TestCase):
     def setUp(self):

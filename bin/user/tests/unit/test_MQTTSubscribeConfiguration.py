@@ -57,6 +57,10 @@ class TestDefaultConfiguration(unittest.TestCase):
     # Default is None.
     username = None
     
+    # The time in seconds to wait for a thread to shut down.
+    # Default is 10.
+    wait_for_thread_shutdown = 10
+    
     # The TLS options that are passed to tls_set method of the MQTT client.
     # For additional information see, https://eclipse.org/paho/clients/python/docs/strptime-format-codes
     [[tls]]

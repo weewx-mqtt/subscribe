@@ -48,3 +48,8 @@ Default is `false`.
 ### username
 
 username for broker authentication. The default is `None`.
+
+### wait_for_thread_shutdown
+
+The time in seconds to wait for the logger thread to stop when shutting down.
+The default is `10`.

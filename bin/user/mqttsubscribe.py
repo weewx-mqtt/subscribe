@@ -136,6 +136,10 @@ CONFIG_SPEC_TEXT = """ \
     # Only used by the driver
     wait_before_retry = 2
 
+    # The time in seconds to wait for a thread to shut down.
+    # Default is 10.
+    wait_for_thread_shutdown = 10
+
     # The TLS options that are passed to tls_set method of the MQTT client.
     # For additional information see, https://eclipse.org/paho/clients/python/docs/strptime-format-codes
     [[tls]]
@@ -545,6 +549,7 @@ import argparse
 import copy
 import datetime
 import json
+import logging
 import os
 import random
 import re
@@ -590,6 +595,17 @@ if getattr(mqttcommon, 'MQTTCOMMON_API', (0, 0)) < (1, 0):
 VERSION = "3.2.1-rc01a"
 DRIVER_NAME = 'MQTTSubscribeDriver'
 DRIVER_VERSION = VERSION
+
+
+def log_direct(name, log_type, msg_text):
+    """ Log an entry without the queue, for a message that must not be lost.
+
+        A queued entry is written by the logger thread, so when that thread is stuck the entry
+        is never written. This writes from the calling thread instead. Only 'INFO' and 'ERROR'
+        are used. """
+    entry = mqttcommon.Logger.create_entry(name, log_type, None, msg_text)
+    args = (f"{entry['name']}-{entry['thread_id']}", entry['msg_text'])
+    getattr(logging.getLogger(__name__), log_type.lower())(mqttcommon.Logger.LOG_FORMAT, *args)
 
 class ConversionError(ValueError):
     """ Error converting data types. """
@@ -2095,6 +2111,9 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
     def disconnect(self):
         """ shut it down """
         self.client.disconnect()
+        # Stop paho's network loop thread. It must outlive the disconnect, so the DISCONNECT gets sent,
+        # and stopping it before the logger thread keeps its final messages in the queue.
+        self.client.loop_stop()
 
     def _subscribe(self, client):
         for topic, info in self.manager.subscribed_topics.items():
@@ -2180,6 +2199,7 @@ class MQTTSubscribeService(StdService):
         22003: "binding is {binding}",
         22004: "Shutting down.",
         22005: "{name} is shut down.",
+        22006: "Shutting down the logger thread.",
         # error messages
         24001: "Ignoring packet has dateTime of {dateTime:f} which is prior to previous packet {end_ts:f}",
         # exception messages
@@ -2210,6 +2230,9 @@ class MQTTSubscribeService(StdService):
         self.logger.log_environment(config_dict, VERSION)
 
         self.enable = to_bool(service_dict.get('enable', True))
+        self.wait_for_thread_shutdown = to_int(service_dict.get('wait_for_thread_shutdown', 10))
+        if self.wait_for_thread_shutdown is None:
+            self.wait_for_thread_shutdown = 10
         if not self.enable:
             self.logger.info(22001, MQTTSubscribeService.log_messages[22001])
             return
@@ -2244,7 +2267,7 @@ class MQTTSubscribeService(StdService):
     def shutDown(self):  # need to override parent
         """Run when an engine shutdown is requested."""
         if not self.enable:
-            self.logger.shutdown()
+            self.logger.shutdown(self.wait_for_thread_shutdown)
             return
 
         # The shutdown is not part of an archive record.
@@ -2252,8 +2275,11 @@ class MQTTSubscribeService(StdService):
         self.logger.info(22004, MQTTSubscribeService.log_messages[22004])
         if self.subscriber:
             self.subscriber.disconnect()
-        self.logger.info(22005, MQTTSubscribeService.log_messages[22005].format(name=self.logger.name))
-        self.logger.shutdown()
+        self.logger.info(22006, MQTTSubscribeService.log_messages[22006])
+        self.logger.shutdown(self.wait_for_thread_shutdown)
+        # Logged directly: queued entries are never written once the logger thread has stopped.
+        log_direct(self.logger.name, 'INFO',
+                   MQTTSubscribeService.log_messages[22005].format(name=self.logger.name))
 
     def new_loop_packet(self, event):
         """ Handle the new loop packet event. """
@@ -2365,6 +2391,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         12002: "Wait before retry is {wait_before_retry}",
         12003: "Shutting down.",
         12004: "{name} is shut down.",
+        12005: "Shutting down the logger thread.",
         # error messages
         14001: "Ignoring record because {archive_start} archival start is before previous archive start {prev_archive_start}: {data}",
         # exception messages:
@@ -2389,6 +2416,9 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         self.start_loop_period_ts = 0
 
         self.wait_before_retry = float(stn_dict.get('wait_before_retry', 2))
+        self.wait_for_thread_shutdown = to_int(stn_dict.get('wait_for_thread_shutdown', 10))
+        if self.wait_for_thread_shutdown is None:
+            self.wait_for_thread_shutdown = 10
         # ToDo: This should be retrieved from the weewx.conf
         self._archive_interval = to_int(stn_dict.get('archive_interval', 300))
         self.archive_topic = stn_dict.get('archive_topic', None)
@@ -2424,8 +2454,11 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         self.logger.archive_timestamp = None
         self.logger.info(12003, MQTTSubscribeDriver.log_messages[12003])
         self.subscriber.disconnect()
-        self.logger.info(12004, MQTTSubscribeDriver.log_messages[12004].format(name=self.logger.name))
-        self.logger.shutdown()
+        self.logger.info(12005, MQTTSubscribeDriver.log_messages[12005])
+        self.logger.shutdown(self.wait_for_thread_shutdown)
+        # Logged directly: queued entries are never written once the logger thread has stopped.
+        log_direct(self.logger.name, 'INFO',
+                   MQTTSubscribeDriver.log_messages[12004].format(name=self.logger.name))
 
     def new_archive_record(self, event):
         """ Handle the new archive record event. """

@@ -10,6 +10,8 @@ Enhancements:
   defined by the shared 'user.mqttcommon': (component-thread_id-archive_timestamp).
 - Shutdown now logs a start line and a completion line, and shutdown lines are no
   longer attributed to the last archive record.
+- Add the 'wait_for_thread_shutdown' option to control how long shutdown waits for
+  the logger thread. The network loop is now stopped before the logger thread.
 
 V3.2.0
 Enhancements:

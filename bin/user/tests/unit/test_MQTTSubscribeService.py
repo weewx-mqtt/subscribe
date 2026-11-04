@@ -493,40 +493,45 @@ class TestshutDown(unittest.TestCase):
 
     def test_logs_the_start_and_the_completion(self):
         mock_StdEngine = mock.Mock()
-        config_dict = {'MQTTSubscribeService': {}}
+        config_dict = {'MQTTSubscribeService': {'wait_for_thread_shutdown': 3}}
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
             with mock.patch('user.mqttcommon.Logger'):
-                SUT = user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
-                SUT.logger.name = 'Service'
+                with mock.patch('user.mqttsubscribe.log_direct') as mock_log_direct:
+                    SUT = user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
+                    SUT.logger.name = 'Service'
 
-                SUT.shutDown()
+                    SUT.shutDown()
 
-                SUT.subscriber.disconnect.assert_called_once_with()
-                # The shutdown is not part of an archive record.
-                self.assertIsNone(SUT.logger.archive_timestamp)
-                # The start, then the completion, then the logger thread.
-                messages = [call[0][0] for call in SUT.logger.info.call_args_list]
-                self.assertEqual(messages[-2:], [22004, 22005])
-                SUT.logger.info.assert_any_call(22004, "Shutting down.")
-                SUT.logger.info.assert_any_call(22005, "Service is shut down.")
-                SUT.logger.shutdown.assert_called_once_with()
+                    SUT.subscriber.disconnect.assert_called_once_with()
+                    # The shutdown is not part of an archive record.
+                    self.assertIsNone(SUT.logger.archive_timestamp)
+                    # The start, the logger thread, then the logger itself.
+                    messages = [call[0][0] for call in SUT.logger.info.call_args_list]
+                    self.assertEqual(messages[-2:], [22004, 22006])
+                    SUT.logger.info.assert_any_call(22004, "Shutting down.")
+                    SUT.logger.info.assert_any_call(22006, "Shutting down the logger thread.")
+                    SUT.logger.shutdown.assert_called_once_with(3)
+                    # The completion is logged directly, because the logger thread has stopped by then.
+                    mock_log_direct.assert_called_once_with('Service', 'INFO', "Service is shut down.")
 
     def test_does_not_narrate_when_disabled(self):
         mock_StdEngine = mock.Mock()
-        config_dict = {'MQTTSubscribeService': {'enable': False}}
+        config_dict = {'MQTTSubscribeService': {'enable': False, 'wait_for_thread_shutdown': 3}}
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
             with mock.patch('user.mqttcommon.Logger'):
-                SUT = user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
-                # Drop the 'Not enabled, exiting.' line logged by __init__.
-                SUT.logger.info.reset_mock()
+                with mock.patch('user.mqttsubscribe.log_direct') as mock_log_direct:
+                    SUT = user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
+                    # Drop the 'Not enabled, exiting.' line logged by __init__.
+                    SUT.logger.info.reset_mock()
 
-                SUT.shutDown()
+                    SUT.shutDown()
 
-                # A component that never ran does not announce that it is shutting down.
-                SUT.logger.info.assert_not_called()
-                SUT.logger.shutdown.assert_called_once_with()
+                    # A component that never ran does not announce that it is shutting down.
+                    SUT.logger.info.assert_not_called()
+                    SUT.logger.shutdown.assert_called_once_with(3)
+                    mock_log_direct.assert_not_called()
 
 if __name__ == '__main__':
     # test_suite = unittest.TestSuite()
