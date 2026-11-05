@@ -201,23 +201,25 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         # Imported here so that mqttcommon stays importable without weewx.
         import weewx  # pylint: disable=import-outside-toplevel
 
-        # Since WeeWX logs this, only log it when debugging
-        self.debug(0, f"Using weewx version {weewx.__version__}")
-        self.debug(0, f"Using Python {sys.version}")
-        self.debug(0, f"Platform {platform.platform()}")
-        self.debug(0, f"Locale is '{locale.setlocale(locale.LC_ALL)}'")
-
         archive_dict = config_dict.get('StdArchive', {})
         record_augmentation = archive_dict.get('record_augmentation', None)
         record_generation = archive_dict.get('record_generation', None)
-        self.info(0, f"Version is {version}")
-        self.info(0, f"Using paho.mqtt {paho.mqtt.__version__}")
-        self.info(0, f"Log level: {int(self.level)}")
-        self.info(0, f"Log debug setting: {int(self.weewx_debug)}")
-        self.info(0, f"Log console: {self.console}")
-        self.info(0, f"Log file: {self.filename}")
-        self.debug(0, f"Record Augmentation is: {record_augmentation}")
-        self.debug(0, f"Record Generation is: {record_generation}")
+
+        self.info(0, f"Version: {version}.")
+
+        # Since WeeWX logs this, only log it when debugging
+        self.debug(0, f"WeeWX version: {weewx.__version__}.")
+        self.debug(0, f"Python: {platform.python_version()}.")
+        self.debug(0, f"Platform: {platform.platform()}.")
+        self.debug(0, f"Locale: {locale.setlocale(locale.LC_ALL)}.")
+
+        self.info(0, f"paho.mqtt: {paho.mqtt.__version__}.")
+        self.info(0, f"Log level: {int(self.level)}.")
+        self.info(0, f"Log debug: {int(self.weewx_debug)}.")
+        self.info(0, f"Log console: {self.console}.")
+        self.info(0, f"Log file: {self.filename}.")
+        self.debug(0, f"Record augmentation: {record_augmentation}.")
+        self.debug(0, f"Record generation: {record_generation}.")
 
     def _setup_logging(self):
         """ Setup the weewx message handlers. """

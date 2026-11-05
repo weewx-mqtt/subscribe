@@ -454,13 +454,13 @@ class TestLogger(unittest.TestCase):
             self.assertEqual(mock_log.debug.call_count, 6)
             self.assertEqual(mock_log.info.call_count, 6)
             prefix = f"{name}-{threading.get_native_id()}"
-            mock_log.info.assert_any_call("(%s) %s", prefix, "Version is 1.2.3-test")
-            mock_log.info.assert_any_call("(%s) %s", prefix, "Log level: 0")
-            mock_log.info.assert_any_call("(%s) %s", prefix, "Log debug setting: 0")
-            mock_log.info.assert_any_call("(%s) %s", prefix, "Log console: False")
-            mock_log.info.assert_any_call("(%s) %s", prefix, "Log file: None")
-            mock_log.debug.assert_any_call("(%s) %s", prefix, "Record Augmentation is: archive")
-            mock_log.debug.assert_any_call("(%s) %s", prefix, "Record Generation is: generator")
+            mock_log.info.assert_any_call("(%s) %s", prefix, "Version: 1.2.3-test.")
+            mock_log.info.assert_any_call("(%s) %s", prefix, "Log level: 0.")
+            mock_log.info.assert_any_call("(%s) %s", prefix, "Log debug: 0.")
+            mock_log.info.assert_any_call("(%s) %s", prefix, "Log console: False.")
+            mock_log.info.assert_any_call("(%s) %s", prefix, "Log file: None.")
+            mock_log.debug.assert_any_call("(%s) %s", prefix, "Record augmentation: archive.")
+            mock_log.debug.assert_any_call("(%s) %s", prefix, "Record generation: generator.")
 
     def test_init_starts_a_daemon_logger_thread(self):
         with mock.patch('user.mqttcommon.logging') as mock_logging:

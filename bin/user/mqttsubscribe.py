@@ -2230,7 +2230,6 @@ class MQTTSubscribeService(StdService):
                                     level=logging_level,
                                     filename=logging_filename,
                                     console=console)
-        self.logger.log_environment(config_dict, VERSION)
 
         self.enable = to_bool(service_dict.get('enable', True))
         self.wait_for_thread_shutdown = to_int(service_dict.get('wait_for_thread_shutdown', 10))
@@ -2239,6 +2238,8 @@ class MQTTSubscribeService(StdService):
         if not self.enable:
             self.logger.info(22001, MQTTSubscribeService.log_messages[22001])
             return
+
+        self.logger.log_environment(config_dict, VERSION)
 
         if engine.stn_info.hardware == DRIVER_NAME:
             self.logger.info(22002, MQTTSubscribeService.log_messages[22002])

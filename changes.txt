@@ -12,6 +12,8 @@ Enhancements:
   longer attributed to the last archive record.
 - Add the 'wait_for_thread_shutdown' option to control how long shutdown waits for
   the logger thread. The network loop is now stopped before the logger thread.
+- Startup environment lines use the shared 'Label: value.' format, and are logged only
+  when the component is enabled.
 
 V3.2.0
 Enhancements:
