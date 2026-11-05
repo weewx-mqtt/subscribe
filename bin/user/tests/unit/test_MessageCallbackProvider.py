@@ -96,7 +96,7 @@ class TestInitialization(unittest.TestCase):
         with self.assertRaises(ValueError) as error:
             user.mqttsubscribe.MessageCallbackProvider(None, mock_logger, mock_manager)
 
-        self.assertEqual(error.exception.args[0], f"{topic} topic is missing '[[[[message]]]]' section")
+        self.assertEqual(error.exception.args[0], f"Topic {topic} is missing its '[[[[message]]]]' section.")
 
     def test_message_callback_configuration_defaults_not_set(self):
         mock_logger = mock.Mock(spec=Logger)
@@ -195,7 +195,7 @@ class TestInitialization(unittest.TestCase):
         with self.assertRaises(ValueError) as error:
             user.mqttsubscribe.MessageCallbackProvider(None, mock_logger, mock_manager)
 
-        self.assertEqual(error.exception.args[0], f"Invalid type configured: {message_type}")
+        self.assertEqual(error.exception.args[0], f"Invalid type, {message_type}.")
 
     def test_message_configuration_missing_type(self):
         mock_logger = mock.Mock(spec=Logger)
@@ -217,7 +217,7 @@ class TestInitialization(unittest.TestCase):
         with self.assertRaises(ValueError) as error:
             user.mqttsubscribe.MessageCallbackProvider(None, mock_logger, mock_manager)
 
-        self.assertEqual(error.exception.args[0], f"{topic} topic is missing '[[[[message]]]] type=' section")
+        self.assertEqual(error.exception.args[0], f"Topic {topic} is missing its '[[[[message]]]] type=' section.")
 
 # missing message section? todo
 class TestMultiMessageMethod(unittest.TestCase):
@@ -258,7 +258,7 @@ class TestMultiMessageMethod(unittest.TestCase):
         msg = Msg(topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
-        mock_logger.error.assert_called_with(44010, f"Unknown message_type={type}. Skipping topic={topic} and payload={payload}")
+        mock_logger.error.assert_called_with(44010, f"Unknown message_type={type}. Skipping topic={topic} and payload={payload}.")
 
     def test_exception_raised(self):
         traceback = random_string()

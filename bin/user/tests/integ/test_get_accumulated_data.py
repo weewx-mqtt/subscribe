@@ -29,7 +29,7 @@ class TestAccumulatedData(unittest.TestCase):
 
         unit_system_name = topics_dict.get('unit_system', 'US').strip().upper()
         if unit_system_name not in weewx.units.unit_constants:
-            raise ValueError(f"MQTTSubscribe: Unknown unit system: {unit_system_name}")
+            raise ValueError(f"Unknown unit system, {unit_system_name}.")
         unit_system = weewx.units.unit_constants[unit_system_name]
 
         on_message = utils.get_callback(payload, config_dict, manager, logger)

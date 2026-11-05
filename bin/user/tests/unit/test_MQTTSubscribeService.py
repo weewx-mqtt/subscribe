@@ -49,7 +49,7 @@ class atestInitialization(unittest.TestCase):
             with self.assertRaises(ValueError) as error:
                 user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
 
-            self.assertEqual(error.exception.args[0], f"MQTTSubscribeService: Unknown binding: {binding}")
+            self.assertEqual(error.exception.args[0], f"Unknown binding, {binding}.")
 
     @staticmethod
     def test_not_enable():
@@ -109,7 +109,7 @@ class atestInitialization(unittest.TestCase):
                 with self.assertRaises(ValueError) as error:
                     user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
 
-            self.assertEqual(error.exception.args[0], f"archive_topic, {archive_topic}, is invalid when running as a service")
+            self.assertEqual(error.exception.args[0], f"Invalid 'archive_topic', {archive_topic}, when running as a service.")
 
     def test_caching_valid_archive_binding(self):
         mock_StdEngine = mock.Mock()

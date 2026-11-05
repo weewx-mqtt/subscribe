@@ -66,7 +66,7 @@ class TestInit(unittest.TestCase):
         with self.assertRaises(ValueError) as error:
             TopicManager(None, config, mock_logger)
 
-        self.assertEqual(error.exception.args[0], f"MQTTSubscribe: Unknown unit system: {unit_system_name.upper()}")
+        self.assertEqual(error.exception.args[0], f"Unknown unit system, {unit_system_name.upper()}.")
 
     def test_invalid_unit_system_topic(self):
         mock_logger = mock.Mock(spec=Logger)
@@ -83,7 +83,7 @@ class TestInit(unittest.TestCase):
         with self.assertRaises(ValueError) as error:
             TopicManager(None, config, mock_logger)
 
-        self.assertEqual(error.exception.args[0], f"MQTTSubscribe: Unknown unit system: {unit_system_name.upper()}")
+        self.assertEqual(error.exception.args[0], f"Unknown unit system, {unit_system_name.upper()}.")
 
     def test_invalid_units(self):
         mock_logger = mock.Mock(spec=Logger)
@@ -107,7 +107,7 @@ class TestInit(unittest.TestCase):
         with self.assertRaises(ValueError) as error:
             TopicManager(None, config, mock_logger)
 
-        self.assertEqual(error.exception.args[0], f"For {field} invalid units, {config_dict[topic][field]['units']}.")
+        self.assertEqual(error.exception.args[0], f"Invalid units for {field}, {config_dict[topic][field]['units']}.")
 
 class TestHelperFunctions(unittest.TestCase):
     def setUp(self):
@@ -141,7 +141,7 @@ class TestHelperFunctions(unittest.TestCase):
         with self.assertRaises(ValueError) as error:
             SUT._lookup_topic(topic2)
 
-        self.assertEqual(error.exception.args[0], f"Did not find topic, {topic2}.")
+        self.assertEqual(error.exception.args[0], f"Unknown topic, {topic2}.")
 
 class TestConfigureMessage(unittest.TestCase):
     def setUp(self):

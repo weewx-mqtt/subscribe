@@ -72,7 +72,7 @@ class Logger:  # pylint: disable=too-many-instance-attributes
         122002: "Logger thread is starting.",
         122003: "Logger thread is shut down.",
         # error messages
-        124003: "Invalid log entry: {entry}",
+        124003: "Invalid log entry: {entry}.",
         124004: "Logger thread did not shut down within {timeout} seconds.",
     }
 
@@ -84,7 +84,7 @@ class Logger:  # pylint: disable=too-many-instance-attributes
             thread starts: level, filename, console, the weewx debug setting,
             the throttle, the TRACE level, and the handlers. """
         if not name:
-            raise ValueError("a logger's name must not be empty")
+            raise ValueError("A logger's name must not be empty.")
         self.name = name
         self.log = logging.getLogger(log_name or __name__)
         # The queue must exist before _configure: it queues the throttle notice.
@@ -361,8 +361,8 @@ class MessageThrottle:  # pylint: disable=too-few-public-methods
                            "and may cause one to miss important messages.")
 
     # The config parse/validate errors, raised as ValueError.
-    ERROR_DUPLICATE_MESSAGE = "{message_id} has been configured multiple times"
-    ERROR_INVALID_CATEGORY = "{category} is not valid. Valid categories are {valid_categories}"
+    ERROR_DUPLICATE_MESSAGE = "Message id {message_id} has been configured multiple times."
+    ERROR_INVALID_CATEGORY = "Invalid category, {category}. Valid categories are {valid_categories}."
     ERROR_CATEGORY_MISSING_MAX = "{category} is missing 'max' configuration option."
     ERROR_CATEGORY_MISSING_DURATION = "{category} is missing 'duration' configuration option."
     ERROR_MESSAGE_MISSING_MAX = "{message} is missing 'max' configuration option."

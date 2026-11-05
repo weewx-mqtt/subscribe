@@ -637,7 +637,7 @@ class RecordCache():
         # informational messages
         # error messages
         # exception messages
-        109001: "Unit system does not match unit system of the cache. {unit_system} vs {self_unit_system}",
+        109001: "Unit system mismatch, {unit_system} vs {self_unit_system}.",
     }
 
     def __init__(self, logger):
@@ -811,10 +811,10 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         54001: "TopicManager queue limit {max_queue} reached. Removing: {element}",
         # exception messages
         59001: "At least one topic must be configured.",
-        59002: "MQTTSubscribe: Unknown unit system: {unit_system_name}",
-        59003: "MQTTSubscribe: Unknown unit system: {unit_system_name}",
-        59004: "For {field_name} invalid units, {units}.",
-        59005: "Did not find topic, {topic}.",
+        59002: "Unknown unit system, {unit_system_name}.",
+        59003: "Unknown unit system, {unit_system_name}.",
+        59004: "Invalid units for {field_name}, {units}.",
+        59005: "Unknown topic, {topic}.",
     }
 
     def __init__(self, archive_topic, config, logger):
@@ -1432,8 +1432,8 @@ class AbstractMessageCallbackProvider():  # pylint: disable=too-few-public-metho
         # informational messages
         # error messages
         # exception messages
-        99001: "Method 'get_callback' not implemented",
-        99002: "Failed converting field {field} with value {value} using '{conversion_func}' with reason {exception}.",
+        99001: "Method 'get_callback' is not implemented.",
+        99002: "Unable to convert field {field} with value {value} using '{conversion_func}': {exception}.",
     }
 
     def __init__(self, logger, topic_manager):
@@ -1521,11 +1521,11 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
         44007: "MessageCallbackProvider on_message_keyword failed to find separator: {keyword_separator}",
         44008: "**** MessageCallbackProvider Skipping field={field} ",
         44009: "MessageCallbackProvider on_message_keyword failed to find data in: topic {topic} and payload {payload}",
-        44010: "Unknown message_type={message_type}. Skipping topic={topic} and payload={payload}",
+        44010: "Unknown message_type={message_type}. Skipping topic={topic} and payload={payload}.",
         # exception messages
-        49001: "{topic} topic is missing '[[[[message]]]]' section",
-        49002: "{topic} topic is missing '[[[[message]]]] type=' section",
-        49003: "Invalid type configured: {message_type}",
+        49001: "Topic {topic} is missing its '[[[[message]]]]' section.",
+        49002: "Topic {topic} is missing its '[[[[message]]]] type=' section.",
+        49003: "Invalid type, {message_type}.",
     }
 
     def __init__(self, config, logger, topic_manager):
@@ -1786,8 +1786,8 @@ class ManageWeewxConfig():
         # error messages
         # exception messages
         119001: "{unit} is missing a group.",
-        119002: "{unit} is missing an unit_system.",
-        119003: "Invalid unit_system {unit_system} for {unit}.",
+        119002: "{unit} is missing a unit_system.",
+        119003: "Invalid unit system, {unit_system} for {unit}.",
     }
 
     @staticmethod
@@ -1901,15 +1901,15 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         82003: "Disconnected with result code {rc}, {error_string}",
         82004: "Subscription acknowledged, mid {mid}, result code {code}.",
         # error messages
-        34001: "Failed to connect to {host} at {port}. '{exception}'",
+        34001: "Unable to connect to {host}:{port}: {exception}.",
         # exception messages
         39001: "[[topics]] is required.",
-        39002: "Archive topic {archive_topic} must be in [[topics]]",
-        39003: "'{clean_start_string}' is an invalid option for 'clean_start' option.",
+        39002: "Archive topic {archive_topic} must be in [[topics]].",
+        39003: "Invalid 'clean_start' option, '{clean_start_string}'.",
         39004: "{error_msgs}",
-        39005: "Invalid 'certs_required'., {certs_required}",
-        39006: "Invalid 'tls_version'., {tls_version}",
-        39007: "Unable to connect. Return code is {connect_rc}, '{connack_string_rc}', flags are {connect_flags}.",
+        39005: "Invalid 'certs_required', {certs_required}.",
+        39006: "Invalid 'tls_version', {tls_version}.",
+        39007: "Unable to connect, result code {connect_rc}, '{connack_string_rc}', connection flags {connect_flags}.",
         69001: "Invalid protocol, {protocol_string}.",
     }
 
@@ -2210,8 +2210,8 @@ class MQTTSubscribeService(StdService):
         24001: "Ignoring packet has dateTime of {dateTime:f} which is prior to previous packet {end_ts:f}",
         # exception messages
         29001: "No 'MQTTSubscribeService'/'MQTTSubscribe' configuration section found.",
-        29002: "archive_topic, {archive_topic}, is invalid when running as a service",
-        29003: "MQTTSubscribeService: Unknown binding: {binding}",
+        29002: "Invalid 'archive_topic', {archive_topic}, when running as a service.",
+        29003: "Unknown binding, {binding}.",
     }
 
     def __init__(self, engine, config_dict):
@@ -2402,7 +2402,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         # error messages
         14001: "Ignoring record because {archive_start} archival start is before previous archive start {prev_archive_start}: {data}",
         # exception messages:
-        19001: "Trying to remove {remove_item} and it is not in the config spec.",
+        19001: "Unable to remove {remove_item}, it is not in the config spec.",
         19002: "[[topics]] is required.",
     }
 
@@ -2842,9 +2842,9 @@ class MQTTSubscribeConfiguration():
             if key in section_deprecated_options and 'deprecated_msg' in section_deprecated_options[key]:
                 self._log_deprecated_option(key, section_deprecated_options, error_msgs, warn_msgs)
             else:
-                error_msgs.append(f"ERROR: Unknown option: {hierarchy}{key}")
+                error_msgs.append(f"Unknown option, {hierarchy}{key}.")
         elif value == 'REPLACE_ME':
-            error_msgs.append(f"ERROR: Specify a value for: {hierarchy}{key}")
+            error_msgs.append(f"A value is required for {hierarchy}{key}.")
         elif key in section_deprecated_options and 'deprecated_msg' in section_deprecated_options[key]:
             self._log_deprecated_option(key, section_deprecated_options, error_msgs, warn_msgs)
 
@@ -2852,7 +2852,7 @@ class MQTTSubscribeConfiguration():
         # pylint: disable=too-many-arguments
         for subsection in section.sections:
             if subsection == 'REPLACE_ME':
-                error_msgs.append(f"ERROR: Specify a value for: {hierarchy}{subsection}")
+                error_msgs.append(f"A value is required for {hierarchy}{subsection}.")
             elif parent == 'topics' and subsection != 'message':
                 self._validate_topics_section(subsection,
                                               hierarchy,
@@ -2901,7 +2901,7 @@ class MQTTSubscribeConfiguration():
                           error_msgs=error_msgs,
                           warn_msgs=warn_msgs)
         elif subsection not in section_deprecated_options:
-            error_msgs.append(f"ERROR: Unknown option: {hierarchy}{subsection}")
+            error_msgs.append(f"Unknown option, {hierarchy}{subsection}.")
 
     def _validate_topics_section(self, parent, hierarchy, section, *, section_configspec, section_deprecated_options, error_msgs, warn_msgs):
         # pylint: disable=too-many-arguments

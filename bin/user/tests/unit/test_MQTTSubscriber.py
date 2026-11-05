@@ -106,7 +106,7 @@ class TestInitialization(unittest.TestCase):
             with mock.patch('user.mqttsubscribe.TopicManager'):
                 MQTTSubscriber(config, mock_logger)
 
-        self.assertEqual(error.exception.args[0], (f"Archive topic {archive_topic} must be in [[topics]]"))
+        self.assertEqual(error.exception.args[0], (f"Archive topic {archive_topic} must be in [[topics]]."))
 
     @staticmethod
     def test_username_None():
@@ -255,7 +255,7 @@ class TestInitialization(unittest.TestCase):
 
                     MQTTSubscriberTest(config, mock_logger)
 
-                self.assertEqual(error.exception.args[0], f"'{clean_start}' is an invalid option for 'clean_start' option.")
+                self.assertEqual(error.exception.args[0], f"Invalid 'clean_start' option, '{clean_start}'.")
 
 
 class Testtls_configuration(unittest.TestCase):
@@ -329,7 +329,7 @@ class Testtls_configuration(unittest.TestCase):
                     MQTTSubscriberTest(config, mock_logger)
                 if saved_version:
                     ssl.PROTOCOL_TLS = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version'., {tls_version}")
+                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version', {tls_version}.")
 
     def test_missing_PROTOCOL_TLSv1(self):
         global mock_client
@@ -359,7 +359,7 @@ class Testtls_configuration(unittest.TestCase):
                     MQTTSubscriberTest(config, mock_logger)
                 if saved_version:
                     ssl.PROTOCOL_TLSv1 = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version'., {tls_version}")
+                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version', {tls_version}.")
 
     def test_missing_PROTOCOL_TLSv1_1(self):
         global mock_client
@@ -389,7 +389,7 @@ class Testtls_configuration(unittest.TestCase):
                     MQTTSubscriberTest(config, mock_logger)
                 if saved_version:
                     ssl.PROTOCOL_TLSv1_1 = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version'., {tls_version}")
+                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version', {tls_version}.")
 
     def test_missing_PROTOCOL_TLSv1_2(self):
         global mock_client
@@ -419,7 +419,7 @@ class Testtls_configuration(unittest.TestCase):
                     MQTTSubscriberTest(config, mock_logger)
                 if saved_version:
                     ssl.PROTOCOL_TLSv1_2 = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version'., {tls_version}")
+                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version', {tls_version}.")
 
     def test_missing_PROTOCOL_SSLv2(self):
         global mock_client
@@ -449,7 +449,7 @@ class Testtls_configuration(unittest.TestCase):
                     MQTTSubscriberTest(config, mock_logger)
                 if saved_version:
                     ssl.PROTOCOL_SSLv2 = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version'., {tls_version}")
+                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version', {tls_version}.")
 
     def test_missing_PROTOCOL_SSLv23(self):
         global mock_client
@@ -479,7 +479,7 @@ class Testtls_configuration(unittest.TestCase):
                     MQTTSubscriberTest(config, mock_logger)
                 if saved_version:
                     ssl.PROTOCOL_SSLv23 = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version'., {tls_version}")
+                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version', {tls_version}.")
 
     def test_missing_PROTOCOL_SSLv3(self):
         global mock_client
@@ -510,7 +510,7 @@ class Testtls_configuration(unittest.TestCase):
                     MQTTSubscriberTest(config, mock_logger)
                 if saved_version:
                     ssl.PROTOCOL_SSLv3 = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version'., {tls_version}")
+                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version', {tls_version}.")
 
     def test_invalid_certs_required(self):
         global mock_client
@@ -540,7 +540,7 @@ class Testtls_configuration(unittest.TestCase):
                     MQTTSubscriberTest(config, mock_logger)
                 if saved_version:
                     ssl.PROTOCOL_SSLv3 = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'certs_required'., {certs_required}")
+                self.assertEqual(error.exception.args[0], f"Invalid 'certs_required', {certs_required}.")
 
 class TestDeprecatedOptions(unittest.TestCase):
     def setUp(self):
@@ -785,7 +785,7 @@ class TestStart(unittest.TestCase):
 
                     SUT.client.loop_start.assert_called_once()
                     self.assertEqual(error.exception.args[0],
-                                     f"Unable to connect. Return code is {int(connect_rc)}, '{rc_string}', flags are {flags}.")
+                                     f"Unable to connect, result code {int(connect_rc)}, '{rc_string}', connection flags {flags}.")
 
     @staticmethod
     def test_immediate_connection():

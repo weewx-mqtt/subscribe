@@ -17,6 +17,8 @@ Enhancements:
 - Connection lifecycle messages use the shared wording ('Connecting to host:port.',
   'Connected with result code ..., ...', 'Connection flags: ...', 'Subscribing to topic,
   mid ..., result code ...', 'Subscription acknowledged, mid ..., result code ...').
+- Error and validation messages use the shared wording ('Unable to ...: ...',
+  'Invalid <thing>, <value>.', and one trailing period).
 
 V3.2.0
 Enhancements:

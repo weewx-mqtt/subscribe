@@ -177,7 +177,7 @@ class TestDefaultConfiguration(unittest.TestCase):
             SUT.default_config
         tear_down(self)
 
-        self.assertEqual(error.exception.args[0], f"Trying to remove {item_removed} and it is not in the config spec.")
+        self.assertEqual(error.exception.args[0], f"Unable to remove {item_removed}, it is not in the config spec.")
 
 class TestValidateTopicsSection(unittest.TestCase):
     def test_topic_configured_as_field(self):
@@ -241,7 +241,7 @@ class TestValidateTopicsSection(unittest.TestCase):
                                      warn_msgs=warn_msgs)
 
         self.assertEqual(warn_msgs, [])
-        self.assertEqual(error_msgs, [f"ERROR: Unknown option: MQTTSubscribeDriver-topics-{topic_name}-name"])
+        self.assertEqual(error_msgs, [f"Unknown option, MQTTSubscribeDriver-topics-{topic_name}-name."])
 
     def test_topic_has_a_message_configuration(self):
         section = 'MQTTSubscribeDriver'

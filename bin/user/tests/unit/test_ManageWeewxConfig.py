@@ -91,7 +91,7 @@ class TestObservationConfig(unittest.TestCase):
             SUT = ManageWeewxConfig()
             SUT.update_unit_config(config)
 
-        self.assertEqual(error.exception.args[0], f"{unit} is missing an unit_system.")
+        self.assertEqual(error.exception.args[0], f"{unit} is missing a unit_system.")
 
     def test_invalid_unit_system(self):
         unit = random_string(5)
@@ -110,7 +110,7 @@ class TestObservationConfig(unittest.TestCase):
             SUT = ManageWeewxConfig()
             SUT.update_unit_config(config)
 
-        self.assertEqual(error.exception.args[0], f"Invalid unit_system {unit_system} for {unit}.")
+        self.assertEqual(error.exception.args[0], f"Invalid unit system, {unit_system} for {unit}.")
 
     def test_configure_default_label(self):
         unit = random_string(5)
