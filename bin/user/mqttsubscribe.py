@@ -1885,20 +1885,21 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         32016: "{msg}",
         32017: "Waiting for MQTT connection.",
         32018: "MQTT initialization complete.",
-        32019: "Subscribing to {topic} has a mid {mid} and rc {result}",
+        32019: "Subscribing to {topic}, mid {mid}, result code {result}.",
+        32020: "Connecting to {host}:{port}.",
         # paho callback messages, the message ids are per api variant
-        62001: "Connected with result code {rc}",
-        62002: "Connected flags {flags}",
+        62001: "Connected with result code {rc}, {error_string}",
+        62002: "Connection flags: {flags}.",
         62003: "Disconnected with result code {rc}, {error_string}",
-        62004: "Subscribed to mid: {mid} is size {size} has a QOS of {code}",
-        72001: "Connected with result code {rc}",
-        72002: "Connected flags {flags}",
+        62004: "Subscription acknowledged, mid {mid}, result code {code}.",
+        72001: "Connected with result code {rc}, {error_string}",
+        72002: "Connection flags: {flags}.",
         72003: "Disconnected with result code {rc}, {error_string}",
-        72004: "Subscribed to mid: {mid} is size {size} has a reason_code of {code}",
-        82001: "Connected with result code {rc}",
-        82002: "Connected flags {flags}",
+        72004: "Subscription acknowledged, mid {mid}, result code {code}.",
+        82001: "Connected with result code {rc}, {error_string}",
+        82002: "Connection flags: {flags}.",
         82003: "Disconnected with result code {rc}, {error_string}",
-        82004: "Subscribed to mid: {mid} is size {size} has a reason_code of {code}",
+        82004: "Subscription acknowledged, mid {mid}, result code {code}.",
         # error messages
         34001: "Failed to connect to {host} at {port}. '{exception}'",
         # exception messages
@@ -2143,6 +2144,8 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
     def connect(self, mqtt_options):
         ''' Connect to the MQTT server. '''
+        self.logger.info(32020, MQTTSubscriber.log_messages[32020].format(host=mqtt_options['host'],
+                                                                          port=mqtt_options['port']))
         mqttcommon.connect(self.client, self.api,
                            host=mqtt_options['host'],
                            port=mqtt_options['port'],
@@ -2155,7 +2158,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
             threading.current_thread().name = f"MQTTSubscribe-{threading.get_native_id()}"
 
         self.logger.info(self.on_connect_rc_message_id,
-                         self.log_messages[self.on_connect_rc_message_id].format(rc=rc))
+                         self.log_messages[self.on_connect_rc_message_id].format(rc=rc, error_string=mqtt.error_string(rc)))
         self.logger.info(self.on_connect_flags_message_id,
                          self.log_messages[self.on_connect_flags_message_id].format(flags=str(flags)))
 
@@ -2174,7 +2177,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
     def _on_subscribe(self, _client, _userdata, mid, codes, _properties):
         self.logger.info(self.on_subscribe_message_id,
-                         self.log_messages[self.on_subscribe_message_id].format(mid=mid, size=len(codes), code=codes[0]))
+                         self.log_messages[self.on_subscribe_message_id].format(mid=mid, code=codes[0]))
 
     def _on_log(self, _client, _userdata, level, msg):
         self.mqtt_logger[level](None, f"MQTTSubscribe MQTT: {msg}")

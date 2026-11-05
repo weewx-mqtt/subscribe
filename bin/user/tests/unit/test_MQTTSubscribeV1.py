@@ -86,9 +86,9 @@ class TestCallbacks(unittest.TestCase):
 
                 SUT._on_connect(None, {}, flags, rc, None)
 
-                self.assertEqual(SUT.logger.info.call_count, 16)
-                mock_logger.info.assert_any_call(62001, f"Connected with result code {rc}")
-                mock_logger.info.assert_any_call(62002, f"Connected flags {flags}")
+                self.assertEqual(SUT.logger.info.call_count, 17)
+                mock_logger.info.assert_any_call(62001, f"Connected with result code {rc}, {user.mqttsubscribe.mqtt.error_string(rc)}")
+                mock_logger.info.assert_any_call(62002, f"Connection flags: {flags}.")
 
     @staticmethod
     def test_on_disconnect():
@@ -152,7 +152,7 @@ class TestCallbacks(unittest.TestCase):
                     SUT._on_subscribe(None, None, mid, granted_qos, None)
 
                     SUT.logger.info.assert_called_with(62004,
-                                                       f"Subscribed to mid: {mid} is size {len(granted_qos)} has a QOS of {granted_qos[0]}")
+                                                       f"Subscription acknowledged, mid {mid}, result code {granted_qos[0]}.")
 
     @staticmethod
     def test_on_log():
