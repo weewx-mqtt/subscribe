@@ -878,7 +878,9 @@ class TestJsonPayload(unittest.TestCase):
 
         SUT.on_message_multi(msg)
 
-        SUT.logger.error.assert_called_once()
+        SUT.logger.error.assert_called_once_with(
+            44001,
+            f"Skipping extraTemps because array data too big. Array={payload_dict['extraTemps']} subfields=[].")
         mock_manager.append_data.assert_called_once_with(msg.topic, output_dict)
         call_args_list = mock_manager.append_data.call_args_list
         second_arg = call_args_list[0].args[1]
@@ -919,7 +921,10 @@ class TestJsonPayload(unittest.TestCase):
 
         SUT.on_message_multi(msg)
 
-        SUT.logger.error.assert_called_once()
+        SUT.logger.error.assert_called_once_with(
+            44002,
+            f"Skipping extraTemps because array data too small. Array={payload_dict['extraTemps']} "
+            f"subfields={fields['extraTemps']['subfields']}.")
         mock_manager.append_data.assert_called_once_with(msg.topic, output_dict)
         call_args_list = mock_manager.append_data.call_args_list
         second_arg = call_args_list[0].args[1]

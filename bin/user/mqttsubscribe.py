@@ -1596,7 +1596,7 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
     def _check_subfield_count(self, new_key, value, fields):
         ''' Verify the array length matches the configured subfields. Returns True when they match. '''
         if len(value) > len(fields[new_key]['subfields']):
-            self.logger.error(44001, MessageCallbackProvider.log_messages[44002].format(new_key=new_key,
+            self.logger.error(44001, MessageCallbackProvider.log_messages[44001].format(new_key=new_key,
                                                                                         value=value,
                                                                                         subfields=fields[new_key]['subfields']))
             return False
