@@ -211,6 +211,97 @@ class TestValidateTopicsSection(unittest.TestCase):
         self.assertEqual(warn_msgs, [])
         self.assertEqual(error_msgs, [])
 
+    def test_topic_configured_as_field_with_deprecated_option(self):
+        section = 'MQTTSubscribeDriver'
+        topic_name = 'topic1'
+
+        config_text = f'''
+[topics]
+    [[{topic_name}]]
+        qos = 0
+        name = foo
+        use_topic_as_fieldname = True
+'''
+
+        error_msgs = []
+        warn_msgs = []
+
+        SUT = MQTTSubscribeConfiguration(None)
+
+        SUT._validate_topics_section(topic_name,
+                                     f'{section}-topics-',
+                                     configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
+                                     section_configspec=configobj.ConfigObj(
+                                         CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
+                                     section_deprecated_options={},
+                                     error_msgs=error_msgs,
+                                     warn_msgs=warn_msgs)
+
+        self.assertEqual(warn_msgs, ["'use_topic_as_fieldname' option is no longer needed and can be removed."])
+        self.assertEqual(error_msgs, [])
+
+    def test_subfield_with_deprecated_option(self):
+        section = 'MQTTSubscribeDriver'
+        topic_name = 'topic1'
+
+        config_text = f'''
+[topics]
+    [[{topic_name}]]
+        qos = 0
+        [[[field1]]]
+            [[[[subfields]]]]
+                [[[[[subfield1]]]]]
+                    label_map = foo
+'''
+
+        error_msgs = []
+        warn_msgs = []
+
+        SUT = MQTTSubscribeConfiguration(None)
+
+        SUT._validate_topics_section(topic_name,
+                                     f'{section}-topics-',
+                                     configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
+                                     section_configspec=configobj.ConfigObj(
+                                         CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
+                                     section_deprecated_options={},
+                                     error_msgs=error_msgs,
+                                     warn_msgs=warn_msgs)
+
+        self.assertEqual(warn_msgs, [])
+        self.assertEqual(error_msgs, ["'label_map' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]' name setting."])
+
+    def test_subfield_with_current_option(self):
+        section = 'MQTTSubscribeDriver'
+        topic_name = 'topic1'
+
+        config_text = f'''
+[topics]
+    [[{topic_name}]]
+        qos = 0
+        [[[field1]]]
+            [[[[subfields]]]]
+                [[[[[subfield1]]]]]
+                    contains_total = True
+'''
+
+        error_msgs = []
+        warn_msgs = []
+
+        SUT = MQTTSubscribeConfiguration(None)
+
+        SUT._validate_topics_section(topic_name,
+                                     f'{section}-topics-',
+                                     configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
+                                     section_configspec=configobj.ConfigObj(
+                                         CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
+                                     section_deprecated_options={},
+                                     error_msgs=error_msgs,
+                                     warn_msgs=warn_msgs)
+
+        self.assertEqual(warn_msgs, [])
+        self.assertEqual(error_msgs, [])
+
     def test_topic_has_field_options(self):
         section = 'MQTTSubscribeDriver'
         topic_name = 'topic1'

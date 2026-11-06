@@ -2671,6 +2671,13 @@ class MQTTSubscribeConfiguration():
         },
     }
 
+    # The old field options that are no longer valid in the new field configuration.
+    field_deprecated_options = {
+        'full_topic_fieldname': deprecated_options['message_callback']['full_topic_fieldname'],
+        'fields': deprecated_options['message_callback']['fields'],
+        'label_map': deprecated_options['message_callback']['label_map'],
+    }
+
     def __init__(self, section=None):
         self.section = section
 
@@ -2680,17 +2687,9 @@ class MQTTSubscribeConfiguration():
         del self.topic_as_field_config_spec['REPLACE_ME']
         self.topic_as_field_config_spec.merge(self.config_spec['MQTTSubscribe']['topics']['REPLACE_ME']["REPLACE_ME"])
 
-        self.topic_as_field_deprecated_options = configobj.ConfigObj(MQTTSubscribeConfiguration.deprecated_options
-                                                                     .get('MQTTSubscribe', {})
-                                                                     .get('topics', {})
-                                                                     .get('REPLACE_ME', {}))
-        if 'REPLACE_ME' in self.topic_as_field_deprecated_options:
-            del self.topic_as_field_deprecated_options['REPLACE_ME']
-        self.topic_as_field_deprecated_options.merge(MQTTSubscribeConfiguration.deprecated_options
-                                                     .get('MQTTSubscribe', {})
-                                                     .get('topics', {})
-                                                     .get('REPLACE_ME', {})
-                                                     .get('REPLACE_ME', {}))
+        self.topic_as_field_deprecated_options = configobj.ConfigObj(
+            MQTTSubscribeConfiguration.deprecated_options.get('topics', {}))
+        self.topic_as_field_deprecated_options.merge(MQTTSubscribeConfiguration.field_deprecated_options)
 
     @property
     def default_config(self):
@@ -2880,10 +2879,7 @@ class MQTTSubscribeConfiguration():
                                      section_configspec, section_deprecated_options, error_msgs, warn_msgs):
         # pylint: disable=too-many-arguments
         if parent == 'subfields':
-            subfield_deprecated_options = section_deprecated_options.get('MQTTSubscribe', {}) \
-                .get('topics', {}) \
-                .get('REPLACE_ME', {}) \
-                .get('REPLACE_ME', {})
+            subfield_deprecated_options = MQTTSubscribeConfiguration.field_deprecated_options
             self.validate(subsection,
                           hierarchy,
                           section[subsection],
