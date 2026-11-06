@@ -28,7 +28,7 @@ class MessageCallbackProvider(user.mqttsubscribe.AbstractMessageCallbackProvider
         """ Get the MQTT callback. """
         return self._on_message
 
-    def get_observations(self, parent, fullname, fields, unit_system):
+    def get_observations(self, topic, parent, fullname, fields, unit_system):
         """ Create the dictionary of observations. """
         observations = {}
         conversion_func = {
@@ -39,15 +39,15 @@ class MessageCallbackProvider(user.mqttsubscribe.AbstractMessageCallbackProvider
         for child in parent:
             saved_fullname = fullname
             fullname = fullname + '/' + child.tag
-            observations.update(self.get_observations(child, fullname, fields, unit_system))
+            observations.update(self.get_observations(topic, child, fullname, fields, unit_system))
             fullname = saved_fullname
 
         if parent.text is None:
             for (_, tvalue) in parent.items():
-                (fieldname, value) = self._update_data(fullname[1:], tvalue, fields, conversion_func, unit_system)
+                (fieldname, value) = self._update_data(topic, fullname[1:], tvalue, fields, conversion_func, unit_system)
                 observations[fieldname] = value
         elif not parent:
-            (fieldname, value) = self._update_data(fullname[1:], parent.text, fields, conversion_func, unit_system)
+            (fieldname, value) = self._update_data(topic, fullname[1:], parent.text, fields, conversion_func, unit_system)
             observations[fieldname] = value
 
         return observations
@@ -59,7 +59,7 @@ class MessageCallbackProvider(user.mqttsubscribe.AbstractMessageCallbackProvider
             fields = self.topic_manager.get_fields(msg.topic)
             unit_system = self.topic_manager.get_unit_system(msg.topic)  # TODO - need public method
             root = xml.etree.ElementTree.fromstring(msg.payload)
-            observations = self.get_observations(root, "", fields, unit_system)
+            observations = self.get_observations(msg.topic, root, "", fields, unit_system)
 
             if observations:
                 self.topic_manager.append_data(msg.topic, observations)

@@ -1442,7 +1442,8 @@ class AbstractMessageCallbackProvider():  # pylint: disable=too-few-public-metho
         """ Get the MQTT callback. """
         raise NotImplementedError(AbstractMessageCallbackProvider.log_messages[99001])
 
-    def _update_data(self, orig_name, orig_value, fields, default_field_conversion_func, unit_system):
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def _update_data(self, topic, orig_name, orig_value, fields, default_field_conversion_func, unit_system):
         value = self._convert_value(fields, default_field_conversion_func, orig_name, orig_value)
         fieldname = fields.get(orig_name, {}).get('name', orig_name)
 
@@ -1453,8 +1454,9 @@ class AbstractMessageCallbackProvider():  # pylint: disable=too-few-public-metho
         if fields.get(orig_name, {}).get('contains_total', False):
             current_value = value
             total_wrap_around = fields.get(orig_name, {}).get('total_wrap_around', False)
-            value = self._calc_increment(orig_name, current_value, self.previous_values.get(orig_name), total_wrap_around)
-            self.previous_values[orig_name] = current_value
+            previous_value_key = (topic, orig_name)
+            value = self._calc_increment(orig_name, current_value, self.previous_values.get(previous_value_key), total_wrap_around)
+            self.previous_values[previous_value_key] = current_value
 
         return fieldname, value
 
@@ -1653,7 +1655,8 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
 
                 key = field[:eq_index].strip()
                 if not fields.get(key, {}).get('ignore', fields_ignore_default):
-                    (fieldname, value) = self._update_data(key, field[eq_index + 1:].strip(), fields, fields_conversion_func, unit_system)
+                    (fieldname, value) = self._update_data(
+                        msg.topic, key, field[eq_index + 1:].strip(), fields, fields_conversion_func, unit_system)
                     data[fieldname] = value
                 else:
                     self.logger.trace(40001, MessageCallbackProvider.log_messages[40001].format(key=key))
@@ -1716,7 +1719,7 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
                                                                                            filter=filters[lookup_key]))
                 return None
             if not fields.get(lookup_key, {}).get('ignore', fields_ignore_default):
-                (fieldname, value) = self._update_data(lookup_key, value, fields, fields_conversion_func, unit_system)
+                (fieldname, value) = self._update_data(msg.topic, lookup_key, value, fields, fields_conversion_func, unit_system)
                 data_final[fieldname] = value
             else:
                 self.logger.trace(40002, MessageCallbackProvider.log_messages[40002].format(lookup_key=lookup_key))
@@ -1744,7 +1747,7 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
 
             unit_system = self.topic_manager.get_unit_system(msg.topic)
             if not fields.get(key, {}).get('ignore', fields_ignore_default):
-                (fieldname, value) = self._update_data(key, payload_str, fields, fields_conversion_func, unit_system)
+                (fieldname, value) = self._update_data(msg.topic, key, payload_str, fields, fields_conversion_func, unit_system)
                 data = {}
                 data[fieldname] = value
                 self.topic_manager.append_data(msg.topic, data, fieldname)

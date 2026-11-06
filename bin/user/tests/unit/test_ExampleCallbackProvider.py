@@ -68,7 +68,7 @@ class Test1(unittest.TestCase):
 
         SUT = MessageCallbackProvider({}, None, None)
 
-        results = SUT.get_observations(root, "", {}, 1)
+        results = SUT.get_observations("topic", root, "", {}, 1)
 
         self.assertDictEqual(observation_dict, results)
 

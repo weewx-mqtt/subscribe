@@ -39,6 +39,7 @@ Fixes:
 - Honour a custom 'flatten_delimiter' when flattening nested JSON and arrays.
 - Convert 'conversion_error_to_none' to a boolean at the topic and field level.
 - Log the configured datetime format in the datetime conversion trace.
+- Keep cumulative totals separate for each topic so same-named fields do not share state.
 
 V3.2.0
 Enhancements:
