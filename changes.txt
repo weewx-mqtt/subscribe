@@ -1,34 +1,31 @@
-V3.2.1 (draft)
+V3.3.0
 Enhancements:
-- Added the 'log_mqtt' option, it replaces the 'log' option.
-  'log' is deprecated, remains supported, and is scheduled to be removed in V4.
-- Log messages are now queued and written by a dedicated logger thread.
-  This makes logging thread safe and the throttled message state deterministic.
-- Fail loudly at import when an older 'user.mqttcommon' copy is loaded (an
-  install-order overwrite by another weewx-mqtt extension).
-- Log line prefixes use the format converged across the weewx-mqtt extensions,
-  defined by the shared 'user.mqttcommon': (component-thread_id-archive_timestamp).
-- Shutdown now logs a start line and a completion line, and shutdown lines are no
-  longer attributed to the last archive record.
 - Add the 'wait_for_thread_shutdown' option to control how long shutdown waits for
   the logger thread. The network loop is now stopped before the logger thread.
-- Startup environment lines use the shared 'Label: value.' format, and are logged only
+- Added the 'log_mqtt' option, it replaces the 'log' option.
+  'log' is deprecated, remains supported, and is scheduled to be removed in V4.
+- Fail loudly at import when an older 'user.mqttcommon' copy is loaded (an
+  install-order overwrite by another weewx-mqtt extension).
+ - Converge on a common logging format across all of the weewx-mqtt extensions. 
+ - Shutdown now logs a start line and a completion line, and shutdown lines are no
+  longer attributed to the last archive record.
+ - Startup environment lines use the shared 'Label: value.' format, and are logged only
   when the component is enabled.
-- Connection lifecycle messages use the shared wording ('Connecting to host:port.',
+ - Connection lifecycle messages use the shared wording ('Connecting to host:port.',
   'Connected with result code ..., ...', 'Connection flags: ...', 'Subscribing to topic,
   mid ..., result code ...', 'Subscription acknowledged, mid ..., result code ...').
-- Error and validation messages use the shared wording ('Unable to ...: ...',
+ - Error and validation messages use the shared wording ('Unable to ...: ...',
   'Invalid <thing>, <value>.', and one trailing period).
-- Deprecation messages use the shared wording ('<option> is deprecated, use <replacement>.'),
+ - Deprecation messages use the shared wording ('<option> is deprecated, use <replacement>.'),
   with one trailing period. This includes the 'MQTTSubscribe.py' shim.
-- Log messages use consistent terminology and spelling ('qos', 'clean_start').
-- Trace and debug messages use the shared wording ('Label: value.' and one trailing period).
-- Configuration diagnostics use the 'Label: value.' format ('Configuration (password removed): ...',
+ - Log messages use consistent terminology and spelling ('qos', 'clean_start').
+ - Trace and debug messages use the shared wording ('Label: value.' and one trailing period).
+ - Configuration diagnostics use the 'Label: value.' format ('Configuration (password removed): ...',
   'Client id: ...', 'Clean start: ...', 'Protocol: ...', 'Binding: ...'), and protocol and
   clean-start are logged by name instead of their numeric paho values.
-- Command line output uses the shared wording. Help, prompts and errors have consistent
+ - Command line output uses the shared wording. Help, prompts and errors have consistent
   spelling and punctuation, and '--version' prints '<program> <version>'.
-
+ 
 Fixes:
 - Detect deprecated options when a topic is configured as a field and in subfields.
 - Use the '[MQTTSubscribe]' section as a fallback when '[MQTTSubscribeDriver]' is missing.
@@ -36,11 +33,15 @@ Fixes:
 - Report the correct error when an array has more values than its configured subfields.
 - Report the number of queued items, not the queue dictionary size, in the 'leaving queue' trace.
 - Convert 'max_queue' to an integer and apply the limit to the data queue.
-- Honour a custom 'flatten_delimiter' when flattening nested JSON and arrays.
+- Honor a custom 'flatten_delimiter' when flattening nested JSON and arrays.
 - Convert 'conversion_error_to_none' to a boolean at the topic and field level.
 - Log the configured datetime format in the datetime conversion trace.
 - Keep cumulative totals separate for each topic so same-named fields do not share state.
 - Fix parse mode when '--top-level' is not specified.
+
+Internal:
+- Log messages are now queued and written by a dedicated logger thread.
+  This makes logging thread safe and the throttled message state deterministic.
 
 V3.2.0
 Enhancements:
