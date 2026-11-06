@@ -1240,7 +1240,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         while data_queue:
             if data_queue[0]['data']['dateTime'] > end_ts:
                 self.logger.trace(50006, TopicManager.log_messages[50006].format(
-                    queue_name=queue_name, size=len(queue), data_queue_content=data_queue[0]))
+                    queue_name=queue_name, size=len(data_queue), data_queue_content=data_queue[0]))
                 break
             payload = data_queue.popleft()
             if queue_type == 'collector':

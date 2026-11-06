@@ -51,6 +51,28 @@ class TestInit(unittest.TestCase):
 
         self.assertEqual(error.exception.args[0], "At least one topic must be configured.")
 
+    def test_process_queue_reports_data_queue_size(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        topic = random_string()
+        config_dict = {topic: {}}
+        config = configobj.ConfigObj(config_dict)
+
+        SUT = TopicManager(None, config, mock_logger)
+
+        data_queue = deque([{'data': {'dateTime': 100}}])
+        queue = {
+            'name': 'queue1',
+            'type': 'normal',
+            'data': data_queue,
+        }
+
+        list(SUT._process_queue(50, mock.Mock(), mock.Mock(), queue))  # pylint: disable=protected-access
+
+        mock_logger.trace.assert_called_once_with(
+            50006,
+            f"TopicManager leaving queue: queue1, size=1, content={data_queue[0]}.")
+
     def test_invalid_unit_system_default(self):
         mock_logger = mock.Mock(spec=Logger)
 
