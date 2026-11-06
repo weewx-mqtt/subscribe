@@ -419,6 +419,37 @@ class TestConfigureFields(unittest.TestCase):
         self.assertEqual(SUT.subscribed_topics[topic]['fields'][fieldname]['units'], unit_name)
         self.assertIsNone(SUT.cached_fields[weewx_name]['expires_after'])
 
+    def test_configure_cached_field_without_name(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        topic = random_string()
+        config_dict = {}
+        config_dict[topic] = {}
+
+        fieldname = random_string()
+        config_dict[topic][fieldname] = {}
+        config_dict[topic][fieldname]['expires_after'] = 'none'
+
+        config = configobj.ConfigObj(config_dict)
+
+        SUT = TopicManager(None, config, mock_logger)
+
+        self.assertIsNone(SUT.cached_fields[fieldname]['expires_after'])
+
+    def test_configure_cached_topic_as_field_without_name(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        topic = random_string()
+        config_dict = {}
+        config_dict[topic] = {}
+        config_dict[topic]['expires_after'] = 'none'
+
+        config = configobj.ConfigObj(config_dict)
+
+        SUT = TopicManager(None, config, mock_logger)
+
+        self.assertIsNone(SUT.cached_fields[topic]['expires_after'])
+
     def test_configure_subfields(self):
         mock_logger = mock.Mock(spec=Logger)
 

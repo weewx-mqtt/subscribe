@@ -32,6 +32,7 @@ Enhancements:
 Fixes:
 - Detect deprecated options when a topic is configured as a field and in subfields.
 - Use the '[MQTTSubscribe]' section as a fallback when '[MQTTSubscribeDriver]' is missing.
+- Use the MQTT field name when 'expires_after' is configured without 'name'.
 
 V3.2.0
 Enhancements:

@@ -983,7 +983,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
             if filter_values:
                 conversion_func = self.subscribed_topics[topic]['fields'][field]['conversion_func']['compiled']
                 self._configure_filter_out_message(topic, field, filter_values, conversion_func)
-            self._configure_cached_fields(topic_dict[field])
+            self._configure_cached_fields(topic_dict[field], field)
 
     def _configure_subfields(self, topic, field, topic_dict):
         for subfield in self.subscribed_topics[topic]['fields'][field].get('subfields', []):
@@ -1010,7 +1010,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
                 if filter_values:
                     conversion_func = self.subscribed_topics[topic]['fields'][topic]['conversion_func']['compiled']
                     self._configure_filter_out_message(topic, topic, filter_values, conversion_func)
-                self._configure_cached_fields(topic_dict)
+                self._configure_cached_fields(topic_dict, topic)
                 break
 
     def _add_collector_queue(self, topic_defaults):
@@ -1141,9 +1141,9 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         if to_bool((field_dict).get('ignore_msg_id_field', ignore_msg_id_field)):
             self.subscribed_topics[topic]['fields_ignoring_msg_id'].append(fieldname)
 
-    def _configure_cached_fields(self, field_dict):
+    def _configure_cached_fields(self, field_dict, fieldname):
         if 'expires_after' in field_dict:
-            weewx_name = field_dict['name']
+            weewx_name = field_dict.get('name', fieldname)
             self.cached_fields[weewx_name] = {}
             self.cached_fields[weewx_name]['expires_after'] = to_float(field_dict['expires_after'])
 
