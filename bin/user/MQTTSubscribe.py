@@ -38,7 +38,7 @@ def loader(config_dict, engine):
 if __name__ == '__main__':  # pragma: no cover
     def main():
         """ Run it."""
-        print('Deprecated: MQTTSubscribe.py has been renamed to mqttsubscribe.py')
+        print("'MQTTSubscribe.py' is deprecated, it has been renamed to 'mqttsubscribe.py'.")
 
         arg_parser = argparse.ArgumentParser()
         arg_parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}')

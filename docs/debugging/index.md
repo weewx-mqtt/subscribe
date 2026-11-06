@@ -14,7 +14,7 @@ After [initializing MQTTSubscribes context](https://github.com/weewx-mqtt/subscr
 the invocation would look something like this.
 
 ```
-python3 $USER_ROOT/MQTTSubscribe.py simulate $RUN_MODE --conf mqttsubscribe.template.conf --verbose --logging-file=log.txt
+python3 $USER_ROOT/mqttsubscribe.py simulate $RUN_MODE --conf mqttsubscribe.template.conf --verbose --logging-file=log.txt
 ```
 
 Below is information that one can use to debugging.

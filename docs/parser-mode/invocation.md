@@ -7,5 +7,5 @@ nav_order: 2
 ## Invocation
 
 ```
-python3 $USER_ROOT/MQTTSubscribe.py parse $RUN_MODE --help
+python3 $USER_ROOT/mqttsubscribe.py parse $RUN_MODE --help
 ```
