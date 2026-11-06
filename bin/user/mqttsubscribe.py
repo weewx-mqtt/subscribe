@@ -592,7 +592,7 @@ if getattr(mqttcommon, 'MQTTCOMMON_API', (0, 0)) < (1, 0):
     raise ImportError("user.mqttcommon is too old. An older weewx-mqtt extension likely overwrote it during"
                       " install; reinstall or upgrade all the weewx-mqtt extensions.")
 
-VERSION = "3.2.1-rc01a"
+VERSION = "3.3.0"
 DRIVER_NAME = 'MQTTSubscribeDriver'
 DRIVER_VERSION = VERSION
 
