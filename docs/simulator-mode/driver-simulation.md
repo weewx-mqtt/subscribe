@@ -20,7 +20,7 @@ The type of binding.
 
 ### --conf CONF
 
-The WeeWX configuration file. Typicall weewx.conf.
+The WeeWX configuration file. Typically weewx.conf.
 
 ### --console
 

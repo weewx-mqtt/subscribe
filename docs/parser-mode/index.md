@@ -5,7 +5,7 @@ has_toc: true
 nav_order: 8
 ---
 
-Note, this function was intoduced in MQTTSubscribe version 3.0.
+Note, this function was introduced in MQTTSubscribe version 3.0.
 
 This reads data from a file and attempts to parse it into WeeWX format.
 

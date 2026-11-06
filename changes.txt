@@ -25,6 +25,8 @@ Enhancements:
 - Configuration diagnostics use the 'Label: value.' format ('Configuration (password removed): ...',
   'Client id: ...', 'Clean start: ...', 'Protocol: ...', 'Binding: ...'), and protocol and
   clean-start are logged by name instead of their numeric paho values.
+- Command line output uses the shared wording. Help, prompts and errors have consistent
+  spelling and punctuation, and '--version' prints '<program> <version>'.
 
 V3.2.0
 Enhancements:

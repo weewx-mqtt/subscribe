@@ -2588,7 +2588,7 @@ class MQTTSubscribeDriverConfEditor(weewx.drivers.AbstractConfEditor):  # pragma
                 if topic:
                     settings['topics'][topic] = {}
                     settings['topics'][topic]['message'] = {}
-                    print("Enter the MQTT paylod type: individual|json|keyword")
+                    print("Enter the MQTT payload type: individual, json or keyword.")
                     settings['topics'][topic]['message']['type'] = self._prompt('type', 'json', ['individual', 'json', 'keyword'])
 
         return settings
@@ -2606,7 +2606,7 @@ class MQTTSubscribeDriverConfEditor(weewx.drivers.AbstractConfEditor):  # pragma
 
             settings[key] = {}
             print("")
-            print(f"Configuring section '{key}'")
+            print(f"Configuring section '{key}'.")
             print("")
             self._configure(section[key], settings[key])
 
@@ -2924,8 +2924,7 @@ class MQTTSubscribeConfiguration():
                           warn_msgs=warn_msgs)
 class Parser():
     """ Parse a MQTT message that is read from a file. """
-    description = '''
-'''
+    description = 'Parse an MQTT message from a file.'
 
     class Msg:
         ''' A MQTT message.'''
@@ -2938,7 +2937,7 @@ class Parser():
 
     @classmethod
     def add_common_options(cls, parser):
-        ''' Add the comon options to the parser.'''
+        ''' Add the common options to the parser.'''
         parser.add_argument("--conf",
                             required=True,
                             help="The WeeWX configuration file. Typically weewx.conf.")
@@ -2991,7 +2990,7 @@ class Parser():
 
         if options.top_level:
             if len(config_input_dict.sections) > 1:
-                parser.error(f"When specifying '--top-level, only one top level section is allowed. Found {config_input_dict.sections}")
+                parser.error(f"When specifying '--top-level', only one top level section is allowed. Found {config_input_dict.sections}.")
                 self.config_dict = weeutil.config.deep_copy(config_input_dict[config_input_dict.sections[0]])
             else:
                 self.config_dict = weeutil.config.deep_copy(config_input_dict[self.section])
@@ -3068,9 +3067,9 @@ class Simulator():
 
     description = '''
 Run MQTTSubscribe in simulate mode.
-One can simulate either the driver or service.
-Simulate mode allows one to test and/or debug MQTTSubscribe without interfering with a running WeeWX instance.
-For more inforation see, https://weewx-mqtt.github.io/subscribe/simulator-mode/
+Simulate either the driver or the service.
+Simulate mode allows testing and debugging MQTTSubscribe without interfering with a running WeeWX instance.
+See https://weewx-mqtt.github.io/subscribe/simulator-mode/ for more information.
 '''
 
     @classmethod
@@ -3092,7 +3091,7 @@ For more inforation see, https://weewx-mqtt.github.io/subscribe/simulator-mode/
                                              help="The default units if not in MQTT payload.",
                                              default="US")
         simulate_service_parser.add_argument('--frequency', type=int,
-                                             help='The frequency that the simulated loop packets/archive records arrive',
+                                             help='The frequency that the simulated loop packets/archive records arrive.',
                                              default=10)
         simulate_service_parser.add_argument('--records', dest='record_count', type=int,
                                              help='The number of archive records to create.',
@@ -3111,7 +3110,7 @@ For more inforation see, https://weewx-mqtt.github.io/subscribe/simulator-mode/
                                             default="loop")
         simulate_driver_parser.add_argument("--conf",
                                             required=True,
-                                            help="The WeeWX configuration file. Typicall weewx.conf.")
+                                            help="The WeeWX configuration file. Typically weewx.conf.")
 
         simulate_driver_parser.add_argument('--archive-interval', type=int,
                                             help='The simulated archive interval in seconds.')
@@ -3175,7 +3174,7 @@ For more inforation see, https://weewx-mqtt.github.io/subscribe/simulator-mode/
             self.archive_interval = 300
 
     def init_configuration(self, parser):  # pragma: no cover
-        """ Initialuze the configuration object. """
+        """ Initialize the configuration object. """
         config_path = os.path.abspath(self.config_file)
 
         self.config_dict = configobj.ConfigObj(config_path, file_error=True)
@@ -3232,13 +3231,13 @@ For more inforation see, https://weewx-mqtt.github.io/subscribe/simulator-mode/
             end_period_ts = (int(current_time / self.archive_interval) + 1) * self.archive_interval
             end_delay_ts = end_period_ts + self.archive_delay
             sleep_amount = end_delay_ts - current_time
-            print(f"Sleeping {int(sleep_amount)} seconds")
+            print(f"Sleeping {int(sleep_amount)} seconds.")
             time.sleep(sleep_amount)
 
             for record in driver.genArchiveRecords(end_period_ts):
                 record_msg =\
-                    (f"Record {i + 1} of {self.record_count} is: "
-                     f"{weeutil.weeutil.timestamp_to_string(record['dateTime'])} {to_sorted_string(record)}")
+                    (f"Record {i + 1} of {self.record_count}: "
+                     f"{weeutil.weeutil.timestamp_to_string(record['dateTime'])} {to_sorted_string(record)}.")
                 logger.info(None, record_msg)
                 print(record_msg)
 
@@ -3252,8 +3251,8 @@ For more inforation see, https://weewx-mqtt.github.io/subscribe/simulator-mode/
         i = 0
         for packet in driver.genLoopPackets():
             record_msg = \
-                (f"Packet {i + 1} of {self.record_count} is: "
-                 f"{weeutil.weeutil.timestamp_to_string(packet['dateTime'])} {to_sorted_string(packet)}")
+                (f"Packet {i + 1} of {self.record_count}: "
+                 f"{weeutil.weeutil.timestamp_to_string(packet['dateTime'])} {to_sorted_string(packet)}.")
             logger.info(None, record_msg)
             print(record_msg)
             i += 1
@@ -3271,7 +3270,7 @@ For more inforation see, https://weewx-mqtt.github.io/subscribe/simulator-mode/
             end_period_ts = (int(current_time / self.frequency) + 1) * self.frequency
             sleep_amount = end_period_ts - current_time
 
-            print(f"Sleeping {int(sleep_amount)} seconds")
+            print(f"Sleeping {int(sleep_amount)} seconds.")
             time.sleep(sleep_amount)
 
             data = {}
@@ -3284,9 +3283,9 @@ For more inforation see, https://weewx-mqtt.github.io/subscribe/simulator-mode/
                                                    origin='hardware')
             self.engine.dispatchEvent(new_archive_record_event)
             packet_msg = \
-                (f"Archive Record {i + 1} of {self.record_count} is: "
+                (f"Archive record {i + 1} of {self.record_count}: "
                  f"{weeutil.weeutil.timestamp_to_string(new_archive_record_event.record['dateTime'])} "
-                 f"{to_sorted_string(new_archive_record_event.record)}")
+                 f"{to_sorted_string(new_archive_record_event.record)}.")
             logger.info(None, packet_msg)
             print(packet_msg)
 
@@ -3305,7 +3304,7 @@ For more inforation see, https://weewx-mqtt.github.io/subscribe/simulator-mode/
             end_period_ts = (int(current_time / self.frequency) + 1) * self.frequency
             sleep_amount = end_period_ts - current_time
 
-            print(f"Sleeping {int(sleep_amount)} seconds")
+            print(f"Sleeping {int(sleep_amount)} seconds.")
             time.sleep(sleep_amount)
 
             data = {}
@@ -3316,9 +3315,9 @@ For more inforation see, https://weewx-mqtt.github.io/subscribe/simulator-mode/
                                                 packet=data)
             self.engine.dispatchEvent(new_loop_packet_event)
             packet_msg = \
-                f"Loop packet {i + 1} of {self.record_count} is: "\
+                f"Loop packet {i + 1} of {self.record_count}: "\
                 f"{weeutil.weeutil.timestamp_to_string(new_loop_packet_event.packet['dateTime'])} "\
-                f"{to_sorted_string(new_loop_packet_event.packet)}"
+                f"{to_sorted_string(new_loop_packet_event.packet)}."
             logger.info(None, packet_msg)
             print(packet_msg)
 
@@ -3346,14 +3345,15 @@ class Configurator():
     # pylint: disable=too-many-instance-attributes
 
     description = '''
-Run MQTTSubscribe in configure mode. One can configure either the driver or service.
-Configure mode provides utilities to make it easier to configure MQTTSubscribe.
-For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mode
+Run MQTTSubscribe in configure mode.
+Configure either the driver or the service.
+Configure mode provides utilities that make MQTTSubscribe easier to configure.
+See https://weewx-mqtt.github.io/subscribe/configurator-mode/ for more information.
 '''
 
     @classmethod
     def add_common_options(cls, parser):
-        ''' Add the comon options to the parser.'''
+        ''' Add the common options to the parser.'''
         configure_group = parser.add_mutually_exclusive_group(required=False)
         parser.add_argument("--conf",
                             required=True,
@@ -3379,7 +3379,7 @@ For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mo
         parser.add_argument("--no-backup", action="store_true", default=False,
                             help="When updating the WeeWX configuration (--conf), do not back it up.")
         parser.add_argument("--output",
-                            help="Instead of updating the WeeWX configuration (--conf), write it to this file")
+                            help="Instead of updating the WeeWX configuration (--conf), write it to this file.")
 
     @classmethod
     def add_parsers(cls, parser):  # pragma: no cover
@@ -3448,11 +3448,11 @@ For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mo
     def _check_mutually_exclusive_options(option, option_name, options, parser):
         if option:
             if options.export:
-                parser.error(f"'--{option_name}' is mutually exclusive with '--export'")
+                parser.error(f"'--{option_name}' is mutually exclusive with '--export'.")
             if options.print_configspec:
-                parser.error(f"'--{option_name}' is mutually exclusive with '--print-configspec'")
+                parser.error(f"'--{option_name}' is mutually exclusive with '--print-configspec'.")
             if options.validate:
-                parser.error(f"'--{option_name}' is mutually exclusive with '--validate'")
+                parser.error(f"'--{option_name}' is mutually exclusive with '--validate'.")
 
     def _setup_subcommand(self, parser, options):
         if options.conf:
@@ -3510,7 +3510,7 @@ For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mo
         config_input_dict = configobj.ConfigObj(config_input_path, encoding='utf-8', file_error=True)
         if options.top_level:
             if len(config_input_dict.sections) > 1:
-                parser.error(f"When specifying '--top-level, only one top level section is allowed. Found {config_input_dict.sections}")
+                parser.error(f"When specifying '--top-level', only one top level section is allowed. Found {config_input_dict.sections}.")
             return weeutil.config.deep_copy(config_input_dict[config_input_dict.sections[0]])
 
         return weeutil.config.deep_copy(config_input_dict[self.section])
@@ -3587,7 +3587,7 @@ For more information see, https://weewx-mqtt.github.io/subscribe/configurator-mo
         conf_editor = MQTTSubscribeDriverConfEditor()
         conf_editor.existing_options = self.config_dict.get(self.section, {})
         settings = conf_editor.prompt_for_settings()
-        # copy the keys that have been configured/channged, similar to weecfg.modify_config
+        # copy the keys that have been configured/changed, similar to weecfg.modify_config
         for key, value in settings.items():
             self.config_dict[self.section][key] = value
 
@@ -3597,7 +3597,7 @@ if __name__ == '__main__':  # pragma: no cover
         """ Run it."""
 
         arg_parser = argparse.ArgumentParser()
-        arg_parser.add_argument('--version', action='version', version=f"MQTTSubscribe version is {VERSION}")
+        arg_parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}')
 
         subparsers = arg_parser.add_subparsers(dest='command')
 

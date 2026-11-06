@@ -322,7 +322,7 @@ class TestInitConfigurator(unittest.TestCase):
         with self.assertRaises(Exception):
             _ = Configurator(mock_parser, options)
 
-        mock_parser.error.assert_called_once_with("'--output' is mutually exclusive with '--export'")
+        mock_parser.error.assert_called_once_with("'--output' is mutually exclusive with '--export'.")
 
     def test_output_mutually_exclusive_with_print_configspec(self):
         options = argparse.Namespace()
@@ -345,7 +345,7 @@ class TestInitConfigurator(unittest.TestCase):
         with self.assertRaises(Exception):
             _ = Configurator(mock_parser, options)
 
-        mock_parser.error.assert_called_once_with("'--output' is mutually exclusive with '--print-configspec'")
+        mock_parser.error.assert_called_once_with("'--output' is mutually exclusive with '--print-configspec'.")
 
     def test_output_mutually_exclusive_with_validate(self):
         options = argparse.Namespace()
@@ -368,7 +368,7 @@ class TestInitConfigurator(unittest.TestCase):
         with self.assertRaises(Exception):
             _ = Configurator(mock_parser, options)
 
-        mock_parser.error.assert_called_once_with("'--output' is mutually exclusive with '--validate'")
+        mock_parser.error.assert_called_once_with("'--output' is mutually exclusive with '--validate'.")
 
     def test_enable_mutually_exclusive_with_export(self):
         options = argparse.Namespace()
@@ -391,7 +391,7 @@ class TestInitConfigurator(unittest.TestCase):
         with self.assertRaises(Exception):
             _ = Configurator(mock_parser, options)
 
-        mock_parser.error.assert_called_once_with("'--enable' is mutually exclusive with '--export'")
+        mock_parser.error.assert_called_once_with("'--enable' is mutually exclusive with '--export'.")
 
     def test_enable_mutually_exclusive_with_print_configspec(self):
         options = argparse.Namespace()
@@ -414,7 +414,7 @@ class TestInitConfigurator(unittest.TestCase):
         with self.assertRaises(Exception):
             _ = Configurator(mock_parser, options)
 
-        mock_parser.error.assert_called_once_with("'--enable' is mutually exclusive with '--print-configspec'")
+        mock_parser.error.assert_called_once_with("'--enable' is mutually exclusive with '--print-configspec'.")
 
     def test_enable_mutually_exclusive_with_validate(self):
         options = argparse.Namespace()
@@ -437,7 +437,7 @@ class TestInitConfigurator(unittest.TestCase):
         with self.assertRaises(Exception):
             _ = Configurator(mock_parser, options)
 
-        mock_parser.error.assert_called_once_with("'--enable' is mutually exclusive with '--validate'")
+        mock_parser.error.assert_called_once_with("'--enable' is mutually exclusive with '--validate'.")
 
     def test_no_backup_mutually_exclusive_with_export(self):
         options = argparse.Namespace()
@@ -460,7 +460,7 @@ class TestInitConfigurator(unittest.TestCase):
         with self.assertRaises(Exception):
             _ = Configurator(mock_parser, options)
 
-        mock_parser.error.assert_called_once_with("'--no-backup' is mutually exclusive with '--export'")
+        mock_parser.error.assert_called_once_with("'--no-backup' is mutually exclusive with '--export'.")
 
     def test_no_backup_mutually_exclusive_with_print_configspec(self):
         options = argparse.Namespace()
@@ -483,7 +483,7 @@ class TestInitConfigurator(unittest.TestCase):
         with self.assertRaises(Exception):
             _ = Configurator(mock_parser, options)
 
-        mock_parser.error.assert_called_once_with("'--no-backup' is mutually exclusive with '--print-configspec'")
+        mock_parser.error.assert_called_once_with("'--no-backup' is mutually exclusive with '--print-configspec'.")
 
     def test_no_backup_mutually_exclusive_with_validate(self):
         options = argparse.Namespace()
@@ -506,7 +506,7 @@ class TestInitConfigurator(unittest.TestCase):
         with self.assertRaises(Exception):
             _ = Configurator(mock_parser, options)
 
-        mock_parser.error.assert_called_once_with("'--no-backup' is mutually exclusive with '--validate'")
+        mock_parser.error.assert_called_once_with("'--no-backup' is mutually exclusive with '--validate'.")
 
 class TestRunConfigurator(unittest.TestCase):
     '''

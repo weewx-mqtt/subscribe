@@ -41,7 +41,7 @@ if __name__ == '__main__':  # pragma: no cover
         print('Deprecated: MQTTSubscribe.py has been renamed to mqttsubscribe.py')
 
         arg_parser = argparse.ArgumentParser()
-        arg_parser.add_argument('--version', action='version', version=f"MQTTSubscribe version is {VERSION}")
+        arg_parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}')
 
         subparsers = arg_parser.add_subparsers(dest='command')
 
