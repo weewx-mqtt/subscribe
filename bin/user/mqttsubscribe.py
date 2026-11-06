@@ -1368,10 +1368,6 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         """ Get the ignore value """
         return self._get_value('conversion_func', topic)
 
-    def get_(self, topic):
-        """ Get the ignore value """
-        return self._get_value('ignore', topic)
-
     def get_fields_ignoring_msg_id(self, topic):
         """ Get the ignore_msg_id_field value """
         return self._get_value('fields_ignoring_msg_id', topic)
@@ -1396,7 +1392,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
     def _to_epoch(self, datetime_input, datetime_format, offset_format=None):
         self.logger.trace(50015, TopicManager.log_messages[50015].format(datetime_input=datetime_input,
-                                                                         datetime_format=datetime,
+                                                                         datetime_format=datetime_format,
                                                                          offset_format=offset_format))
         if offset_format:
             offset_start = len(datetime_input) - len(offset_format)

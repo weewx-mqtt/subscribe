@@ -38,6 +38,7 @@ Fixes:
 - Convert 'max_queue' to an integer and apply the limit to the data queue.
 - Honour a custom 'flatten_delimiter' when flattening nested JSON and arrays.
 - Convert 'conversion_error_to_none' to a boolean at the topic and field level.
+- Log the configured datetime format in the datetime conversion trace.
 
 V3.2.0
 Enhancements:

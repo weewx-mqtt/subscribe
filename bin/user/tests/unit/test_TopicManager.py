@@ -997,6 +997,21 @@ class TestAppendData(unittest.TestCase):
         self.assertIn('dateTime', data)
         self.assertEqual(adjusted_epoch, data['dateTime'])
 
+    def test_to_epoch_trace_uses_datetime_format(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        SUT = TopicManager(None, self.config, mock_logger)
+
+        datetime_format = "%Y-%m-%d %H:%M:%S"
+        datetime_input = "2024-01-02 03:04:05"
+
+        SUT._to_epoch(datetime_input, datetime_format)  # pylint: disable=protected-access
+
+        mock_logger.trace.assert_any_call(
+            50015,
+            f"TopicManager datetime conversion: datetime_input={datetime_input}, "
+            f"datetime_format={datetime_format}, offset_format=None.")
+
 class TestGetQueueData(unittest.TestCase):
     topic = random_string()
     config_dict = {}
