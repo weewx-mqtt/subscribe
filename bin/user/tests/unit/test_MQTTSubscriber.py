@@ -255,7 +255,7 @@ class TestInitialization(unittest.TestCase):
 
                     MQTTSubscriberTest(config, mock_logger)
 
-                self.assertEqual(error.exception.args[0], f"Invalid 'clean_start' option, '{clean_start}'.")
+                self.assertEqual(error.exception.args[0], f"Invalid 'clean_start' option, {clean_start}.")
 
 
 class Testtls_configuration(unittest.TestCase):
@@ -576,7 +576,7 @@ class TestDeprecatedOptions(unittest.TestCase):
                     MQTTSubscriberTest(config, mock_logger)
 
                 self.assertEqual(mock_logger.info.call_count, 15)
-                mock_logger.info.assert_any_call(32016, "'topic' is deprecated, use '[[topics]][[[topic name]]]'")
+                mock_logger.info.assert_any_call(32016, "'topic' is deprecated, use '[[topics]][[[topic name]]]'.")
 
     def test_topic_is_deprecated(self):
         config_dict = {}
@@ -593,7 +593,7 @@ class TestDeprecatedOptions(unittest.TestCase):
                 with self.assertRaises(ValueError) as error:
                     MQTTSubscriber(config, mock_logger)
 
-                self.assertEqual(error.exception.args[0], "'topic' is deprecated, use '[[topics]][[[topic name]]]'")
+                self.assertEqual(error.exception.args[0], "'topic' is deprecated, use '[[topics]][[[topic name]]]'.")
 
     def test_overlap_is_deprecated(self):
         config_dict = {}
@@ -609,7 +609,7 @@ class TestDeprecatedOptions(unittest.TestCase):
             with mock.patch('user.mqttsubscribe.TopicManager'):
                 with self.assertRaises(ValueError) as error:
                     MQTTSubscriber(config, mock_logger)
-                self.assertEqual(error.exception.args[0], "'overlap' is deprecated, use 'adjust_start_time'")
+                self.assertEqual(error.exception.args[0], "'overlap' is deprecated, use 'adjust_start_time'.")
 
     def test_archive_field_cache_is_deprecated(self):
         config_dict = {}
@@ -626,7 +626,7 @@ class TestDeprecatedOptions(unittest.TestCase):
                 with self.assertRaises(ValueError) as error:
                     MQTTSubscriber(config, mock_logger)
                 self.assertEqual(error.exception.args[0],
-                                 "'archive_field_cache' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'")
+                                 "'archive_field_cache' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'.")
 
     def test_full_topic_fieldname_is_deprecated(self):
         config_dict = {}
@@ -643,7 +643,7 @@ class TestDeprecatedOptions(unittest.TestCase):
                 with self.assertRaises(ValueError) as error:
                     MQTTSubscriber(config, mock_logger)
                 self.assertEqual(error.exception.args[0],
-                                 "'full_topic_fieldname' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'")
+                                 "'full_topic_fieldname' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'.")
 
     def test_contains_total_is_deprecated(self):
         config_dict = {}
@@ -660,7 +660,7 @@ class TestDeprecatedOptions(unittest.TestCase):
                 with self.assertRaises(ValueError) as error:
                     MQTTSubscriber(config, mock_logger)
                 self.assertEqual(error.exception.args[0],
-                                 "'contains_total' is deprecated use '[[topics]][[[topic name]]][[[[field name]]]]' contains_total setting.")
+                                 "'contains_total' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]' contains_total setting.")
 
     def test_label_map_is_deprecated(self):
         config_dict = {}
@@ -677,7 +677,7 @@ class TestDeprecatedOptions(unittest.TestCase):
                 with self.assertRaises(ValueError) as error:
                     MQTTSubscriber(config, mock_logger)
                 self.assertEqual(error.exception.args[0],
-                                 "'label_map' is deprecated use '[[topics]][[[topic name]]][[[[field name]]]]' name setting.")
+                                 "'label_map' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]' name setting.")
 
     def test_fields_is_deprecated(self):
         config_dict = {}
@@ -694,7 +694,7 @@ class TestDeprecatedOptions(unittest.TestCase):
                 with self.assertRaises(ValueError) as error:
                     MQTTSubscriber(config, mock_logger)
                 self.assertEqual(error.exception.args[0],
-                                 "'fields' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'")
+                                 "'fields' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'.")
 
     def test_use_topic_as_fieldname(self):
         global mock_client
@@ -728,7 +728,7 @@ class TestDeprecatedOptions(unittest.TestCase):
                 mock_client = mock.Mock()
                 MQTTSubscriberTest(config, mock_logger)
 
-                mock_logger.info.assert_any_call(32015, "'log' is deprecated, use 'log_mqtt'")
+                mock_logger.info.assert_any_call(32015, "'log' is deprecated, use 'log_mqtt'.")
 
 class TestStart(unittest.TestCase):
     def setUp(self):

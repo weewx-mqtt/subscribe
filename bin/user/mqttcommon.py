@@ -354,7 +354,7 @@ class MessageThrottle:  # pylint: disable=too-few-public-methods
 
     # The suppression summaries, formatted and passed to the log_summary callback.
     SUMMARY_WINDOW = "{count} messages have been suppressed in window id: {window}."
-    SUMMARY_DURATION_ZERO = "{count} messages have been suppressed of {max}."
+    SUMMARY_DURATION_ZERO = "{count} of {max} messages have been suppressed."
 
     # The notice logged when the throttle feature is configured.
     NOTICE_EXPERIMENTAL = ("Throttling messages is an experimental option. It has limited support "

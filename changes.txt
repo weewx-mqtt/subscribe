@@ -19,6 +19,9 @@ Enhancements:
   mid ..., result code ...', 'Subscription acknowledged, mid ..., result code ...').
 - Error and validation messages use the shared wording ('Unable to ...: ...',
   'Invalid <thing>, <value>.', and one trailing period).
+- Deprecation messages use the shared wording ('<option> is deprecated, use <replacement>.'),
+  with one trailing period. This includes the 'MQTTSubscribe.py' shim.
+- Log messages use consistent terminology and spelling ('qos', 'clean_start').
 
 V3.2.0
 Enhancements:

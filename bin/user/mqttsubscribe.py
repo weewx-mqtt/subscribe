@@ -1433,7 +1433,7 @@ class AbstractMessageCallbackProvider():  # pylint: disable=too-few-public-metho
         # error messages
         # exception messages
         99001: "Method 'get_callback' is not implemented.",
-        99002: "Unable to convert field {field} with value {value} using '{conversion_func}': {exception}.",
+        99002: "Unable to convert field {field} with value {value} using {conversion_func}: {exception}.",
     }
 
     def __init__(self, logger, topic_manager):
@@ -1507,7 +1507,7 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
         40002: "MessageCallbackProvider on_message_json ignoring field: {lookup_key}",
         40003: "MessageCallbackProvider on_message_individual ignoring field: {key}",
         # debug messages
-        41001: "MessageCallbackProvider data-> incoming topic: {topic}, QOS: {qos}, retain: {retain}, payload: {payload}",
+        41001: "MessageCallbackProvider data-> incoming topic: {topic}, qos: {qos}, retain: {retain}, payload: {payload}",
         # informational messages
         42001: "Message configuration found under [[MessageCallback]] and [[Topic]]. Ignoring [[MessageCallback]].",
         42002: "MessageCallbackProvider on_message_json filtered out {topic} : {payload} with {lookup_key}={filter}",
@@ -1905,7 +1905,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         # exception messages
         39001: "[[topics]] is required.",
         39002: "Archive topic {archive_topic} must be in [[topics]].",
-        39003: "Invalid 'clean_start' option, '{clean_start_string}'.",
+        39003: "Invalid 'clean_start' option, {clean_start_string}.",
         39004: "{error_msgs}",
         39005: "Invalid 'certs_required', {certs_required}.",
         39006: "Invalid 'tls_version', {tls_version}.",
@@ -2618,47 +2618,47 @@ class MQTTSubscribeConfiguration():
         'overlap': {
             # Removed in 2.0.0
             'deprecated_severity': 'ERROR',
-            'deprecated_msg': "'overlap' is deprecated, use 'adjust_start_time'",
+            'deprecated_msg': "'overlap' is deprecated, use 'adjust_start_time'.",
         },
         'topic': {
             # Removed in 2.0.0
             'deprecated_severity': 'ERROR',
-            'deprecated_msg': "'topic' is deprecated, use '[[topics]][[[topic name]]]'",
+            'deprecated_msg': "'topic' is deprecated, use '[[topics]][[[topic name]]]'.",
         },
         'archive_field_cache': {
             # Removed in 2.0.0
             'deprecated_severity': 'ERROR',
-            'deprecated_msg': "'archive_field_cache' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'",
+            'deprecated_msg': "'archive_field_cache' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'.",
         },
         'log': {
             # Deprecated in 3.2.1
             'deprecated_severity': 'WARN',
-            'deprecated_msg': "'log' is deprecated, use 'log_mqtt'",
+            'deprecated_msg': "'log' is deprecated, use 'log_mqtt'.",
         },
         'message_callback': {
             # Deprecated in 2.1.0
             'deprecated_severity': 'WARN',
-            'deprecated_msg': "\n".join(["Deprecated: '[[mesage_callback]]' is replaced with '[[topics]][[[message]]]'",
-                                         "See, https://weewx-mqtt.github.io/subscribe/common-options/topics"]),
+            'deprecated_msg': "\n".join(["'[[message_callback]]' is deprecated, use '[[topics]][[[message]]]'.",
+                                         "See https://weewx-mqtt.github.io/subscribe/common-options/topics."]),
             'contains_total': {
                 # Removed in 2.0.0
                 'deprecated_severity': 'ERROR',
-                'deprecated_msg': "'contains_total' is deprecated use '[[topics]][[[topic name]]][[[[field name]]]]' contains_total setting.",
+                'deprecated_msg': "'contains_total' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]' contains_total setting.",
             },
             'full_topic_fieldname': {
                 # Removed in 2.0.0
                 'deprecated_severity': 'ERROR',
-                'deprecated_msg': "'full_topic_fieldname' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'",
+                'deprecated_msg': "'full_topic_fieldname' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'.",
             },
             'fields': {
                 # Removed in 2.0.0
                 'deprecated_severity': 'ERROR',
-                'deprecated_msg': "'fields' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'",
+                'deprecated_msg': "'fields' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'.",
             },
             'label_map': {
                 # Removed in 2.0.0
                 'deprecated_severity': 'ERROR',
-                'deprecated_msg': "'label_map' is deprecated use '[[topics]][[[topic name]]][[[[field name]]]]' name setting.",
+                'deprecated_msg': "'label_map' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]' name setting.",
             },
         },
         'topics': {

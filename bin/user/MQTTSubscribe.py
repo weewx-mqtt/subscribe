@@ -19,14 +19,14 @@ class MQTTSubscribeDriver(user.mqttsubscribe.MQTTSubscribeDriver):
     def __init__(self, config_dict, engine):
         super().__init__(config_dict, engine)
 
-        self.logger.info(None, 'Deprecated: MQTTSubscribe.py has been renamed to mqttsubscribe.py')
+        self.logger.info(None, "'MQTTSubscribe.py' is deprecated, it has been renamed to 'mqttsubscribe.py'.")
 
 class MQTTSubscribeService(user.mqttsubscribe.MQTTSubscribeService):
     ''' The Service shim class to make migrating from MQTTSubscribe.py to mqttsubscribe.py easier.'''
     def __init__(self, engine, config_dict):
         super().__init__(engine, config_dict)
 
-        self.logger.info(None, 'Deprecated: MQTTSubscribe.py has been renamed to mqttsubscribe.py')
+        self.logger.info(None, "'MQTTSubscribe.py' is deprecated, it has been renamed to 'mqttsubscribe.py'.")
 
 def loader(config_dict, engine):
     """ Load and return the driver. """

@@ -1019,7 +1019,7 @@ class TestMessageThrottle(unittest.TestCase):
             self.assertFalse(SUT._check_message(msg_id, throttle_config))
 
             self.assertEqual(SUT.logged_ids, {msg_id: {'count': count + 1}})
-            self.assertEqual(summaries, [f"{count + 1} messages have been suppressed of {max_count}."])
+            self.assertEqual(summaries, [f"{count + 1} of {max_count} messages have been suppressed."])
             self.assertEqual(mock_time.time.call_count, 0)
 
     def test_window_first_message_is_logged(self):
