@@ -2987,9 +2987,9 @@ class Parser():
         if options.top_level:
             if len(config_input_dict.sections) > 1:
                 parser.error(f"When specifying '--top-level', only one top level section is allowed. Found {config_input_dict.sections}.")
-                self.config_dict = weeutil.config.deep_copy(config_input_dict[config_input_dict.sections[0]])
-            else:
-                self.config_dict = weeutil.config.deep_copy(config_input_dict[self.section])
+            self.config_dict = weeutil.config.deep_copy(config_input_dict[config_input_dict.sections[0]])
+        else:
+            self.config_dict = weeutil.config.deep_copy(config_input_dict[self.section])
 
         topics_dict = self.config_dict.get('topics', None)
         if topics_dict is None:
