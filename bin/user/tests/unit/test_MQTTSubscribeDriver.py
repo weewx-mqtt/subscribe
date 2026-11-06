@@ -65,6 +65,19 @@ class TestclosePort(unittest.TestCase):
                     # The completion is logged directly, because the logger thread has stopped by then.
                     mock_log_direct.assert_called_once_with('Driver', 'INFO', "Driver is shut down.")
 
+    def test_legacy_mqttsubscribe_section(self):
+        mock_engine = mock.Mock()
+        stn_dict = {}
+        stn_dict['wait_before_retry'] = 7
+        config_dict = {}
+        config_dict['MQTTSubscribe'] = stn_dict
+
+        with mock.patch('user.mqttsubscribe.MQTTSubscriber'):
+            with mock.patch('user.mqttcommon.Logger'):
+                SUT = MQTTSubscribeDriver(config_dict, mock_engine)
+
+        self.assertEqual(SUT.wait_before_retry, 7.0)
+
     def test_new_archive_record(self):
         mock_engine = mock.Mock()
         stn_dict = {}

@@ -2407,7 +2407,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
     }
 
     def __init__(self, config_dict, engine):
-        stn_dict = config_dict[DRIVER_NAME]
+        stn_dict = config_dict.get(DRIVER_NAME)
         if stn_dict is None:
             stn_dict = config_dict.get('MQTTSubscribe')
 
