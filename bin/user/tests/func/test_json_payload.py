@@ -203,6 +203,69 @@ class TestJSONMessage(unittest.TestCase):
 
         self.run_test(payload_dict, expected_data)
 
+class TestJSONMessageFlattenDelimiter(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.logger = Logger('FuncTest', level='ERROR', console=True)
+        cls.topic = random_string()
+
+    def test_nested_json_and_arrays(self):
+        config_str = f'''
+[MQTTSubscribe]
+    [[topics]]
+        [[[{self.topic}]]]
+            [[[[message]]]]
+                type = json
+                flatten_delimiter = .
+            [[[[sensors]]]]
+                [[[[[subfields]]]]]
+                    [[[[[[outTemps]]]]]]
+                    [[[[[[inTemps]]]]]]
+            [[[[outTemps]]]]
+                [[[[[subfields]]]]]
+                    [[[[[[outTemp1]]]]]]
+                    [[[[[[outTemp2]]]]]]
+            [[[[inTemps]]]]
+                [[[[[subfields]]]]]
+                    [[[[[[inTemp1]]]]]]
+                    [[[[[[inTemp2]]]]]]
+'''
+
+        config = configobj.ConfigObj(StringIO(config_str))
+        topic_manager = TopicManager(None, config['MQTTSubscribe']['topics'], self.logger)
+        message_callback = MessageCallbackProvider(None, self.logger, topic_manager)
+
+        payload_dict = {
+            'dateTime': time.time(),
+            'usUnits': random.randint(1, 10),
+            'level1': {
+                'level2': {
+                    'temp': round(random.uniform(1, 100), 2),
+                },
+            },
+            'sensors': [
+                [round(random.uniform(1, 100), 2), round(random.uniform(1, 100), 2)],
+                [round(random.uniform(1, 100), 2), round(random.uniform(1, 100), 2)],
+            ],
+        }
+
+        expected_data = {
+            'dateTime': payload_dict['dateTime'],
+            'usUnits': payload_dict['usUnits'],
+            'level1.level2.temp': payload_dict['level1']['level2']['temp'],
+            'outTemps.outTemp1': payload_dict['sensors'][0][0],
+            'outTemps.outTemp2': payload_dict['sensors'][0][1],
+            'inTemps.inTemp1': payload_dict['sensors'][1][0],
+            'inTemps.inTemp2': payload_dict['sensors'][1][1],
+        }
+
+        msg = Msg(self.topic, json.dumps(payload_dict).encode("utf-8"), 0, 0)
+        message_callback._on_message_json(msg)
+
+        data = topic_manager._get_queue(self.topic)['data'].popleft()['data']
+
+        self.assertDictEqual(data, expected_data)
+
 if __name__ == '__main__':
     # test_suite = unittest.TestSuite()
     # test_suite.addTest(TestConfigureFields('test_use_topic_as_fieldname'))

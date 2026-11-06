@@ -943,7 +943,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
                 'ignore_end_time': to_bool(topic_dict.get('ignore_end_time', topic_defaults['ignore_end_time'])),
                 'adjust_start_time': to_float(topic_dict.get('adjust_start_time', topic_defaults['adjust_start_time'])),
                 'adjust_end_time': to_float(topic_dict.get('adjust_end_time', topic_defaults['adjust_end_time'])),
-                'max_size': topic_dict.get('max_queue', topic_defaults['max_queue']),
+                'max_size': to_int(topic_dict.get('max_queue', topic_defaults['max_queue'])),
                 'data': deque()
             }
             self.queues.append(queue)
@@ -1082,7 +1082,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         default['datetime_format'] = config.get('datetime_format', None)
         default['offset_format'] = config.get('offset_format', None)
 
-        default['max_queue'] = config.get('max_queue', sys.maxsize)
+        default['max_queue'] = to_int(config.get('max_queue', sys.maxsize))
         default['callback_config_name'] = config.get('callback_config_name', 'message')
 
         return default
@@ -1093,7 +1093,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         contains_total = to_bool(topic_dict.get('contains_total', defaults['contains_total']))
         total_wrap_around = to_bool(topic_dict.get('total_wrap_around', defaults['total_wrap_around']))
         conversion_type = topic_dict.get('conversion_type', defaults['conversion_type'])
-        conversion_error_to_none = topic_dict.get('conversion_error_to_none', defaults['conversion_error_to_none'])
+        conversion_error_to_none = to_bool(topic_dict.get('conversion_error_to_none', defaults['conversion_error_to_none']))
         field = {}
         field['name'] = (field_dict).get('name', fieldname)
         field['ignore'] = to_bool((field_dict).get('ignore', ignore))
@@ -1105,7 +1105,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         field['conversion_type'] = conversion_type  # todo - hack so that a field configuration can be used as a default for its subfields
         field['conversion_func']['source'] = TopicManager._get_conversion_source(conversion_func, conversion_type)
         field['conversion_func']['compiled'] = compile_expression(field['conversion_func']['source'])
-        field['conversion_error_to_none'] = (field_dict).get('conversion_error_to_none', conversion_error_to_none)
+        field['conversion_error_to_none'] = to_bool((field_dict).get('conversion_error_to_none', conversion_error_to_none))
         if 'units' in field_dict:
             if field_dict['units'] in weewx.units.conversionDict and field['name'] in weewx.units.obs_group_dict:
                 field['units'] = field_dict['units']
@@ -1175,7 +1175,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
             payload['fieldname'] = fieldname
             self.collected_queue.append(payload)
         else:
-            self._queue_size_check(queue, queue['max_size'])
+            self._queue_size_check(queue['data'], queue['max_size'])
             self.logger.trace(50002, TopicManager.log_messages[50002].format(topic=topic,
                                                                              topic_data=self._lookup_topic(topic),
                                                                              dateTime=weeutil.weeutil.timestamp_to_string(data['dateTime']),
@@ -1577,13 +1577,13 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
             for key, value in old_dict.items():
                 new_key = prefix + key
                 if isinstance(value, dict):
-                    self._flatten(fields, fields_ignore_default, delim, new_key + '_', new_dict, old_dict=value)
+                    self._flatten(fields, fields_ignore_default, delim, new_key + delim, new_dict, old_dict=value)
                 elif isinstance(value, list):
                     self._flatten_list(fields, fields_ignore_default, delim, prefix, new_key, value=value, new_dict=new_dict)
                 else:
                     new_dict[new_key] = value
         else:
-            self._flatten_list(fields, fields_ignore_default, delim, prefix, prefix[:-1], value=old_dict, new_dict=new_dict)
+            self._flatten_list(fields, fields_ignore_default, delim, prefix, prefix[:-len(delim)], value=old_dict, new_dict=new_dict)
 
     def _flatten_list(self, fields, fields_ignore_default, delim, prefix, new_key, *, value, new_dict):
         # pylint: disable=too-many-arguments
@@ -1613,7 +1613,7 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
         i = 0
         for subvalue in value:
             if isinstance(subvalue, (dict, list)):
-                self._flatten(fields, fields_ignore_default, delim, prefix + fields[new_key]['subfields'][i] + '_',
+                self._flatten(fields, fields_ignore_default, delim, prefix + fields[new_key]['subfields'][i] + delim,
                               new_dict, old_dict=subvalue)
             else:
                 new_dict[prefix + fields[new_key]['subfields'][i]] = subvalue

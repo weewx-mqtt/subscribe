@@ -35,6 +35,9 @@ Fixes:
 - Use the MQTT field name when 'expires_after' is configured without 'name'.
 - Report the correct error when an array has more values than its configured subfields.
 - Report the number of queued items, not the queue dictionary size, in the 'leaving queue' trace.
+- Convert 'max_queue' to an integer and apply the limit to the data queue.
+- Honour a custom 'flatten_delimiter' when flattening nested JSON and arrays.
+- Convert 'conversion_error_to_none' to a boolean at the topic and field level.
 
 V3.2.0
 Enhancements:

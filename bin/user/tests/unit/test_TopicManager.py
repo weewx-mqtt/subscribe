@@ -361,6 +361,29 @@ class TestConfigureFields(unittest.TestCase):
         self.assertGreaterEqual(SUT.subscribed_topics[topic]['fields'][topic].items(), configured_field[topic].items())
         self.assertEqual(SUT.subscribed_topics[topic]['fields'][topic]['conversion_func']['source'], 'lambda x: to_float(x)')
 
+    def test_conversion_error_to_none_topic_string_false(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        topic = random_string()
+        config_dict = {topic: {'conversion_error_to_none': 'False'}}
+        config = configobj.ConfigObj(config_dict)
+
+        SUT = TopicManager(None, config, mock_logger)
+
+        self.assertFalse(SUT.subscribed_topics[topic]['fields'][topic]['conversion_error_to_none'])
+
+    def test_conversion_error_to_none_field_string_false(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        topic = random_string()
+        fieldname = random_string()
+        config_dict = {topic: {fieldname: {'conversion_error_to_none': 'False'}}}
+        config = configobj.ConfigObj(config_dict)
+
+        SUT = TopicManager(None, config, mock_logger)
+
+        self.assertFalse(SUT.subscribed_topics[topic]['fields'][fieldname]['conversion_error_to_none'])
+
     def test_global_defaults(self):
         mock_logger = mock.Mock(spec=Logger)
 
@@ -705,6 +728,43 @@ class TestQueueSizeCheck(unittest.TestCase):
         SUT._queue_size_check(queue, max_queue)
         self.assertEqual(mock_logger.error.call_count, orig_queue_size - max_queue + 1)
         self.assertEqual(len(queue), max_queue - 1)
+
+    def test_max_queue_topic_string(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        topic = random_string()
+        config_dict = {topic: {'max_queue': '2'}}
+        config = configobj.ConfigObj(config_dict)
+
+        SUT = TopicManager(None, config, mock_logger)
+
+        self.assertEqual(SUT.subscribed_topics[topic]['queue']['max_size'], 2)
+
+    def test_max_queue_default_string(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        topic = random_string()
+        config_dict = {'max_queue': '2', topic: {}}
+        config = configobj.ConfigObj(config_dict)
+
+        SUT = TopicManager(None, config, mock_logger)
+
+        self.assertEqual(SUT.subscribed_topics[topic]['queue']['max_size'], 2)
+
+    def test_append_data_respects_max_queue(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        topic = random_string()
+        config_dict = {topic: {'max_queue': '2'}}
+        config = configobj.ConfigObj(config_dict)
+
+        SUT = TopicManager(None, config, mock_logger)
+
+        for value in range(3):
+            SUT.append_data(topic, {'dateTime': time.time(), 'usUnits': 1, 'inTemp': value})
+
+        self.assertEqual(len(SUT.subscribed_topics[topic]['queue']['data']), 2)
+        self.assertEqual(mock_logger.error.call_count, 1)
 
 
 def midday_epoch():
