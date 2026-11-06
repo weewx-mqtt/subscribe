@@ -284,7 +284,7 @@ class TestMultiMessageMethod(unittest.TestCase):
         self.assertEqual(mock_logger.error.call_count, 3)
         mock_logger.error.assert_has_calls([
             mock.call(44004, "MessageCallbackProvider on_message_multi failed with <class 'Exception'> and reason done."),
-            mock.call(44005, f"**** MessageCallbackProvider Ignoring topic={topic} and payload={payload}"),
+            mock.call(44005, f"**** MessageCallbackProvider ignoring topic={topic} and payload={payload}."),
             mock.call(44006, f"**** MessageCallbackProvider {traceback}")
         ])
 
@@ -1265,8 +1265,8 @@ class TestJsonPayload(unittest.TestCase):
 
         mock_manager.append_data.assert_not_called()
         SUT.logger.info.assert_called_with(42002,
-                                           (f"MessageCallbackProvider on_message_json filtered out {msg.topic} : "
-                                            f"{msg.payload} with {lookup_key}={filters[lookup_key]}"))
+                                           (f"MessageCallbackProvider on_message_json filtered out {msg.topic}: "
+                                            f"{msg.payload} with {lookup_key}={filters[lookup_key]}."))
 
 class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
     topic_end = random_string()

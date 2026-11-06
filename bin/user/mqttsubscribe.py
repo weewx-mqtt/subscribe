@@ -628,11 +628,12 @@ class RecordCache():
     log_messages = {
         # trace message
         100001:
-        "RecordCache is_valid key={key} timestamp={timestamp} expires_after={expires_after} cache_value={cache_value} is_valid={is_valid}",
-        100002: "RecordCache get_value key={key} timestamp={timestamp} expires_after={expires_after} cache_value={cache_value}",
-        100003: "RecordCache update_value key={key} value={value} unit_system={unit_system} timestamp={timestamp} cache_value={cache_value}",
-        100004: "RecordCache invalidate_value key={key} timestamp={timestamp} cache_value={cache_value}",
-        100005: "RecordCache remove_value key={key} cache_value={cache_value}",
+        "RecordCache is valid: key={key}, timestamp={timestamp}, expires_after={expires_after}, cache_value={cache_value}, is_valid={is_valid}.",
+        100002: "RecordCache get value: key={key}, timestamp={timestamp}, expires_after={expires_after}, cache_value={cache_value}.",
+        100003: ("RecordCache update value: key={key}, value={value}, unit_system={unit_system}, "
+                 "timestamp={timestamp}, cache_value={cache_value}."),
+        100004: "RecordCache invalidate value: key={key}, timestamp={timestamp}, cache_value={cache_value}.",
+        100005: "RecordCache remove value: key={key}, cache_value={cache_value}.",
         # debug messages
         # informational messages
         # error messages
@@ -775,40 +776,40 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
     """ Manage the MQTT topic subscriptions. """
     log_messages = {
         # trace message
-        50001: "TopicManager Adding wind data {fieldname} {dateTime}: {data}",
-        50002: "TopicManager Added to queue {topic} {topic_data} {dateTime}: {data}",
-        50003: "TopicManager queue size is: {size}",
-        50004: "TopicManager queue size is: {size}",
-        50005: "TopicManager starting queue {queue_name} size is: {size}",
-        50006: "TopicManager leaving queue: {queue_name} size: {size} content: {data_queue_content}",
-        50007: "TopicManager processing wind data {fieldname} {dateTime}: {payload}.",
+        50001: "TopicManager adding wind data: {fieldname}, {dateTime}, {data}.",
+        50002: "TopicManager added to queue: {topic}, {topic_data}, {dateTime}, {data}.",
+        50003: "TopicManager queue size: {size}.",
+        50004: "TopicManager queue size: {size}.",
+        50005: "TopicManager starting queue: {queue_name}, size={size}.",
+        50006: "TopicManager leaving queue: {queue_name}, size={size}, content={data_queue_content}.",
+        50007: "TopicManager processing wind data: {fieldname}, {dateTime}, {payload}.",
         50008: "TopicManager ignoring start time.",
         50009: "TopicManager ignoring end time.",
-        50010: "TopicManager processing interval: {start_ts:f} {end_ts:f}",
-        50011: "TopicManager input to accumulate {queue_name} {dateTime}: {data}",
-        50012: "TopicManager prior to conversion is {queue_name} {dateTime}: {aggregate_data}",
-        50013: "TopicManager after conversion is {queue_name} {dateTime}: {target_data}",
-        50014: "TopicManager accumulator was empty",
-        50015: ("TopicManager datetime conversion datetime_input:{datetime_input} "
-                "datetime_format:{datetime_format} offset_format:{offset_format}"),
-        50016: "TopicManager datetime conversion offset:{offset} sign:{sign}",
-        50017: "TopicManager datetime conversion datetime_string:{datetime_string} epoch:{epoch}",
+        50010: "TopicManager processing interval: {start_ts:f} to {end_ts:f}.",
+        50011: "TopicManager input to accumulate: {queue_name}, {dateTime}, {data}.",
+        50012: "TopicManager prior to conversion: {queue_name}, {dateTime}, {aggregate_data}.",
+        50013: "TopicManager after conversion: {queue_name}, {dateTime}, {target_data}.",
+        50014: "TopicManager accumulator was empty.",
+        50015: ("TopicManager datetime conversion: datetime_input={datetime_input}, "
+                "datetime_format={datetime_format}, offset_format={offset_format}."),
+        50016: "TopicManager datetime conversion: offset={offset}, sign={sign}.",
+        50017: "TopicManager datetime conversion: datetime_string={datetime_string}, epoch={epoch}.",
         # debug messages
-        51001: "TopicManager single_queue default is {single_queue}",
-        51002: "TopicManager self.subscribed_topics is {subscribed_topics}",
-        51003: "TopicManager self.cached_fields is {cached_fields}",
-        51004: "TopicManager self.collect_wind_across_loops is {collect_wind_across_loops}",
-        51005: "TopicManager self.collect_observations is {collect_observations}",
-        51006: "TopicManager single_queue is {single_queue}",
-        51007: "TopicManager data-> incoming {topic}: {in_data}",
-        51008: "TopicManager data-> outgoing wind {queue_name}: {data}",
-        51009: "TopicManager data-> outgoing collected {queue_name}: {data}",
-        51010: "TopicManager data-> outgoing {queue_name}: {data}",
-        51011: "TopicManager data-> outgoing accumulated {queue_name}: {target_data}",
+        51001: "TopicManager single_queue default: {single_queue}.",
+        51002: "TopicManager subscribed_topics: {subscribed_topics}.",
+        51003: "TopicManager cached_fields: {cached_fields}.",
+        51004: "TopicManager collect_wind_across_loops: {collect_wind_across_loops}.",
+        51005: "TopicManager collect_observations: {collect_observations}.",
+        51006: "TopicManager single_queue: {single_queue}.",
+        51007: "TopicManager data-> incoming topic: {topic}, data: {in_data}.",
+        51008: "TopicManager data-> outgoing wind: {queue_name}, data: {data}.",
+        51009: "TopicManager data-> outgoing collected: {queue_name}, data: {data}.",
+        51010: "TopicManager data-> outgoing: {queue_name}, data: {data}.",
+        51011: "TopicManager data-> outgoing accumulated: {queue_name}, data: {target_data}.",
         # informational messages
-        52001: "TopicManager ignoring record outside of interval {start_ts:f} {end_ts:f} {dateTime:f} {data}",
+        52001: "TopicManager ignoring record outside of interval: {start_ts:f} to {end_ts:f}, {dateTime:f}, {data}.",
         # error messages
-        54001: "TopicManager queue limit {max_queue} reached. Removing: {element}",
+        54001: "TopicManager queue limit {max_queue} reached. Removing: {element}.",
         # exception messages
         59001: "At least one topic must be configured.",
         59002: "Unknown unit system, {unit_system_name}.",
@@ -1422,12 +1423,12 @@ class AbstractMessageCallbackProvider():  # pylint: disable=too-few-public-metho
     """ The abstract MessageCallbackProvider. """
     log_messages = {
         # trace message
-        90001: ("MessageCallbackProvider _calc_increment calculating increment for {observation} with "
-                "current: {current_total:f} and previous {previous_total} values."),
-        90002: ("MessageCallbackProvider _calc_increment wrap around detected for {observation} with "
-                "current: {current_total:f} and previous {previous_total:f} values."),
-        90003: ("MessageCallbackProvider _calc_increment skipping calculating increment for {observation} with "
-                "current: {current_total:f} and previous {previous_total:f} values."),
+        90001: ("MessageCallbackProvider _calc_increment calculating increment: {observation}, "
+                "current={current_total:f}, previous={previous_total}."),
+        90002: ("MessageCallbackProvider _calc_increment wrap around detected: {observation}, "
+                "current={current_total:f}, previous={previous_total:f}."),
+        90003: ("MessageCallbackProvider _calc_increment skipping increment calculation: {observation}, "
+                "current={current_total:f}, previous={previous_total:f}."),
         # debug messages
         # informational messages
         # error messages
@@ -1503,24 +1504,24 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
     """ Provide the MQTT callback. """
     log_messages = {
         # trace message
-        40001: "MessageCallbackProvider on_message_keyword ignoring field: {key}",
-        40002: "MessageCallbackProvider on_message_json ignoring field: {lookup_key}",
-        40003: "MessageCallbackProvider on_message_individual ignoring field: {key}",
+        40001: "MessageCallbackProvider on_message_keyword ignoring field: {key}.",
+        40002: "MessageCallbackProvider on_message_json ignoring field: {lookup_key}.",
+        40003: "MessageCallbackProvider on_message_individual ignoring field: {key}.",
         # debug messages
-        41001: "MessageCallbackProvider data-> incoming topic: {topic}, qos: {qos}, retain: {retain}, payload: {payload}",
+        41001: "MessageCallbackProvider data-> incoming topic: {topic}, qos: {qos}, retain: {retain}, payload: {payload}.",
         # informational messages
         42001: "Message configuration found under [[MessageCallback]] and [[Topic]]. Ignoring [[MessageCallback]].",
-        42002: "MessageCallbackProvider on_message_json filtered out {topic} : {payload} with {lookup_key}={filter}",
+        42002: "MessageCallbackProvider on_message_json filtered out {topic}: {payload} with {lookup_key}={filter}.",
         # error messages
-        44001: "Skipping {new_key} because array data too big. Array={value} subfields={subfields}",
-        44002: "Skipping {new_key} because array data too small. Array={value} subfields={subfields}",
-        44003: "Skipping {new_key} because data is an array and has no configured subfields. Array={value}",
+        44001: "Skipping {new_key} because array data too big. Array={value} subfields={subfields}.",
+        44002: "Skipping {new_key} because array data too small. Array={value} subfields={subfields}.",
+        44003: "Skipping {new_key} because data is an array and has no configured subfields. Array={value}.",
         44004: "MessageCallbackProvider {method} failed with {exception_type} and reason {exception}.",
-        44005: "**** MessageCallbackProvider Ignoring topic={topic} and payload={payload}",
+        44005: "**** MessageCallbackProvider ignoring topic={topic} and payload={payload}.",
         44006: "**** MessageCallbackProvider {traceback}",
-        44007: "MessageCallbackProvider on_message_keyword failed to find separator: {keyword_separator}",
-        44008: "**** MessageCallbackProvider Skipping field={field} ",
-        44009: "MessageCallbackProvider on_message_keyword failed to find data in: topic {topic} and payload {payload}",
+        44007: "MessageCallbackProvider on_message_keyword failed to find separator: {keyword_separator}.",
+        44008: "**** MessageCallbackProvider skipping field={field}.",
+        44009: "MessageCallbackProvider on_message_keyword failed to find data in: topic {topic} and payload {payload}.",
         44010: "Unknown message_type={message_type}. Skipping topic={topic} and payload={payload}.",
         # exception messages
         49001: "Topic {topic} is missing its '[[[[message]]]]' section.",
@@ -1864,7 +1865,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
         # trace message
         # debug messages
         31001: "Configuration (password removed): {sanitized_service_dict}.",
-        31003: "Starting loop",
+        31003: "Starting loop.",
         # informational messages
         32001: "Archive topic: {archive_topic}.",
         32002: "Message callback provider: {message_callback_provider_name}.",
@@ -2188,16 +2189,16 @@ class MQTTSubscribeService(StdService):
     """ The MQTT subscribe service. """
     log_messages = {
         # trace message
-        20001: "Packet prior to update is: {dateTime} {packet}",
-        20002: "Queue {queue_name} has data: {target_data}",
-        20003: "Packet after update is: {dateTime} {packet}",
-        20004: "Record prior to update is: {dateTime} {record}",
-        20005: "Queue {queue_name} has data: {target_data}",
-        20006: "Record after update is: {dateTime} {record}",
+        20001: "Packet prior to update: {dateTime}, {packet}.",
+        20002: "Queue {queue_name} has data: {target_data}.",
+        20003: "Packet after update: {dateTime}, {packet}.",
+        20004: "Record prior to update: {dateTime}, {record}.",
+        20005: "Queue {queue_name} has data: {target_data}.",
+        20006: "Record after update: {dateTime}, {record}.",
         # debug messages
-        21001: "data-> final packet is {dateTime}: {packet}",
-        21002: "data-> incoming record is {dateTime}: {record}",
-        21003: "data-> final record is {dateTime}: {record}",
+        21001: "data-> final packet: {dateTime}, {packet}.",
+        21002: "data-> incoming record: {dateTime}, {record}.",
+        21003: "data-> final record: {dateTime}, {record}.",
         # informational messages
         22001: "Not enabled, exiting.",
         22002: "Running as both a driver and a service.",
@@ -2206,7 +2207,7 @@ class MQTTSubscribeService(StdService):
         22005: "{name} is shut down.",
         22006: "Shutting down the logger thread.",
         # error messages
-        24001: "Ignoring packet has dateTime of {dateTime:f} which is prior to previous packet {end_ts:f}",
+        24001: "Ignoring packet with dateTime {dateTime:f} prior to previous packet {end_ts:f}.",
         # exception messages
         29001: "No 'MQTTSubscribeService'/'MQTTSubscribe' configuration section found.",
         29002: "Invalid 'archive_topic', {archive_topic}, when running as a service.",
@@ -2385,21 +2386,21 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
     log_messages = {
         # trace messages
         10001: "Queues are empty.",
-        10002: "Creating empty loop packet {dateTime}: {data}",
+        10002: "Creating empty loop packet: {dateTime}, {data}.",
         # debug messages
         11001: "No archive topic configured.",
-        11002: "data-> final record is {dateTime}: {record}",
-        11003: "data-> final loop packet is {queue_name} {dateTime}: {data}",
+        11002: "data-> final record: {dateTime}, {record}.",
+        11003: "data-> final loop packet: {queue_name}, {dateTime}, {data}.",
         11004: "No archive topic configured.",
-        11005: "data-> final archive record is {archive_topic} {dateTime}: {data}",
+        11005: "data-> final archive record: {archive_topic}, {dateTime}, {data}.",
         # informational messages
-        12001: "Max loop interval is: {max_loop_interval}",
-        12002: "Wait before retry is {wait_before_retry}",
+        12001: "Max loop interval: {max_loop_interval}.",
+        12002: "Wait before retry: {wait_before_retry}.",
         12003: "Shutting down.",
         12004: "{name} is shut down.",
         12005: "Shutting down the logger thread.",
         # error messages
-        14001: "Ignoring record because {archive_start} archival start is before previous archive start {prev_archive_start}: {data}",
+        14001: "Ignoring record because archive start {archive_start} is before previous archive start {prev_archive_start}: {data}.",
         # exception messages:
         19001: "Unable to remove {remove_item}, it is not in the config spec.",
         19002: "[[topics]] is required.",

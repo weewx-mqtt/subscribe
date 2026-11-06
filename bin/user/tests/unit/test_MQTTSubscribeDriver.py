@@ -84,8 +84,8 @@ class TestclosePort(unittest.TestCase):
                 SUT.new_archive_record(event)
 
             SUT.logger.debug.assert_called_with(11002,
-                                                (f"data-> final record is {timestamp_to_string(event.record['dateTime'])}: "
-                                                 f"{to_sorted_string(event.record)}"))
+                                                (f"data-> final record: {timestamp_to_string(event.record['dateTime'])}, "
+                                                 f"{to_sorted_string(event.record)}."))
             # The lines that follow carry the timestamp of the record being accumulated.
             self.assertEqual(SUT.logger.archive_timestamp,
                              int(event.record['dateTime'] + event.record['interval'] * 60))
@@ -227,9 +227,9 @@ class TestgenLoopPackets(unittest.TestCase):
                 next(gen, None)
 
             start_of_interval = startOfInterval(self.queue_data['dateTime'], SUT._archive_interval)
-            SUT.logger.error.assert_called_once_with(14001, (f"Ignoring record because {start_of_interval} archival start is "
+            SUT.logger.error.assert_called_once_with(14001, (f"Ignoring record because archive start {start_of_interval} is "
                                                              f"before previous archive start {prev_archive_start}: "
-                                                             f"{to_sorted_string(self.queue_data)}"))
+                                                             f"{to_sorted_string(self.queue_data)}."))
 
     def test_queue_empty(self):
         mock_engine = mock.Mock()
