@@ -31,9 +31,8 @@ weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) Log debug setting: 1
 weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) Log console: False
 weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) Log file: None
 weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) Max loop interval is: 0
-weewxd[1674906] DEBUG user.MQTTSubscribe: (Driver-1674906) sanitized configuration removed ['password']
-weewxd[1674906] DEBUG user.MQTTSubscribe: (Driver-1674906) MQTTSUBscriber sanitized_service_dict is {'driver': 'user.MQTTSubscribe', 'host': 'weather-data.local', 'topics': {'message': {'type': 'individual'}, 'weather/individual/altimeter_inHg': {'name': 'altimeter'}, 'weather/individual/outHumidity': {}, 'weather/individual/barometer_inHg': {'name': 'barometer'}, 'weather/individual/windchill_F': {'name': 'windchill'}, 'weather/individual/dewpoint_F': {'name': 'dewpoint'}, 'weather/individual/rain_in': {'name': 'rain'}, 'weather/individual/pressure_inHg': {'name': 'pressure'}, 'weather/individual/appTemp_F': {'name': 'appTemp_F'}, 'weather/individual/UV': {}, 'weather/individual/outTemp_F': {'name': 'outTemp'}, 'weather/individual/cloudbase_foot': {'name': 'cloudbase_foot'}}}
-weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) message_callback_provider_name is user.MQTTSubscribe.MessageCallbackProvider
+weewxd[1674906] DEBUG user.MQTTSubscribe: (Driver-1674906) Configuration (password removed): {'driver': 'user.MQTTSubscribe', 'host': 'weather-data.local', 'topics': {'message': {'type': 'individual'}, 'weather/individual/altimeter_inHg': {'name': 'altimeter'}, 'weather/individual/outHumidity': {}, 'weather/individual/barometer_inHg': {'name': 'barometer'}, 'weather/individual/windchill_F': {'name': 'windchill'}, 'weather/individual/dewpoint_F': {'name': 'dewpoint'}, 'weather/individual/rain_in': {'name': 'rain'}, 'weather/individual/pressure_inHg': {'name': 'pressure'}, 'weather/individual/appTemp_F': {'name': 'appTemp_F'}, 'weather/individual/UV': {}, 'weather/individual/outTemp_F': {'name': 'outTemp'}, 'weather/individual/cloudbase_foot': {'name': 'cloudbase_foot'}}}.
+weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) Message callback provider: user.MQTTSubscribe.MessageCallbackProvider.
 ```
 
 ### MQTT parameters
@@ -41,15 +40,15 @@ weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) message_callback_provi
 This is information used to configure the MQTT connection.
 
 ```
-weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) clientid is MQTTSubscribe-7343
-weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) client_session is True
-weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) host is weather-data.local
-weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) port is 1883
-weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) keepalive is 60
-weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) username is None
-weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) min_delay is 1
-weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) max_delay is 120
-weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) password is not set
+weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) Client id: MQTTSubscribe-7343.
+weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) Client session: True.
+weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) Host: weather-data.local.
+weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) Port: 1883.
+weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) Keepalive: 60.
+weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) Username: None.
+weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) Min delay: 1.
+weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) Max delay: 120.
+weewxd[1674906] INFO user.MQTTSubscribe: (Driver-1674906) Password: not set.
 ```
 
 ### Final `Topic` configuration

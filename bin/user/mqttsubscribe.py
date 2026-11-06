@@ -1863,24 +1863,23 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
     log_messages = {
         # trace message
         # debug messages
-        31001: "sanitized configuration removed {exclude_keys}",
-        31002: "MQTTSUBscriber sanitized_service_dict is {sanitized_service_dict}",
+        31001: "Configuration (password removed): {sanitized_service_dict}.",
         31003: "Starting loop",
         # informational messages
-        32001: "Archive topic is {archive_topic}",
-        32002: "message_callback_provider_name is {message_callback_provider_name}",
-        32003: "clientid is {clientid}",
-        32004: "client_session is {clean_session}",
-        32005: "clean_start is {clean_start}",
-        32006: "host is {host}",
-        32007: "port is {port}",
-        32008: "protocol is {protocol}",
-        32009: "keepalive is {keepalive}",
-        32010: "username is {username}",
-        32011: "min_delay is {min_delay}",
-        32012: "max_delay is {max_delay}",
-        32013: "password is set",
-        32014: "password is not set",
+        32001: "Archive topic: {archive_topic}.",
+        32002: "Message callback provider: {message_callback_provider_name}.",
+        32003: "Client id: {clientid}.",
+        32004: "Client session: {clean_session}.",
+        32005: "Clean start: {clean_start}.",
+        32006: "Host: {host}.",
+        32007: "Port: {port}.",
+        32008: "Protocol: {protocol}.",
+        32009: "Keepalive: {keepalive}.",
+        32010: "Username: {username}.",
+        32011: "Min delay: {min_delay}.",
+        32012: "Max delay: {max_delay}.",
+        32013: "Password: set.",
+        32014: "Password: not set.",
         32015: "{msg}",
         32016: "{msg}",
         32017: "Waiting for MQTT connection.",
@@ -1926,8 +1925,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
         exclude_keys = ['password']
         sanitized_service_dict = {k: service_dict[k] for k in set(list(service_dict.keys())) - set(exclude_keys)}
-        self.logger.debug(31001, MQTTSubscriber.log_messages[31001].format(exclude_keys=exclude_keys))
-        self.logger.debug(31002, MQTTSubscriber.log_messages[31002].format(sanitized_service_dict=sanitized_service_dict))
+        self.logger.debug(31001, MQTTSubscriber.log_messages[31001].format(sanitized_service_dict=sanitized_service_dict))
 
         message_callback_config = service_dict.get('message_callback', None)
 
@@ -1967,10 +1965,11 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
 
         self.logger.info(32003, MQTTSubscriber.log_messages[32003].format(clientid=mqtt_options['clientid']))
         self.logger.info(32004, MQTTSubscriber.log_messages[32004].format(clean_session=mqtt_options['clean_session']))
-        self.logger.info(32005, MQTTSubscriber.log_messages[32005].format(clean_start=mqtt_options['clean_start']))
+        self.logger.info(32005, MQTTSubscriber.log_messages[32005].format(
+            clean_start=service_dict.get('clean_start', 'MQTT_CLEAN_START_FIRST_ONLY')))
         self.logger.info(32006, MQTTSubscriber.log_messages[32006].format(host=mqtt_options['host']))
         self.logger.info(32007, MQTTSubscriber.log_messages[32007].format(port=mqtt_options['port']))
-        self.logger.info(32008, MQTTSubscriber.log_messages[32008].format(protocol=mqtt_options['protocol']))
+        self.logger.info(32008, MQTTSubscriber.log_messages[32008].format(protocol=protocol_string))
         self.logger.info(32009, MQTTSubscriber.log_messages[32009].format(keepalive=mqtt_options['keepalive']))
         self.logger.info(32010, MQTTSubscriber.log_messages[32010].format(username=mqtt_options['username']))
         self.logger.info(32011, MQTTSubscriber.log_messages[32011].format(min_delay=mqtt_options['min_delay']))
@@ -2202,7 +2201,7 @@ class MQTTSubscribeService(StdService):
         # informational messages
         22001: "Not enabled, exiting.",
         22002: "Running as both a driver and a service.",
-        22003: "binding is {binding}",
+        22003: "Binding: {binding}.",
         22004: "Shutting down.",
         22005: "{name} is shut down.",
         22006: "Shutting down the logger thread.",

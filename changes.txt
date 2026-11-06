@@ -22,6 +22,9 @@ Enhancements:
 - Deprecation messages use the shared wording ('<option> is deprecated, use <replacement>.'),
   with one trailing period. This includes the 'MQTTSubscribe.py' shim.
 - Log messages use consistent terminology and spelling ('qos', 'clean_start').
+- Configuration diagnostics use the 'Label: value.' format ('Configuration (password removed): ...',
+  'Client id: ...', 'Clean start: ...', 'Protocol: ...', 'Binding: ...'), and protocol and
+  clean-start are logged by name instead of their numeric paho values.
 
 V3.2.0
 Enhancements:
