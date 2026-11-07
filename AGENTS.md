@@ -150,6 +150,12 @@ source .devenv
   `coverage html/xml --include 'bin/user/*.py' --omit bin/user/__init__.py`.
 - Markdown is linted with `.markdownlint.jsonc` (line length 150).
 
+## Commits
+
+Never commit, push, tag or release unless explicitly asked: stage the changes and stop. A
+request to make a change is not permission to commit it, and "do it" does not include
+committing. Propose the commit message and wait for the go-ahead.
+
 ## Cross-repo workflow
 
 Single changes stay in this repository. Cross-repo work (a shared change, rename, wording pass)
