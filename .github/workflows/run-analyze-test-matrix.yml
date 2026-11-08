@@ -9,13 +9,16 @@ jobs:
   analyze-test:
     uses: weewx-extensions/development-tools/.github/workflows/analyze-test-matrix.yml@v6
     with:
-      module-name: 'MQTTSubscribe'
+      module-name: 'mqttsubscribe'
       pip-list: 'paho-mqtt'
       package-list: 'mosquitto'
       latest-weewx-version: '5.5.2'
       lint-paths: './bin/user/mqttsubscribe.py ./bin/user/mqttcommon.py'
       common-repos: |
         https://github.com/weewx-mqtt/mqttcommon v1
+      function-test: true
+      integration-test: true
+      e2e-test: true
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
@@ -25,7 +28,7 @@ jobs:
   analyze-test-paho-mqtt-1-6-1:
     uses: weewx-extensions/development-tools/.github/workflows/analyze-test.yml@v6
     with:
-      module-name: 'MQTTSubscribe'
+      module-name: 'mqttsubscribe'
       pip-list: 'paho-mqtt==1.6.1'
       package-list: 'mosquitto'
       latest-weewx-version: '5.5.2'
@@ -36,6 +39,9 @@ jobs:
       # so this job reports lint findings without failing. The main job is the lint gate.
       lint-fail: false
       artifact-name-suffix: '-2'
+      function-test: true
+      integration-test: true
+      e2e-test: true
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
