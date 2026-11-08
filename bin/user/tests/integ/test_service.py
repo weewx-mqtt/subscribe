@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import helpers
 import json
 import string
 import time
@@ -223,8 +224,4 @@ class TestWind(TestService):
             self.runit('keyword', file_pointer)
 
 if __name__ == '__main__':
-    test_suite = unittest.TestSuite()
-    test_suite.addTest(TestWindIndividualTopics('test_wind_individual_topic'))
-    unittest.TextTestRunner().run(test_suite)
-
-    # unittest.main(exit=False, failfast=True)
+    helpers.run_tests()

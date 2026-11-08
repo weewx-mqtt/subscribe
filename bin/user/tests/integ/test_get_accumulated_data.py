@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import helpers
 import json
 import string
 import time
@@ -135,4 +136,4 @@ class TestWind(TestAccumulatedData):
             self.runit('keyword', file_pointer)
 
 if __name__ == '__main__':
-    unittest.main(exit=False)
+    helpers.run_tests()

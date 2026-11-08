@@ -8,6 +8,7 @@ This is a set of 'function' tests.
 These test that the MQTTSubscribe configuration is correct for the payload.
 '''
 
+import helpers
 import unittest
 
 import configobj
@@ -267,8 +268,4 @@ class TestJSONMessageFlattenDelimiter(unittest.TestCase):
         self.assertDictEqual(data, expected_data)
 
 if __name__ == '__main__':
-    # test_suite = unittest.TestSuite()
-    # test_suite.addTest(TestConfigureFields('test_use_topic_as_fieldname'))
-    # unittest.TextTestRunner().run(test_suite)
-
-    unittest.main(exit=False)
+    helpers.run_tests()

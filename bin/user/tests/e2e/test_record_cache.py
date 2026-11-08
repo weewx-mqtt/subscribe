@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import helpers
 import unittest
 import mock
 
@@ -140,9 +141,4 @@ class test_record_cache(unittest.TestCase):
             mock_cache_instance.get_value.assert_not_called()
 
 if __name__ == '__main__':
-    test_suite = unittest.TestSuite()
-    # test_suite.addTest(test_record_cache('test_observation_not_in_archive_record'))
-    # test_suite.addTest(test_record_cache('test_observation_in_archive_record'))
-    # unittest.TextTestRunner().run(test_suite)
-
-    unittest.main(exit=False)
+    helpers.run_tests()

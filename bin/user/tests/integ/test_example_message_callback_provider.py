@@ -4,7 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
-import unittest
+import helpers
 
 from test_get_data import TestGetData
 from test_driver import TestDriver
@@ -36,11 +36,4 @@ class TestServiceExampleMessageCallbackProvider(TestService):
             self.runit('xml', file_pointer, check_results=True)
 
 if __name__ == '__main__':
-    test_suite = unittest.TestSuite()
-
-    test_suite.addTest(TestGetDataExampleMessageCallbackProvider('test_xml'))
-    test_suite.addTest(TestDriverExamoleMessageCallbackProvider('test_xml'))
-    test_suite.addTest(TestAccunulatedDataExampleMessageCallbackProvider('test_xml'))
-    test_suite.addTest(TestServiceExampleMessageCallbackProvider('test_xml'))
-
-    unittest.TextTestRunner().run(test_suite)
+    helpers.run_tests()

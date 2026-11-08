@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import helpers
 import unittest
 
 import argparse
@@ -144,8 +145,4 @@ class TestUpdateConfig(unittest.TestCase):
         self.assertEqual(config_items, expected_config.split('\n'))
 
 if __name__ == '__main__':
-    # test_suite = unittest.TestSuite()
-    # test_suite.addTest(TestUpdateFrom('test_update_from'))
-    # unittest.TextTestRunner().run(test_suite)
-
-    unittest.main(exit=False)
+    helpers.run_tests()
