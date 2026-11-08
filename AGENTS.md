@@ -163,9 +163,10 @@ source .devenv
 
 ## Commits
 
-Never commit, push, tag or release unless explicitly asked: stage the changes and stop. A
-request to make a change is not permission to commit it, and "do it" does not include
-committing. Propose the commit message and wait for the go-ahead.
+Never commit, push, tag or release unless explicitly asked. A request to make a change is not
+permission to commit it, and "do it" does not include committing. Propose the commit message and
+wait for the go-ahead. Don't pre-stage; staged files are not a commit request (the user stages
+while reviewing). Once approved, stage and commit that step in one go.
 
 ## Cross-repo workflow
 
