@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import helpers
 import unittest
 import mock
 
@@ -534,8 +535,4 @@ class TestshutDown(unittest.TestCase):
                     mock_log_direct.assert_not_called()
 
 if __name__ == '__main__':
-    # test_suite = unittest.TestSuite()
-    # test_suite.addTest(Testnew_loop_packet('test_cache_updated'))
-    # unittest.TextTestRunner().run(test_suite)
-
-    unittest.main(exit=False)
+    helpers.run_tests()

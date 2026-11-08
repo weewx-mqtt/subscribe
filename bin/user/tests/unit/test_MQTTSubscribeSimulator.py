@@ -9,6 +9,7 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=wrong-import-position
 
+import helpers
 import unittest
 import mock
 
@@ -164,8 +165,4 @@ class TestRunSimulator(unittest.TestCase):
         mock_driver.genLoopPackets.assert_called_once()
 
 if __name__ == '__main__':
-    # test_suite = unittest.TestSuite()
-    # test_suite.addTest(TestRunSimulator('test_simulate_service_archive'))
-    # unittest.TextTestRunner().run(test_suite)
-
-    unittest.main(exit=False)
+    helpers.run_tests()

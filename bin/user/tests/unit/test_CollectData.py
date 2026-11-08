@@ -9,6 +9,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=invalid-name
 
+import helpers
 import unittest
 
 import random
@@ -237,10 +238,4 @@ class Test_get_data(unittest.TestCase):
             self.assertDictEqual(collected_data, self.data)
 
 if __name__ == '__main__':
-    # test_suite = unittest.TestSuite()
-    # test_suite.addTest(Test_add_dict('test_data_in_fields'))
-    # test_suite.addTest(Test_add_dict('test_second_data'))
-    # test_suite.addTest(Test_add_dict('test_additional_data'))
-    # unittest.TextTestRunner().run(test_suite)
-
-    unittest.main(exit=False)
+    helpers.run_tests()

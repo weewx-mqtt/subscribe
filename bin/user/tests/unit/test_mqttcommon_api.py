@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import helpers
 import importlib
 import unittest
 
@@ -26,4 +27,4 @@ class TestApiCheck(unittest.TestCase):
                 importlib.reload(user.mqttsubscribe)
 
 if __name__ == '__main__':
-    unittest.main()
+    helpers.run_tests()

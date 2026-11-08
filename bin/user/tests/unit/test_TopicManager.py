@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import helpers
 import unittest
 import mock
 
@@ -1433,8 +1434,4 @@ class TestAccumulatedData(unittest.TestCase):
                 self.assertDictEqual(accumulated_data, final_record_data)
 
 if __name__ == '__main__':
-    # test_suite = unittest.TestSuite()
-    # test_suite.addTest(TestConfigureFields('test_use_topic_as_fieldname'))
-    # unittest.TextTestRunner().run(test_suite)
-
-    unittest.main(exit=False)
+    helpers.run_tests()

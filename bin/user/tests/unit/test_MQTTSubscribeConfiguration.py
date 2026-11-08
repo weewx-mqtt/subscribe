@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import helpers
 import unittest
 
 import configobj
@@ -367,8 +368,4 @@ class TestValidateTopicsSection(unittest.TestCase):
         self.assertEqual(error_msgs, [])
 
 if __name__ == '__main__':
-    # test_suite = unittest.TestSuite()
-    # test_suite.addTest(TestValidateTopicsSection('test_topic_configured_as_field'))
-    # unittest.TextTestRunner().run(test_suite)
-
-    unittest.main(exit=False)
+    helpers.run_tests()

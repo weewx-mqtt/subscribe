@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import helpers
 import unittest
 import mock
 
@@ -210,8 +211,4 @@ class TestCallbacks(unittest.TestCase):
                     self.assertNotEqual(SUT.client.on_log, SUT._on_log)
 
 if __name__ == '__main__':
-    # test_suite = unittest.TestSuite()
-    # test_suite.addTest(TestInitialization('test_connect_exception'))
-    # unittest.TextTestRunner().run(test_suite)
-
-    unittest.main(exit=False)
+    helpers.run_tests()

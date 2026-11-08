@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import helpers
 import unittest
 import mock
 
@@ -89,9 +90,4 @@ class Test1(unittest.TestCase):
         mock_manager.append_data.assert_called_once_with(msg.topic, observation_dict)
 
 if __name__ == '__main__':
-    test_suite = unittest.TestSuite()
-    test_suite.addTest(Test1('test_get_observations'))
-    test_suite.addTest(Test1('test_on_message'))
-    unittest.TextTestRunner().run(test_suite)
-
-    # unittest.main(exit=False)
+    helpers.run_tests()

@@ -4,7 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
-import unittest
+import helpers
 import mock
 
 import configobj
@@ -330,11 +330,4 @@ class TestThrottling(BaseTestClass):
 
 
 if __name__ == '__main__':
-    # testcase = sys.argv[1]
-    testcase = 'test_window_summary_is_logged'
-
-    test_suite = unittest.TestSuite()
-    test_suite.addTest(TestThrottling(testcase))
-    # unittest.TextTestRunner().run(test_suite)
-
-    unittest.main(exit=False)
+    helpers.run_tests()

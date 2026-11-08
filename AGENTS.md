@@ -48,12 +48,17 @@ export PYTHONPATH="$WEEWX_PYTHONPATH"   # == bin, or bin:../weewx/src
 
 ## Commands
 
-Four suites under `bin/user/tests/{unit,func,integ,e2e}`. Run one suite; there is no single-test
-runner beyond `pytest <file>::<TestClass>::<test>`.
+Four suites under `bin/user/tests/{unit,func,integ,e2e}`. Run one suite. Unit test files also
+support the `helpers.run_tests()` CLI: `python <test file> [<TestClass> <test_method>]` (the
+vendored `test_mqttcommon.py` keeps `unittest.main()`).
 
 ```bash
 # unit - weewx is stubbed (bin/user/tests/unit/test_weewx_stubs.py), no WeeWX install needed
 PYTHONPATH=bin pytest bin/user/tests/unit
+
+# unit, one file or one test, directly
+python bin/user/tests/unit/test_RecordCache.py
+python bin/user/tests/unit/test_Logger.py TestThrottling test_window_summary_is_logged
 
 # func, integ, e2e - need real weewx importable
 PYTHONPATH=bin:../weewx/bin:../weewx/src pytest bin/user/tests/func
@@ -108,6 +113,9 @@ source .devenv
 
 ## Testing conventions and quirks
 
+- Unit tests use `helpers.run_tests()` (`bin/user/tests/unit/helpers.py`): no arguments runs the
+  file, `ClassName methodName` runs one test. The vendored `test_mqttcommon.py` keeps
+  `unittest.main()` and must stay unmodified; func/integ/e2e still use their per-file mains.
 - Unit tests call `test_weewx_stubs.setup_stubs()` before importing `user.mqttsubscribe` and
   re-stub in `setUp`. If a new unit test skips this, it will import the real (missing) weewx or
   leak stub state. `test_weewx_stubs` and `utils` (integ) are imported as top-level modules —

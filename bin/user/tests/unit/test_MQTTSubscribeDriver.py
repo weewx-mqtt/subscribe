@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import helpers
 import unittest
 import mock
 
@@ -486,10 +487,4 @@ class TestgenArchiveRecords(unittest.TestCase):
             self.assertListEqual(records, queue_list)
 
 if __name__ == '__main__':
-    test_suite = unittest.TestSuite()
-
-    testcase = 'test_packet_is_earlier_than_previous'
-    test_suite.addTest(TestgenLoopPackets(testcase))
-    # unittest.TextTestRunner().run(test_suite)
-
-    unittest.main(exit=False)
+    helpers.run_tests()

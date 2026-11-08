@@ -9,6 +9,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=invalid-name
 
+import helpers
 import random
 import sys
 import time
@@ -227,4 +228,4 @@ class Test_remove_value(unittest.TestCase):
         self.assertNotIn(key, SUT.cached_values)
 
 if __name__ == '__main__':
-    unittest.main(exit=False)
+    helpers.run_tests()

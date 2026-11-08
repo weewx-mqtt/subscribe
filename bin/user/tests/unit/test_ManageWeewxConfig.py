@@ -9,6 +9,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=invalid-name
 
+import helpers
 import configobj
 import importlib
 import sys
@@ -262,8 +263,4 @@ class TestObservationConfig(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # test_suite = unittest.TestSuite()
-    # test_suite.addTest(TestInitialization('test_connect_exception'))
-    # unittest.TextTestRunner().run(test_suite)
-
-    unittest.main(exit=False)
+    helpers.run_tests()

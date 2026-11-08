@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import helpers
 import unittest
 import mock
 
@@ -99,4 +100,4 @@ class TestParserInit(unittest.TestCase):
         self.assertIn('topics', SUT.config_dict)
 
 if __name__ == '__main__':
-    unittest.main(exit=False)
+    helpers.run_tests()

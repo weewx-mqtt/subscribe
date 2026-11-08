@@ -5,6 +5,7 @@
 #
 
 
+import helpers
 import unittest
 import mock
 
@@ -696,8 +697,4 @@ class TestRunConfigurator(unittest.TestCase):
         SUT.run()
 
 if __name__ == '__main__':
-    # test_suite = unittest.TestSuite()
-    # test_suite.addTest(TestUpdateFrom('test_update_from'))
-    # unittest.TextTestRunner().run(test_suite)
-
-    unittest.main(exit=False)
+    helpers.run_tests()
