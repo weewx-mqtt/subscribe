@@ -6,6 +6,7 @@
 
 import helpers
 import json
+import shutil
 import string
 import time
 import unittest
@@ -19,7 +20,13 @@ import weewx
 
 from user.mqttsubscribe import MQTTSubscribeDriver
 
+@unittest.skipUnless(shutil.which('mosquitto'), 'mosquitto is not installed.')
 class TestDriver(unittest.TestCase):
+    def setUp(self):
+        self.broker = utils.MosquittoBroker()
+        self.broker.start()
+        self.addCleanup(self.broker.cleanup)
+
     def runit(self, payload, file_pointer, check_results=True):
         test_id = utils.random_string()
         data_template = string.Template(file_pointer.read())
@@ -34,6 +41,8 @@ class TestDriver(unittest.TestCase):
         config_dict['MQTTSubscribeService']['message_callback']['type'] = payload
 
         cdict = {'MQTTSubscribeDriver': stndict}
+        stndict['host'] = utils.BROKER_HOST
+        stndict['port'] = self.broker.port
 
         min_config_dict = {
             'Station': {
@@ -53,8 +62,8 @@ class TestDriver(unittest.TestCase):
         engine = weewx.engine.StdEngine(min_config_dict)
         driver = MQTTSubscribeDriver(cdict, engine)
 
-        host = 'localhost'
-        port = 1883
+        host = utils.BROKER_HOST
+        port = self.broker.port
         keepalive = 60
 
         userdata = {

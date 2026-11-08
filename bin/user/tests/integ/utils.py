@@ -5,6 +5,11 @@
 #
 
 import json
+import os
+import shutil
+import socket
+import subprocess
+import tempfile
 import time
 
 import configobj
@@ -12,6 +17,43 @@ import random
 import string
 
 import weeutil
+
+BROKER_HOST = '127.0.0.1'
+
+
+class MosquittoBroker():
+    """ A throwaway broker the tests own, so they do not depend on a system broker on 1883. """
+    def __init__(self):
+        with socket.socket() as sock:
+            sock.bind((BROKER_HOST, 0))
+            self.port = sock.getsockname()[1]
+        self.directory = tempfile.mkdtemp(prefix='weewx-mqtt-integ-')
+        self.process = None
+
+    def start(self):
+        config_path = os.path.join(self.directory, 'mosquitto.conf')
+        with open(config_path, 'w', encoding='utf-8') as config_file:
+            config_file.write(f"listener {self.port} {BROKER_HOST}\nallow_anonymous true\n")
+        self.process = subprocess.Popen(['mosquitto', '-c', config_path],  # pylint: disable=consider-using-with
+                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.wait_until_listening()
+
+    def cleanup(self):
+        if self.process is not None:
+            self.process.kill()
+            self.process.wait()
+            self.process = None
+        shutil.rmtree(self.directory, ignore_errors=True)
+
+    def wait_until_listening(self, timeout=20):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                with socket.create_connection((BROKER_HOST, self.port), timeout=1):
+                    return
+            except OSError:
+                time.sleep(0.1)
+        raise AssertionError('The mosquitto broker did not start.')
 
 def random_string(length=32):
     return ''.join([random.choice(string.ascii_letters + string.digits) for n in range(length)])

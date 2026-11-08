@@ -121,7 +121,9 @@ source .devenv
   re-stub in `setUp`. If a new unit test skips this, it will import the real (missing) weewx or
   leak stub state. `test_weewx_stubs` and `utils` (integ) are imported as top-level modules —
   pytest's directory-based import handles this; there are no `__init__.py` files.
-- Integration tests require a mosquitto broker on `localhost:1883`.
+- The driver and service integration cases spawn their own mosquitto broker on a free port, so
+  they do not touch a system broker on 1883; they are skipped when mosquitto is not installed.
+  The parser cases (`test_get_data`, `test_get_accumulated_data`) need no broker.
 - E2E is slow (~3 min: it runs simulated WeeWX time with a stubbed MQTT client) — don't run it for
   every iteration.
 - Tests and debug without a broker: `simulate` mode
