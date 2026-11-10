@@ -20,7 +20,7 @@ import paho.mqtt.client as mqtt
 
 # Bump when adding shared code consumers must have; each verifies it at import,
 # so a stale copy fails loudly.
-MQTTCOMMON_API = (1, 0)
+MQTTCOMMON_API = (1, 1)
 
 API_V1 = 'v1'
 API_V2_MQTT3 = 'v2-mqtt3'
@@ -551,8 +551,23 @@ def create_client(api, *, client_id, protocol, userdata=None, clean_session=None
     return mqtt.Client(**kwargs)
 
 
+def _validate_connection(host, port, keepalive):
+    """ Reject values paho cannot connect with.
+
+        paho 1.6.1 validates these while starting the connection; paho 2.x does
+        not validate them in connect_async, so do it here to keep the error with
+        the caller instead of paho's network loop thread. """
+    if not host:
+        raise ValueError('Invalid host.')
+    if not 0 < port < 65536:
+        raise ValueError('Invalid port number.')
+    if keepalive < 0:
+        raise ValueError('Keepalive must be >=0.')
+
+
 def connect(client, api, *, host, port, keepalive, clean_start=None):  # pylint: disable=too-many-arguments
     """ Connect to the broker. clean_start is only used by the v2-mqtt5 api variant. """
+    _validate_connection(host, port, keepalive)
     if api == API_V2_MQTT5:
         client.connect(host=host, port=port, keepalive=keepalive, clean_start=clean_start)
         return
@@ -561,6 +576,21 @@ def connect(client, api, *, host, port, keepalive, clean_start=None):  # pylint:
         raise ValueError(f"Invalid api, {api}.")
 
     client.connect(host, port, keepalive)
+
+
+def connect_async(client, api, *, host, port, keepalive, clean_start=None):  # pylint: disable=too-many-arguments
+    """ Start the connection; paho's network loop completes it and retries failures.
+
+        clean_start is only used by the v2-mqtt5 api variant. """
+    _validate_connection(host, port, keepalive)
+    if api == API_V2_MQTT5:
+        client.connect_async(host=host, port=port, keepalive=keepalive, clean_start=clean_start)
+        return
+
+    if api not in (API_V1, API_V2_MQTT3):
+        raise ValueError(f"Invalid api, {api}.")
+
+    client.connect_async(host, port, keepalive)
 
 
 def configure_reconnect_delay(client, *, min_delay, max_delay):

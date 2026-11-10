@@ -190,6 +190,72 @@ class TestConnect(unittest.TestCase):
         self.assertEqual(error.exception.args[0], 'Invalid api, invalid.')
 
 
+class TestConnectAsync(unittest.TestCase):
+    @staticmethod
+    def test_v1():
+        client = mock.Mock()
+
+        user.mqttcommon.connect_async(client, user.mqttcommon.API_V1, host='host', port=1883, keepalive=60)
+
+        client.connect_async.assert_called_once_with('host', 1883, 60)
+
+    @staticmethod
+    def test_v2_mqtt3():
+        client = mock.Mock()
+
+        user.mqttcommon.connect_async(client, user.mqttcommon.API_V2_MQTT3,
+                                      host='host', port=1883, keepalive=60)
+
+        client.connect_async.assert_called_once_with('host', 1883, 60)
+
+    @staticmethod
+    def test_v2_mqtt5():
+        client = mock.Mock()
+
+        user.mqttcommon.connect_async(client, user.mqttcommon.API_V2_MQTT5, host='host', port=1883,
+                                      keepalive=60, clean_start=True)
+
+        client.connect_async.assert_called_once_with(host='host', port=1883, keepalive=60, clean_start=True)
+
+    @staticmethod
+    def test_v2_mqtt5_without_clean_start():
+        client = mock.Mock()
+
+        user.mqttcommon.connect_async(client, user.mqttcommon.API_V2_MQTT5,
+                                      host='host', port=1883, keepalive=60)
+
+        client.connect_async.assert_called_once_with(host='host', port=1883, keepalive=60, clean_start=None)
+
+    def test_invalid_api(self):
+        with self.assertRaises(ValueError) as error:
+            user.mqttcommon.connect_async(mock.Mock(), 'invalid', host='host', port=1883, keepalive=60)
+
+        self.assertEqual(error.exception.args[0], 'Invalid api, invalid.')
+
+
+class TestConnectionValidation(unittest.TestCase):
+    def test_empty_host(self):
+        with self.assertRaises(ValueError) as error:
+            user.mqttcommon.connect_async(mock.Mock(), user.mqttcommon.API_V1,
+                                          host='', port=1883, keepalive=60)
+
+        self.assertEqual(error.exception.args[0], 'Invalid host.')
+
+    def test_invalid_port(self):
+        with self.assertRaises(ValueError) as error:
+            user.mqttcommon.connect_async(mock.Mock(), user.mqttcommon.API_V1,
+                                          host='host', port=0, keepalive=60)
+
+        self.assertEqual(error.exception.args[0], 'Invalid port number.')
+
+    def test_negative_keepalive(self):
+        with self.assertRaises(ValueError) as error:
+            user.mqttcommon.connect_async(mock.Mock(), user.mqttcommon.API_V1,
+                                          host='host', port=1883, keepalive=-1)
+
+        self.assertEqual(error.exception.args[0], 'Keepalive must be >=0.')
+
+
 class TestConfigureReconnectDelay(unittest.TestCase):
     @staticmethod
     def test_configure_reconnect_delay():
@@ -422,7 +488,7 @@ class TestApiLevel(unittest.TestCase):
     def test_api_level(self):
         # Bump deliberately when adding or changing shared surface, and raise the
         # consumers' required level in the same round.
-        self.assertEqual(user.mqttcommon.MQTTCOMMON_API, (1, 0))
+        self.assertEqual(user.mqttcommon.MQTTCOMMON_API, (1, 1))
 
 
 class TestLogger(unittest.TestCase):
