@@ -53,13 +53,14 @@ class TestCallbacks(unittest.TestCase):
         rc = random.randint(1, 10)
 
         with mock.patch('user.mqttsubscribe.TopicManager'):
-            SUT = MQTTSubscriber(config, mock_logger, api=user.mqttcommon.API_V2_MQTT3)
+            with mock.patch('user.mqttsubscribe.mqtt.Client'):
+                SUT = MQTTSubscriber(config, mock_logger, api=user.mqttcommon.API_V2_MQTT3)
 
-            SUT._on_connect(None, {}, flags, rc, None)
+                SUT._on_connect(None, {}, flags, rc, None)
 
-            self.assertEqual(SUT.logger.info.call_count, 17)
-            mock_logger.info.assert_any_call(72001, f"Connected with result code {rc}, {user.mqttsubscribe.mqtt.error_string(rc)}")
-            mock_logger.info.assert_any_call(72002, f"Connection flags: {flags}.")
+                self.assertEqual(SUT.logger.info.call_count, 17)
+                mock_logger.info.assert_any_call(72001, f"Connected with result code {rc}, {user.mqttsubscribe.mqtt.error_string(rc)}")
+                mock_logger.info.assert_any_call(72002, f"Connection flags: {flags}.")
 
     @staticmethod
     def test_on_disconnect():
