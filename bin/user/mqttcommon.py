@@ -48,6 +48,15 @@ SSL_PROTOCOLS = (
     ('sslv3', 'PROTOCOL_SSLv3')
 )
 
+# A build can drop the legacy PROTOCOL_TLSv1* constants, as OpenSSL 4 does, and
+# still speak TLS 1.2. PROTOCOL_TLS_CLIENT means 'TLS 1.2 or newer', which is
+# what the tlsv12 default intends, and is what paho itself falls back to.
+# Only the default is stood in for; an explicit legacy name that the build
+# cannot express stays unavailable.
+SSL_PROTOCOL_FALLBACKS = (
+    ('tlsv12', 'PROTOCOL_TLS_CLIENT'),
+)
+
 
 class Logger:  # pylint: disable=too-many-instance-attributes
     """ Manage the logging.
@@ -644,9 +653,10 @@ def configure_tls(client, tls_dict, *, format_error):
     if cert_reqs is None:
         raise ValueError(format_error('certs_required', tls_dict['certs_required']))
 
-    tls_version = _available_tls_versions().get(tls_dict.get('tls_version', 'tlsv12'))
+    tls_name = tls_dict.get('tls_version', 'tlsv12')
+    tls_version = _available_tls_versions().get(tls_name)
     if tls_version is None:
-        raise ValueError(format_error('tls_version', tls_dict['tls_version']))
+        raise ValueError(format_error('tls_version', tls_name))
 
     client.tls_set(ca_certs=_empty_as_unset(tls_dict.get('ca_certs')),
                    certfile=_none_as_unset(tls_dict.get('certfile')),
@@ -710,6 +720,13 @@ def _available_tls_versions():
     for key, constant in SSL_PROTOCOLS:
         try:
             valid_tls_versions[key] = getattr(ssl, constant)  # NOSONAR - legacy compatibility only
+        except AttributeError:
+            continue
+    for key, constant in SSL_PROTOCOL_FALLBACKS:
+        if key in valid_tls_versions:
+            continue
+        try:
+            valid_tls_versions[key] = getattr(ssl, constant)
         except AttributeError:
             continue
     return valid_tls_versions

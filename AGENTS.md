@@ -148,7 +148,7 @@ source .devenv
   `weewx-extensions/development-tools@v6`. The `module-name: 'mqttsubscribe'` input selects the
   module under test.
 - The master matrix covers WeeWX 5.0.0 / 5.5.2 / branch-master / branch-development ×
-  Python 3.9.13–3.14 — code must stay compatible with **Python 3.9 syntax**. A separate job tests
+  Python 3.9.13–3.15 — code must stay compatible with **Python 3.9 syntax**. A separate job tests
   `paho-mqtt==1.6.1`.
 - pylint: `pylint ./bin/user/mqttsubscribe.py ./bin/user/mqttcommon.py -r n` (CI's target via the
   `lint-paths` workflow input; locally `lint.sh` lints `bin/user/`). Config in `.pylintrc`. CI

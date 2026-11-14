@@ -11,6 +11,7 @@ import ssl
 import sys
 import threading
 import time
+import types
 import unittest
 
 import configobj
@@ -24,6 +25,11 @@ import user.mqttcommon
 def random_string():
     """ Return a string that is unique enough for test fixtures. """
     return f"string-{random.randint(100000, 999999)}"
+
+
+# The default, TLS 1.2. A build without the legacy constant, as OpenSSL 4 is,
+# reaches it through PROTOCOL_TLS_CLIENT, which means 'TLS 1.2 or newer'.
+TLS_1_2 = getattr(ssl, 'PROTOCOL_TLSv1_2', ssl.PROTOCOL_TLS_CLIENT)
 
 
 class TestSelectApi(unittest.TestCase):
@@ -407,7 +413,7 @@ class TestConfigureTLS(unittest.TestCase):
                                                certfile=None,
                                                keyfile=None,
                                                cert_reqs=ssl.CERT_REQUIRED,
-                                               tls_version=ssl.PROTOCOL_TLSv1_2,
+                                               tls_version=TLS_1_2,
                                                ciphers=None)
 
     @staticmethod
@@ -415,7 +421,7 @@ class TestConfigureTLS(unittest.TestCase):
         client = mock.Mock()
         tls_dict = {
             'certs_required': 'none',
-            'tls_version': 'tlsv1',
+            'tls_version': 'tls',
             'ca_certs': '/path/ca_certs',
             'certfile': '/path/certfile',
             'keyfile': '/path/keyfile',
@@ -428,7 +434,7 @@ class TestConfigureTLS(unittest.TestCase):
                                                certfile='/path/certfile',
                                                keyfile='/path/keyfile',
                                                cert_reqs=ssl.CERT_NONE,
-                                               tls_version=ssl.PROTOCOL_TLSv1,
+                                               tls_version=ssl.PROTOCOL_TLS,
                                                ciphers='ciphers')
 
     @staticmethod
@@ -441,7 +447,7 @@ class TestConfigureTLS(unittest.TestCase):
                                                certfile=None,
                                                keyfile=None,
                                                cert_reqs=ssl.CERT_REQUIRED,
-                                               tls_version=ssl.PROTOCOL_TLSv1_2,
+                                               tls_version=TLS_1_2,
                                                ciphers=None)
 
     @staticmethod
@@ -455,7 +461,7 @@ class TestConfigureTLS(unittest.TestCase):
                                                certfile=None,
                                                keyfile=None,
                                                cert_reqs=ssl.CERT_REQUIRED,
-                                               tls_version=ssl.PROTOCOL_TLSv1_2,
+                                               tls_version=TLS_1_2,
                                                ciphers=None)
 
     def test_invalid_certs_required(self):
@@ -475,6 +481,48 @@ class TestConfigureTLS(unittest.TestCase):
                                           format_error=TestConfigureTLS.format_error)
 
         self.assertEqual(error.exception.args[0], "Invalid 'tls_version', invalid.")
+
+    @staticmethod
+    def ssl_without(*missing):
+        """ The ssl module, as a build that does not provide the `missing` constants. """
+        stub = types.SimpleNamespace(**{name: getattr(ssl, name) for name in dir(ssl)})
+        for name in missing:
+            if hasattr(stub, name):
+                delattr(stub, name)
+        return stub
+
+    def test_tlsv12_falls_back_to_protocol_tls_client(self):
+        # OpenSSL 4 no longer provides PROTOCOL_TLSv1_2, and CI runs OpenSSL 3,
+        # so the build has to be stood in for.
+        client = mock.Mock()
+
+        with mock.patch('user.mqttcommon.ssl', self.ssl_without('PROTOCOL_TLSv1_2')):
+            user.mqttcommon.configure_tls(client, {}, format_error=TestConfigureTLS.format_error)
+
+        self.assertEqual(client.tls_set.call_args.kwargs['tls_version'], ssl.PROTOCOL_TLS_CLIENT)
+
+    def test_missing_default_version_reports_the_default_name(self):
+        client = mock.Mock()
+
+        with mock.patch('user.mqttcommon.ssl',
+                        self.ssl_without('PROTOCOL_TLSv1_2', 'PROTOCOL_TLS_CLIENT')):
+            with self.assertRaises(ValueError) as error:
+                user.mqttcommon.configure_tls(client, {}, format_error=TestConfigureTLS.format_error)
+
+        self.assertEqual(error.exception.args[0], "Invalid 'tls_version', tlsv12.")
+        client.tls_set.assert_not_called()
+
+    def test_fallback_does_not_mask_a_missing_legacy_version(self):
+        # Only the default is stood in for; an explicit legacy name stays unavailable.
+        client = mock.Mock()
+
+        with mock.patch('user.mqttcommon.ssl',
+                        self.ssl_without('PROTOCOL_TLSv1', 'PROTOCOL_TLSv1_2')):
+            with self.assertRaises(ValueError) as error:
+                user.mqttcommon.configure_tls(client, {'tls_version': 'tlsv1'},
+                                              format_error=TestConfigureTLS.format_error)
+
+        self.assertEqual(error.exception.args[0], "Invalid 'tls_version', tlsv1.")
 
 
 class TestPahoLogLevels(unittest.TestCase):

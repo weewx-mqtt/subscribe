@@ -23,6 +23,10 @@ from user.mqttsubscribe import MQTTSubscriber
 
 mock_client = None
 
+# The TLS 1.2 default. A build without the legacy constant, as OpenSSL 4 is,
+# reaches it through PROTOCOL_TLS_CLIENT, which means 'TLS 1.2 or newer'.
+TLS_1_2 = getattr(ssl, 'PROTOCOL_TLSv1_2', ssl.PROTOCOL_TLS_CLIENT)
+
 class MQTTSubscriberTest(MQTTSubscriber):
     def get_client(self, mqtt_options):
         return mock_client
@@ -299,7 +303,7 @@ class Testtls_configuration(unittest.TestCase):
                                                            certfile=None,
                                                            keyfile=None,
                                                            cert_reqs=ssl.CERT_REQUIRED,
-                                                           tls_version=ssl.PROTOCOL_TLSv1_2,
+                                                           tls_version=TLS_1_2,
                                                            ciphers=None)
 
     def test_missing_PROTOCOL_TLS(self):
