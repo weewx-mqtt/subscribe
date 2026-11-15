@@ -10,8 +10,6 @@ and archive records. Works as both a WeeWX driver and a WeeWX service.
   `MessageThrottle`. Change it in the [mqttcommon](https://github.com/weewx-mqtt/mqttcommon)
   repository and sync; that repository's `AGENTS.md` has the procedure and the `MQTTCOMMON_API`
   bump ritual.
-- `bin/user/MQTTSubscribe.py` is a deprecated backward-compat shim. Do not add features there; it
-  must stay a copy of `main()` plus thin subclasses.
 
 ## Layout
 
