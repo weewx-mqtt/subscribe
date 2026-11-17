@@ -40,7 +40,7 @@ export PYTHONPATH="$WEEWX_PYTHONPATH"   # == bin, or bin:../weewx/src
   `../weewx` when WeeWX is not installed (WeeWX v5 uses `src/`, older releases use `bin/`).
   `.env` is the plain IDE form (`PYTHONPATH=bin:../weewx/bin:../weewx/src`).
 - Helper scripts `unittests.sh`, `functests.sh`, `integtests.sh`, `e2etests.sh`, `alltests.sh`,
-  `coverage.sh`, `lint.sh`, `verify.sh` live in `~/weewx_dev/weewx-extensions/development-tools/tools`
+  `coverage.sh`, `lint.sh`, `verify.sh` live in `~/weewx_code/weewx-extensions/development-tools/tools`
   (added to `PATH` by `.devenv`, which also sets `WEEWX_PYTHONPATH`/`WEEWX_PYENV_VERSION`).
   Source `.devenv` before using them. `verify.sh` is the full pre-commit gate.
 
@@ -66,7 +66,7 @@ PYTHONPATH=bin:../weewx/bin:../weewx/src pytest bin/user/tests/e2e
 
 # Before committing: the same gate the CI runs.
 source .devenv
-~/weewx_dev/weewx-extensions/development-tools/tools/verify.sh
+~/weewx_code/weewx-extensions/development-tools/tools/verify.sh
 ```
 
 ## Architecture / behavior
