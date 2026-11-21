@@ -35,14 +35,16 @@ source .devenv
 export PYTHONPATH="$WEEWX_PYTHONPATH"   # == bin, or bin:../weewx/src
 ```
 
-- The module imports as `user.mqttsubscribe`, so `bin` must be on `PYTHONPATH`.
-- WeeWX is not vendored. CI pip-installs it; locally `.devenv` uses the sibling checkout
+- The module imports as `user.mqttsubscribe`, so `bin` must be on `PYTHONPATH`; the shared
+  `tools/devenv.sh` sets that once the weewx install state is known.
+- WeeWX is not vendored. CI pip-installs it; the shared `tools/devenv.sh` uses the sibling checkout
   `../weewx` when WeeWX is not installed (WeeWX v5 uses `src/`, older releases use `bin/`).
   `.env` is the plain IDE form (`PYTHONPATH=bin:../weewx/bin:../weewx/src`).
 - Helper scripts `unittests.sh`, `functests.sh`, `integtests.sh`, `e2etests.sh`, `alltests.sh`,
   `coverage.sh`, `lint.sh`, `verify.sh` live in `~/weewx_code/weewx-extensions/development-tools/tools`
-  (added to `PATH` by `.devenv`, which also sets `WEEWX_PYTHONPATH`/`WEEWX_PYENV_VERSION`).
-  Source `.devenv` before using them. `verify.sh` is the full pre-commit gate.
+  (added to `PATH` by the shared `devenv.sh` sourced from `.devenv`, which also sets
+  `WEEWX_PYTHONPATH` and the development default Python). Source `.devenv` before using them.
+  `verify.sh` is the full pre-commit gate.
 
 ## Commands
 
@@ -146,7 +148,7 @@ source .devenv
   `weewx-extensions/development-tools@v6`. The `module-name: 'mqttsubscribe'` input selects the
   module under test.
 - The master matrix covers WeeWX 5.0.0 / 5.5.2 / branch-master / branch-development ×
-  Python 3.9.13–3.15 — code must stay compatible with **Python 3.9 syntax**. A separate job tests
+  Python 3.9.13–3.15.2 — code must stay compatible with **Python 3.9 syntax**. A separate job tests
   `paho-mqtt==1.6.1`.
 - pylint: `pylint ./bin/user/mqttsubscribe.py ./bin/user/mqttcommon.py -r n` (CI's target via the
   `lint-paths` workflow input; locally `lint.sh` lints `bin/user/`). Config in `.pylintrc`. CI
