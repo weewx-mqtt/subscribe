@@ -1,3 +1,21 @@
+V3.4.0
+Enhancements:
+- Open SSL 4 and python dropped tls 1.2 constant. MQTTSubscribe now handles this gracefully.
+
+Fixes:
+- Removed MQTTSubscribe.py
+  It was conflicting with mqttsubscribe.py on OS's that do not support mixed cased file names.
+  
+- Internal
+  Build improvements
+
+V3.3.2
+Internal:
+- Bump version of MQTTCommon. No impact to end user.
+
+V3.3.1
+- Forgot to bump version when releasing 3.3.0
+
 V3.3.0
 Enhancements:
 - Add the 'wait_for_thread_shutdown' option to control how long shutdown waits for
