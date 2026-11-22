@@ -1,30 +1,39 @@
-V3.4.0
-Enhancements:
+# Changelog
+
+## [3.4.0]
+
+### Enhancements
+
 - Open SSL 4 and python dropped tls 1.2 constant. MQTTSubscribe now handles this gracefully.
 
-Fixes:
+### Fixed
+
 - Removed MQTTSubscribe.py
   It was conflicting with mqttsubscribe.py on OS's that do not support mixed cased file names.
-  
 - Internal
   Build improvements
 
-V3.3.2
-Internal:
+## [3.3.2]
+
+### Internal
+
 - Bump version of MQTTCommon. No impact to end user.
 
-V3.3.1
+## [3.3.1]
+
 - Forgot to bump version when releasing 3.3.0
 
-V3.3.0
-Enhancements:
+## [3.3.0]
+
+### Enhancements
+
 - Add the 'wait_for_thread_shutdown' option to control how long shutdown waits for
   the logger thread. The network loop is now stopped before the logger thread.
 - Added the 'log_mqtt' option, it replaces the 'log' option.
   'log' is deprecated, remains supported, and is scheduled to be removed in V4.
 - Fail loudly at import when an older 'user.mqttcommon' copy is loaded (an
   install-order overwrite by another weewx-mqtt extension).
- - Converge on a common logging format across all of the weewx-mqtt extensions. 
+ - Converge on a common logging format across all of the weewx-mqtt extensions.
  - Shutdown now logs a start line and a completion line, and shutdown lines are no
   longer attributed to the last archive record.
  - Startup environment lines use the shared 'Label: value.' format, and are logged only
@@ -43,8 +52,9 @@ Enhancements:
   clean-start are logged by name instead of their numeric paho values.
  - Command line output uses the shared wording. Help, prompts and errors have consistent
   spelling and punctuation, and '--version' prints '<program> <version>'.
- 
-Fixes:
+
+### Fixed
+
 - Detect deprecated options when a topic is configured as a field and in subfields.
 - Use the '[MQTTSubscribe]' section as a fallback when '[MQTTSubscribeDriver]' is missing.
 - Use the MQTT field name when 'expires_after' is configured without 'name'.
@@ -57,132 +67,171 @@ Fixes:
 - Keep cumulative totals separate for each topic so same-named fields do not share state.
 - Fix parse mode when '--top-level' is not specified.
 
-Internal:
+### Internal
+
 - Log messages are now queued and written by a dedicated logger thread.
   This makes logging thread safe and the throttled message state deterministic.
 
-V3.2.0
-Enhancements:
+## [3.2.0]
+
+### Enhancements
+
 - Rename MQTTSubscribe.py to mqttsubscribe.py (improved maintainability).
 - Name the threads that are created.
 - Move wiki to github pages.
 - Named the created threads (easier to debug).
 
-Fixes:
+### Fixed
+
 - Interactive reconfigure of MQTTSubscribeDriver (#13).
 - MQTT logging.
 
-Build Improvements:
+### Build Improvements
+
 - Remove old build code.
 - Add codacy to pipeline.
 
-V3.1.0
-Enhancements:
+## [3.1.0]
+
+### Enhancements
+
 - Caching now supported when binding to loop packets and generation of archive records is set to hardware (#178).
 - Ability to throttle log messages (#179)
   This is experimental and therefore has limited support and could be removed in the future.
 
-Fixes:
+### Fixed
+
 - Subfields now inherit the 'ignore' setting (#219)
 
-Build Improvements
+### Build Improvements
+
 - Build migrated from Appveyor to Github.
 - More and improved tests.
 
 python 3.9 or higher is now required.
 - Earlier versions might work, but are no longer tested and therefore not officially supported.
 
-V3.0.0
-*** IMPORTANT ***
+## [3.0.0]
+
+**IMPORTANT**
 - python 3.7 or higher is now required.
 - WeeWX 4.6.1 or higher is now required.
 - On startup, the MQTTSubscribe configuration is validated.
   By default, configuration errors will be logged. (Note, in prior versions some of these were silently ignored.)
   To 'fail' when there is an error and not start WeeWX, set 'stop_on_validation_errors = true'.
 - For more information see, https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Upgrade-Guide#upgrading-to-v3-from-v2
-  
-Enhancements:
+
+### Enhancements
+
 - Configuration mode
   Provide functions to export, update, and validate MQTTSubscribe's configuration.
   For more information see, https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Configurator-Mode.
-
 - Simulation mode
   Simulates running MQTTSubscribe as a WeeWX driver or service.
   For more information see, https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Simulator-mode
-
 - Parser mode
   Read a MQTT 'message' from a file, parse it and extract the data.
-  For more information see, https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Parser-mode 
-
+  For more information see, https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Parser-mode
 - MQTTSubscribe's configuration is now validated on startup.
 - Support for MQTT v5.
 - Support for paho-mqtt v2.
 - Version of paho-mqtt is now logged.
 
-V2.3.0
-Fixes:
+## [2.3.0]
+
+### Fixed
+
 - Cache (expires_after) is valid when bound to the archive record.
 
-Enhancements:
+### Enhancements
+
 - On a connection error, display text reason along with numerical return code.
 - Support more complex json messages.
   For an example see, https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/json-example#complex-json
 
-V2.2.3
-Fixes:
+## [2.2.3]
+
+### Fixed
+
 - Failing when binding is archive and caching is configured because RecordCache was not instantiated.
 - Fail when record generation is hardware, binding is loop, and caching is configured.
   As of now this configuration is not supported.
-Enhancements:
+
+### Enhancements
+
 - Align instructions to a package install. Package installs set the path.
   The use of $BIN_ROOT was misleading/wrong.
 - Additional/improved logging.
-Internal:
+
+### Internal
+
 - Revamped management of multiple python versions in local development enviroment.
 - Issues waiting for information from submitter are automatcally marked stale and closed.
 - Ability to configure python versions to not test with.
   Useful if Appveyor images are broken.
 - Update Appveyor build to work with WeeWX v5.
 
-V2.2.2
-Fixes:
-- When a subset of subfields is ignored, wrong values are extracted from message. 
+## [2.2.2]
 
-V2.2.1
-Fixes:
+### Fixed
+
+- When a subset of subfields is ignored, wrong values are extracted from message.
+
+## [2.2.1]
+
+### Fixed
+
 - Ability to opt in/out at the subfield level.
-Internal:
+
+### Internal
+
 - Migrate from nosetest to pytest.
 - Support for testing against Python 3.10.
 - Ability to not run tests against all Ubuntu and Python releases.
   Useful if Appveyor images are broken.
 
-V2.2.0
-Fixes:
+## [2.2.0]
+
+### Fixed
+
 - Support arrays in json payload
-Enhancements:
+
+### Enhancements
+
 - total_wrap_around configuration option (#164)
 
-V2.1.0
-Fixes:
+## [2.1.0]
+
+### Fixed
+
 - Fixed 'HW generation' mode to pull data off queue and discard data that is too old.
-Enhancements:
+
+### Enhancements
+
 - Support payload types by topic. (#113)
 - Support configuring reconnect time out options. (#123)
 - Support arrays in json payload (#148)
-Beta Enhancements:
+
+### Beta Enhancements
+
 - Option to create 'empty' loop packets when MQTT payloads arrive irregularly.
-Internal updates:
+
+### Internal
+
 - Improved logging.
 - Tests cleaned up.
 - Build cleanup.
 
-V2.0.0
-IMPORTANT
-Most deprecated options have been removed. 
+## [2.0.0]
+
+**IMPORTANT**
+
+Most deprecated options have been removed.
+
 For a list of options and replacements see, https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Options-removed-in-2.0.0
 
-Enhancements/Fixes:
+### Enhancements/Fixes
+
 - Collect wind data across loop boundaries. (#102)
 - Add conversion_error_to_none option.
 - Add option to ignore message based on field value.
@@ -192,23 +241,28 @@ Enhancements/Fixes:
 - Log topics subscribed to at the informational level.
 - Improve the exception logging.
 
-Fixes:
+### Fixed
+
 - Fix problem when caching fields that are renamed.
 - Ignore incoming data with a dateTime that is before the current interval start dateTime. (#121)
 - Fix an error when shutting down MQTTSubscribeService when it was not enabled.
 - Eliminate subscription to internal wind topic. (#119)
 
-Experimental/alpha functions (use at your own risk):
+### Experimental
+
 - Eliminated the need for 'use_topic_as_fieldname'. (#97)
 - Collect observations across messages into a packet. (#103)
 
-V1.6.2
-*** IMPORTANT ***
+## [1.6.2]
+
+**IMPORTANT**
 - All depecated options are planned to removed in the next release, 2.0.0.
   For a list of options and replacements see, https://github.com/bellrichm/WeeWX-MQTTSubscribe/wiki/Options-removed-in-2.0.0
-*** IMPORTANT ***
 
-Enhancements/Fixes
+**IMPORTANT**
+
+### Enhancements/Fixes
+
 - Catch and log connection exceptions.
 - Fix bug when logging connection failures.
 - Add TLS support.
@@ -217,35 +271,43 @@ Enhancements/Fixes
 - Ensure password does not get logged.
 - At startup, check that nececessay prerqs for convert data exists (#93).
 
-Internal Improvements
+### Internal
+
 - Run tests against WeeWX master.
 - Additional tests.
 - Remove dependency on WeeWX when running unit tests. (Still necessary for integration tests.)
 - Ability to run build locally.
 
-V1.6.1
-Enhancements/Fixes
+## [1.6.1]
+
+### Enhancements/Fixes
+
 - Fixed the cacheing of archive record fields when using the new field configuration.
-- Fixed the lookup of individual payloads when using the new field configuration. 
+- Fixed the lookup of individual payloads when using the new field configuration.
   It will always use the full topic and the 'name = 'option must be used if only a portion is the WeeWX name.
 - Fixed the MQTT native logging.
 - Changed the example MessageCallbackProvider to be a simple XML parser.
 - Added some unit tests for the example MessageCallbackProvider.
 
-Internal Improvements
+### Internal
+
 - Improved the integration test environment.
 - Improved the debugging environment.
 
-V1.6.0
-Enhancements/Fixes
+## [1.6.0]
+
+### Enhancements/Fixes
+
 - Move the configuration of fields under the [[topics]] section (#72)
   This also deprecates the [[archive_field_cache]], full_topic_fieldname, and contains_total.
   Note, the existing configuration options can still be used; but they will be removed in a future release.
 - Enable mapping the same incoming fieldname to a different WeeWX field based on MQTT message content.(#80)
 - Log MQTT connect, disconnect, and subscription API information at the info level instead debug level.
 
-V1.5.3
-Enhancements/Fixes
+## [1.5.3]
+
+### Enhancements/Fixes
+
 - Added support for ignoring fields (#63).
 - Support mixed units in json and keyword payloads (#58).
 - Support for full_topic_fieldname with json payload (#71).
@@ -257,43 +319,54 @@ Enhancements/Fixes
 - Add support for python 3.5.
 - Add support back to WeeWX 3.7.1.
 
-Internal Improvements
+### Internal
+
 - Better identification ('naming') of build jobs.
 - Improved test infrastructure to make debugging tests easier.
 - Improved the integration test infrastructure.
 - Run tests against multiple versions of Ubuntu.
 - Fixed sonar build error.
 
-V1.5.2
-Internal Improvements
+## [1.5.2]
+
+### Internal
+
 - Improved log messages to easily differentiate between loop and archive processing.
 - Automate testing and code analysis.
 
-V1.5.1
-Enhancements/Fixes
+## [1.5.1]
+
+### Enhancements/Fixes
+
 - Fixed bug with ignoring start and end times when queues are empty.
 
-Internal Improvements
+### Internal
+
 - Migrated from optparse to argparse (#37).
 - Improved linting support and additional linting cleanup.
 - Added function testing.
 
-V1.5.0
-Enhancements/Fixes
+## [1.5.0]
+
+### Enhancements/Fixes
+
 - Support fields that have cumulative values (#40).
 - Support converting data to types other than float (#41).
 - Fixed handling of wind data in 'individual' payloads (#44).
 - When running standalone, an option to print the verdion (#46).
 
-Internal Improvements
+### Internal
+
 - Remove dependency on six.
 - Improved logging when running standalone.
 - More consistent logging messages.
 - Remove use of assertDictContainsSubset (it has been deprecated).
 - Prototype functional testing.
 
-V1.4.0
-Enhancements/Fixes
+## [1.4.0]
+
+### Enhancements/Fixes
+
 - Added support for custom date/time formats in the MQTT payload (#29).
 - Fixed the log message when a callback throws an exception to include the callback name.
 - Improved python 3 support.
@@ -307,59 +380,76 @@ Updates to make development and debugging easier.
 - When running standalone, add host, topics, and callback method parameters to override the configuration file.
 - Update mqtt_test.py to run without a configuration file and for a limited number of records.
 
-V1.3.0
-Enhancements/Fixes:
-- Added support for nested/hierarchical json (#28). 
+## [1.3.0]
+
+### Enhancements/Fixes
+
+- Added support for nested/hierarchical json (#28).
   The delimiter between hierarchies can be chanhed with the flatten_delimiter option.
 - Cleaned up the code.
 - Cleaned up the development enviroment and added some documentation.
 
-V1.2.1
-Enhancements/Fixes:
+## [1.2.1]
+
+### Enhancements/Fixes
+
 - Fixed #30.
 - Added ability to configure topic to subscribe to.
 
-V1.2.0
-Enhancements/Fixes:
+## [1.2.0]
+
+### Enhancements/Fixes
+
 - (ignore_start_time/ignore_end_time) Support ignoring the datetime that is in the MQTT payload.
 - (use_server_time) Support using the WeeWX server datetime instead of the datetime in the MQTT payload.
 - (adjust_start_time) Support adding MQTT data to the current packet when the MQTT is X seconds before the previous packet's datetime. This replaces the overlap option.
-- (adjust_end_time) Support adding MQTT data to the current packet when the MQTT is X seconds after the 
-  current packet's datetime. 
+- (adjust_end_time) Support adding MQTT data to the current packet when the MQTT is X seconds after the
+  current packet's datetime.
 
-V1.1.3
-Enhancements/Fixes:
+## [1.1.3]
+
+### Enhancements/Fixes
+
 - Skip packets that have datetime less than the datetime of the previous packet.
 
-Internal improvements:
+### Internal
+
 - Eliminate the wind queue.
 - Additional logging.
 
-V1.1.2
-Enhancements/Fixes:
+## [1.1.2]
+
+### Enhancements/Fixes
+
 - Added closePort method for shutting down the driver.
 - Plumbed in QOS and persistent session code. This is experimental/educational and is not ready for use.
 
-Internal improvements:
+### Internal
+
 - Finished logger class implementation.
 - Cleaned up tests.
 
-V1.1.1
-Enhancements/Fixes:
+## [1.1.1]
+
+### Enhancements/Fixes
+
 - Better support for the on_message callback provider, including an example.
 
-V1.1.0
-Enhancements/Fixes:
+## [1.1.0]
+
+### Enhancements/Fixes
+
 - Support 'keyword' payload type. For example: (field1=value1, field2=value2).
 - Support subscribing to multiple topics.
-- Support using the full topic as the observation name with payload type 'individual'. This name can then be mapped to the appropriate WeeWX name. 
+- Support using the full topic as the observation name with payload type 'individual'. This name can then be mapped to the appropriate WeeWX name.
 - Improved/fixed handling of multi-level topics with payload type 'individual' so that the rightmost topic is the observation name.
 - Improved/fixed the processing of wind data for payload type 'individual'.
 - Support installing the service as an extension via wee_extension
 - Support configuration the driver via wee_config.
 - (BETA) Support message callback provider. Ability to replace the MQTT on_message callback with custom method.
 
-Internal improvements:
+### Internal
+
 - Additional documentation.
 - Added tests.
 - Refactor to eliminate need for multiple inheritance.

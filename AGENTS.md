@@ -137,7 +137,7 @@ source .devenv
   `MQTTSubscribeConfiguration.default_config` (it raises `19001` if an entry goes stale).
   `mqttsubscribe.example.conf` is generated output; regenerate rather than hand-edit.
 - `VERSION` is duplicated in `bin/user/mqttsubscribe.py` and `install.py` — keep in sync.
-- `changes.txt` is the changelog.
+- `CHANGELOG.md` is the changelog.
 - Releases are tagged by `.github/workflows/versioning.yml` (Actions-Us/actions-tagger) on
   GitHub release publish.
 
