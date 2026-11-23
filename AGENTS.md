@@ -46,6 +46,9 @@ export PYTHONPATH="$WEEWX_PYTHONPATH"   # == bin, or bin:../weewx/src
   `WEEWX_PYTHONPATH` and the development default Python). Source `.devenv` before using them.
   `verify.sh` is the full pre-commit gate.
 
+The development shell runs the oldest supported Python, from `supported-pythons` via the shared
+`devenv.sh`, so a newer language feature fails locally rather than in the oldest CI cell.
+
 ## Commands
 
 Four suites under `bin/user/tests/{unit,func,integ,e2e}`. Run one suite. Every suite has its own
