@@ -166,6 +166,36 @@ class TestHelperFunctions(unittest.TestCase):
 
         self.assertEqual(error.exception.args[0], f"Unknown topic, {topic2}.")
 
+    def test_get_topic_config(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        topic = random_string()
+        config_dict = {topic: {'contains_total': True}}
+
+        config = configobj.ConfigObj(config_dict)
+
+        SUT = TopicManager(None, config, mock_logger)
+
+        topic_config = SUT.get_topic_config(topic)
+        self.assertIn(topic, topic_config['fields'])
+        self.assertEqual(SUT.get_fields(topic), topic_config['fields'])
+        self.assertEqual(SUT.get_unit_system(topic), topic_config['unit_system'])
+        self.assertEqual(SUT.get_message_dict(topic), topic_config[SUT.message_config_name])
+
+    def test_get_topic_config_unknown_topic(self):
+        mock_logger = mock.Mock(spec=Logger)
+
+        topic = random_string()
+        config = configobj.ConfigObj({topic: {}})
+
+        SUT = TopicManager(None, config, mock_logger)
+
+        unknown_topic = random_string()
+        with self.assertRaises(ValueError) as error:
+            SUT.get_topic_config(unknown_topic)
+
+        self.assertEqual(error.exception.args[0], f"Unknown topic, {unknown_topic}.")
+
 class TestConfigureMessage(unittest.TestCase):
     def setUp(self):
         # reset stubs for every test

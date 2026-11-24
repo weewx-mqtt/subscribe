@@ -1169,52 +1169,55 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         """ Get the MQTT data after being accumulated. """
         return self.topic_queues.get_accumulated_data(queue, start_time, end_time, units)
 
+    def get_topic_config(self, topic):
+        """ Get the resolved topic configuration. """
+        return self.subscribed_topics[self._lookup_topic(topic)]
+
     def get_fields(self, topic):
         """ Get the fields. """
-        return self._get_value('fields', topic)
+        return self.get_topic_config(topic)['fields']
 
     def get_filters(self, topic):
         """ Get the filters. """
-        return self._get_value('filters', topic)
+        return self.get_topic_config(topic)['filters']
 
     def get_qos(self, topic):
         """ Get the QOS. """
-        return self._get_value('qos', topic)
+        return self.get_topic_config(topic)['qos']
 
     def get_topic_tail_is_fieldname(self, topic):
         """ Get the topic_tail_is_fieldname. """
-        return self._get_value('topic_tail_is_fieldname', topic)
+        return self.get_topic_config(topic)['topic_tail_is_fieldname']
 
     def get_message_dict(self, topic):
         """ Get the type. """
-        return self._get_value(self.message_config_name, topic)
+        return self.get_topic_config(topic)[self.message_config_name]
 
     def get_unit_system(self, topic):
         """ Get the unit system """
-        return self._get_value('unit_system', topic)
+        return self.get_topic_config(topic)['unit_system']
 
     def get_msg_id_field(self, topic):
         """ Get the msg_id_field value """
-        return self._get_value('msg_id_field', topic)
+        return self.get_topic_config(topic)['msg_id_field']
 
     def get_ignore_value(self, topic):
         """ Get the ignore value """
-        return self._get_value('ignore', topic)
+        return self.get_topic_config(topic)['ignore']
 
     def get_conversion_func(self, topic):
         """ Get the ignore value """
-        return self._get_value('conversion_func', topic)
+        return self.get_topic_config(topic)['conversion_func']
 
     def get_fields_ignoring_msg_id(self, topic):
         """ Get the ignore_msg_id_field value """
-        return self._get_value('fields_ignoring_msg_id', topic)
+        return self.get_topic_config(topic)['fields_ignoring_msg_id']
 
     def _get_queue(self, topic):
-        return self._get_value('queue', topic)
+        return self.get_topic_config(topic)['queue']
 
     def _get_value(self, value, topic):
-        subscribed_topic = self._lookup_topic(topic)
-        return self.subscribed_topics[subscribed_topic][value]
+        return self.get_topic_config(topic)[value]
 
     def _lookup_topic(self, topic):
         if topic in self.topics:
@@ -1226,6 +1229,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
                 return subscribed_topic
 
         raise ValueError(TopicManager.log_messages[59005].format(topic=topic))
+
 
 class TopicQueues:  # pylint: disable=protected-access
     """ The runtime side of the queues: the operations the callback providers
