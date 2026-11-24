@@ -30,6 +30,25 @@ def to_float(x):
         x = None
     return float(x) if x is not None else None
 
+
+def create_topic_config(message_dict=None, fields=None, **kwargs):
+    ''' Build a resolved topic config for mocking TopicManager.get_topic_config. '''
+    config = {
+        'message': message_dict if message_dict is not None else {'type': 'individual'},
+        'fields': fields if fields is not None else {},
+        'ignore': False,
+        'conversion_func': {
+            'source': 'lambda x: to_float(x)',
+            'compiled': eval('lambda x: to_float(x)')  # nosec B307 - example expression pylint: disable=eval-used
+        },
+        'unit_system': 1,
+        'filters': {},
+        'msg_id_field': None,
+        'fields_ignoring_msg_id': [],
+    }
+    config.update(kwargs)
+    return config
+
 class Msg:
     # pylint: disable=too-few-public-methods
     def __init__(self, topic, payload, qos, retain):
@@ -304,10 +323,9 @@ class TestKeywordload(unittest.TestCase):
     def test_payload_empty(self):
         mock_logger = mock.Mock(spec=Logger)
         mock_manager = mock.Mock(spec=TopicManager)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_message_dict.return_value = {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='}
-
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='})
+        mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(self.message_handler_config_dict), mock_logger, mock_manager)
@@ -323,16 +341,9 @@ class TestKeywordload(unittest.TestCase):
     def test_payload_bad_data(self):
         mock_logger = mock.Mock(spec=Logger)
         mock_manager = mock.Mock(spec=TopicManager)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_ignore_value.return_value = False
-        mock_manager.get_conversion_func.return_value = {
-            'source': 'lambda x: to_float(x)',
-            'compiled': eval('lambda x: to_float(x)')
-        }
-        mock_manager.get_fields.return_value = {}
-        mock_manager.get_message_dict.return_value = {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='}
-
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='}, fields={})
+        mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(self.message_handler_config_dict), mock_logger, mock_manager)
@@ -348,16 +359,9 @@ class TestKeywordload(unittest.TestCase):
     def test_payload_missing_delimiter(self):
         mock_logger = mock.Mock(spec=Logger)
         mock_manager = mock.Mock(spec=TopicManager)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_ignore_value.return_value = False
-        mock_manager.get_conversion_func.return_value = {
-            'source': 'lambda x: to_float(x)',
-            'compiled': eval('lambda x: to_float(x)')
-        }
-        mock_manager.get_fields.return_value = {}
-        mock_manager.get_message_dict.return_value = {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='}
-
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='}, fields={})
+        mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(self.message_handler_config_dict), mock_logger, mock_manager)
@@ -373,12 +377,9 @@ class TestKeywordload(unittest.TestCase):
     def test_payload_missing_separator(self):
         mock_logger = mock.Mock(spec=Logger)
         mock_manager = mock.Mock(spec=TopicManager)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_ignore_value.return_value = False
-        mock_manager.get_fields.return_value = {}
-        mock_manager.get_message_dict.return_value = {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='}
-
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='}, fields={})
+        mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(self.message_handler_config_dict), mock_logger, mock_manager)
@@ -394,16 +395,8 @@ class TestKeywordload(unittest.TestCase):
     def test_payload_missing_dateTime(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='}, fields={})
         mock_manager.message_config_name = 'message'
 
         mock_manager.subscribed_topics = {}
@@ -430,16 +423,8 @@ class TestKeywordload(unittest.TestCase):
     def test_payload_missing_units(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='}, fields={})
         mock_manager.message_config_name = 'message'
 
         mock_manager.subscribed_topics = {}
@@ -465,16 +450,8 @@ class TestKeywordload(unittest.TestCase):
     def test_payload_good(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='}, fields={})
         mock_manager.message_config_name = 'message'
 
         mock_manager.subscribed_topics = {}
@@ -501,9 +478,9 @@ class TestKeywordload(unittest.TestCase):
     def test_ignore_default_true(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_message_dict.return_value = {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='}
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='}, ignore=True)
+        mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
         message_handler_config_dict = {}
@@ -536,16 +513,8 @@ class TestKeywordload(unittest.TestCase):
     def test_ignore_default_true_ignore_field_false(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='}, fields={})
         mock_manager.message_config_name = 'message'
 
         mock_manager.subscribed_topics = {}
@@ -589,16 +558,8 @@ class TestKeywordload(unittest.TestCase):
     def test_ignore_field_true(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'keyword', 'keyword_delimiter': ',', 'keyword_separator': '='}, fields={})
         mock_manager.message_config_name = 'message'
 
         mock_manager.subscribed_topics = {}
@@ -649,9 +610,9 @@ class TestJsonPayload(unittest.TestCase):
     def test_invalid_json(self):
         mock_logger = mock.Mock(spec=Logger)
         mock_manager = mock.Mock(spec=TopicManager)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_message_dict.return_value = {'type': 'json', 'flatten_delimiter': '_'}
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'})
+        mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(self.message_handler_config_dict), mock_logger, mock_manager)
@@ -667,13 +628,9 @@ class TestJsonPayload(unittest.TestCase):
     def test_empty_payload(self):
         mock_logger = mock.Mock(spec=Logger)
         mock_manager = mock.Mock(spec=TopicManager)
-        mock_manager.get_conversion_func.return_value = {
-            'source': 'lambda x: to_float(x)',
-            'compiled': eval('lambda x: to_float(x)')
-        }
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_message_dict.return_value = {'type': 'json', 'flatten_delimiter': '_'}
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'})
+        mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(self.message_handler_config_dict), mock_logger, mock_manager)
@@ -686,19 +643,8 @@ class TestJsonPayload(unittest.TestCase):
     def test_missing_dateTime(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': {},
-            'msg_id_field': None,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={}, filters={}, msg_id_field=None, fields_ignoring_msg_id=[])
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -718,19 +664,8 @@ class TestJsonPayload(unittest.TestCase):
     def test_missing_units(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': {},
-            'msg_id_field': None,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={}, filters={}, msg_id_field=None, fields_ignoring_msg_id=[])
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -750,19 +685,8 @@ class TestJsonPayload(unittest.TestCase):
     def test_payload_good(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': {},
-            'msg_id_field': None,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={}, filters={}, msg_id_field=None, fields_ignoring_msg_id=[])
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -788,19 +712,8 @@ class TestJsonPayload(unittest.TestCase):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
         msg_id_field = random_string()
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': {},
-            'msg_id_field': msg_id_field,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={}, msg_id_field=msg_id_field, fields_ignoring_msg_id=[])
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -832,19 +745,8 @@ class TestJsonPayload(unittest.TestCase):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
         msg_id_field = random_string()
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': {},
-            'msg_id_field': msg_id_field,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={}, msg_id_field=msg_id_field, fields_ignoring_msg_id=[])
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -879,19 +781,8 @@ class TestJsonPayload(unittest.TestCase):
     def test_payload_array_too_large(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': {},
-            'msg_id_field': None,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={}, filters={}, msg_id_field=None, fields_ignoring_msg_id=[])
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -926,19 +817,8 @@ class TestJsonPayload(unittest.TestCase):
     def test_payload_array_too_small(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': {},
-            'msg_id_field': None,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={}, filters={}, msg_id_field=None, fields_ignoring_msg_id=[])
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -976,19 +856,8 @@ class TestJsonPayload(unittest.TestCase):
     def test_payload_array_nit_configured(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': {},
-            'msg_id_field': None,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={}, filters={}, msg_id_field=None, fields_ignoring_msg_id=[])
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -1017,19 +886,8 @@ class TestJsonPayload(unittest.TestCase):
     def test_payload_array_good(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': {},
-            'msg_id_field': None,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={}, filters={}, msg_id_field=None, fields_ignoring_msg_id=[])
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -1066,19 +924,8 @@ class TestJsonPayload(unittest.TestCase):
     def test_payload_nested(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': {},
-            'msg_id_field': None,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={}, filters={}, msg_id_field=None, fields_ignoring_msg_id=[])
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -1112,19 +959,8 @@ class TestJsonPayload(unittest.TestCase):
     def test_payload_nested_rename(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {'nested01_inTemp': {'name': 'inTemp'}},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': {},
-            'msg_id_field': None,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={'nested01_inTemp': {'name': 'inTemp'}})
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -1163,22 +999,10 @@ class TestJsonPayload(unittest.TestCase):
     def test_ignore_default_true(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {},
-            'ignore': True,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': {},
-            'msg_id_field': None,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={}, ignore=True)
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
-        mock_manager.get_filters.return_value = {}
 
         message_handler_config_dict = {}
         message_handler_config_dict['type'] = 'json'
@@ -1205,19 +1029,8 @@ class TestJsonPayload(unittest.TestCase):
     def test_ignore_default_true_ignore_field_false(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': {},
-            'msg_id_field': None,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={}, filters={}, msg_id_field=None, fields_ignoring_msg_id=[])
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -1259,19 +1072,8 @@ class TestJsonPayload(unittest.TestCase):
     def test_ignore_field_true(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {'inTemp': {'ignore': True}},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': {},
-            'msg_id_field': None,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={'inTemp': {'ignore': True}})
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -1299,19 +1101,8 @@ class TestJsonPayload(unittest.TestCase):
         filters = {lookup_key: [self.payload_dict['outTemp']]}
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'json', 'flatten_delimiter': '_'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'unit_system': 1,
-            'filters': filters,
-            'msg_id_field': None,
-            'fields_ignoring_msg_id': [],
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'json', 'flatten_delimiter': '_'}, fields={}, filters=filters)
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -1365,15 +1156,9 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
     def test_bad_payload(self):
         mock_logger = mock.Mock(spec=Logger)
         mock_manager = mock.Mock(spec=TopicManager)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_ignore_value.return_value = False
-        mock_manager.get_conversion_func.return_value = {
-            'source': 'lambda x: to_float(x)',
-            'compiled': eval('lambda x: to_float(x)')
-        }
-        mock_manager.get_fields.return_value = {}
-        mock_manager.get_message_dict.return_value = {'type': 'individual'}
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'individual'}, topic_tail_is_fieldname=False)
+        mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(self.message_handler_config_dict), mock_logger, mock_manager)
@@ -1389,15 +1174,9 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
     def test_empty_payload(self):
         mock_logger = mock.Mock(spec=Logger)
         mock_manager = mock.Mock(spec=TopicManager)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_ignore_value.return_value = False
-        mock_manager.get_conversion_func.return_value = {
-            'source': 'lambda x: to_float(x)',
-            'compiled': eval('lambda x: to_float(x)')
-        }
-        mock_manager.get_fields.return_value = {}
-        mock_manager.get_message_dict.return_value = {'type': 'individual'}
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'individual'}, topic_tail_is_fieldname=False)
+        mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(self.message_handler_config_dict), mock_logger, mock_manager)
@@ -1413,17 +1192,8 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
     def test_None_payload(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'individual'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'topic_tail_is_fieldname': False,
-            'unit_system': 1,
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'individual'}, topic_tail_is_fieldname=False)
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -1439,17 +1209,8 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
     def test_unicode_topic(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'individual'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'topic_tail_is_fieldname': False,
-            'unit_system': 1,
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'individual'}, topic_tail_is_fieldname=False)
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -1473,24 +1234,8 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
     def test_single_topic(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_ignore_value.return_value = False
-        mock_manager.get_conversion_func.return_value = {
-            'source': 'lambda x: to_float(x)',
-            'compiled': eval('lambda x: to_float(x)')
-        }
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'individual'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'topic_tail_is_fieldname': False,
-            'unit_system': 1,
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'individual'}, topic_tail_is_fieldname=False)
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -1507,25 +1252,8 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
     def test_multiple_topics(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_ignore_value.return_value = False
-        mock_manager.get_conversion_func.return_value = {
-            'source': 'lambda x: to_float(x)',
-            'compiled': eval('lambda x: to_float(x)')
-        }
-        mock_manager.get_topic_tail_is_fieldname.return_value = False
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'individual'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'topic_tail_is_fieldname': False,
-            'unit_system': 1,
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'individual'}, topic_tail_is_fieldname=False)
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -1545,25 +1273,8 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
     def test_two_topics(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_ignore_value.return_value = False
-        mock_manager.get_conversion_func.return_value = {
-            'source': 'lambda x: to_float(x)',
-            'compiled': eval('lambda x: to_float(x)')
-        }
-        mock_manager.get_topic_tail_is_fieldname.return_value = False
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'individual'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'topic_tail_is_fieldname': False,
-            'unit_system': 1,
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'individual'}, topic_tail_is_fieldname=False)
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -1583,9 +1294,9 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
     def test_ignore_default_true(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_message_dict.return_value = {'type': 'individual'}
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'individual'}, topic_tail_is_fieldname=False, ignore=True)
+        mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
         message_handler_config_dict = {}
@@ -1609,24 +1320,8 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
     def test_ignore_default_true_ignore_field_false(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_ignore_value.return_value = False
-        mock_manager.get_conversion_func.return_value = {
-            'source': 'lambda x: to_float(x)',
-            'compiled': eval('lambda x: to_float(x)')
-        }
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'individual'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'topic_tail_is_fieldname': False,
-            'unit_system': 1,
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'individual'}, topic_tail_is_fieldname=False)
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -1656,9 +1351,9 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
     def test_ignore_field_true(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_message_dict.return_value = {'type': 'individual'}
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'individual'}, topic_tail_is_fieldname=False)
+        mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
         message_handler_config_dict = {}
@@ -1669,6 +1364,7 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
         field = {}
         field['ignore'] = True
         fields[self.single_topic] = field
+        mock_manager.get_topic_config.return_value['fields'] = fields
         message_handler_config_dict['fields'] = fields
 
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(message_handler_config_dict), mock_logger, mock_manager)
@@ -1702,15 +1398,9 @@ class TestIndividualPayloadFullTopicFieldName(unittest.TestCase):
     def test_bad_payload(self):
         mock_logger = mock.Mock(spec=Logger)
         mock_manager = mock.Mock(spec=TopicManager)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_ignore_value.return_value = False
-        mock_manager.get_conversion_func.return_value = {
-            'source': 'lambda x: to_float(x)',
-            'compiled': eval('lambda x: to_float(x)')
-        }
-        mock_manager.get_fields.return_value = {}
-        mock_manager.get_message_dict.return_value = {'type': 'individual'}
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'individual'}, topic_tail_is_fieldname=False)
+        mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(self.message_handler_config_dict), mock_logger, mock_manager)
@@ -1726,15 +1416,9 @@ class TestIndividualPayloadFullTopicFieldName(unittest.TestCase):
     def test_empty_payload(self):
         mock_logger = mock.Mock(spec=Logger)
         mock_manager = mock.Mock(spec=TopicManager)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_ignore_value.return_value = False
-        mock_manager.get_conversion_func.return_value = {
-            'source': 'lambda x: to_float(x)',
-            'compiled': eval('lambda x: to_float(x)')
-        }
-        mock_manager.get_fields.return_value = {}
-        mock_manager.get_message_dict.return_value = {'type': 'individual'}
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'individual'}, topic_tail_is_fieldname=False)
+        mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(self.message_handler_config_dict), mock_logger, mock_manager)
@@ -1749,17 +1433,8 @@ class TestIndividualPayloadFullTopicFieldName(unittest.TestCase):
     def test_None_payload(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'individual'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'topic_tail_is_fieldname': False,
-            'unit_system': 1,
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'individual'}, topic_tail_is_fieldname=False)
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
@@ -1775,24 +1450,8 @@ class TestIndividualPayloadFullTopicFieldName(unittest.TestCase):
     def test_single_topic(self):
         mock_manager = mock.Mock(spec=TopicManager)
         mock_logger = mock.Mock(spec=Logger)
-        mock_manager.get_msg_id_field.return_value = None
-        mock_manager.get_fields_ignoring_msg_id.return_value = []
-        mock_manager.get_ignore_value.return_value = False
-        mock_manager.get_conversion_func.return_value = {
-            'source': 'lambda x: to_float(x)',
-            'compiled': eval('lambda x: to_float(x)')
-        }
-        mock_manager.get_topic_config.return_value = {
-            'message': {'type': 'individual'},
-            'fields': {},
-            'ignore': False,
-            'conversion_func': {
-                'source': 'lambda x: to_float(x)',
-                'compiled': eval('lambda x: to_float(x)')
-            },
-            'topic_tail_is_fieldname': False,
-            'unit_system': 1,
-        }
+        mock_manager.get_topic_config.return_value = create_topic_config(
+            {'type': 'individual'}, topic_tail_is_fieldname=False)
         mock_manager.message_config_name = 'message'
         mock_manager.subscribed_topics = {}
 
