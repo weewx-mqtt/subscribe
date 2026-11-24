@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import contextlib
 import helpers
 import mock
 
@@ -25,6 +26,44 @@ mock_client = None
 # reaches it through PROTOCOL_TLS_CLIENT, which means 'TLS 1.2 or newer'.
 TLS_1_2 = getattr(ssl, 'PROTOCOL_TLSv1_2', ssl.PROTOCOL_TLS_CLIENT)
 
+
+def create_subscriber_config(**overrides):
+    """ Build the minimal subscriber config, with per-test overrides. """
+    config_dict = {
+        'message_callback': {},
+        'topics': {random_string(): {}},
+    }
+    config_dict.update(overrides)
+    return configobj.ConfigObj(config_dict)
+
+
+@contextlib.contextmanager
+def patched_subscriber(client=None):
+    """ Patch the subscriber's collaborators and install the module-level mock client. """
+    global mock_client
+    mock_client = client if client is not None else mock.Mock()
+    with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
+        with mock.patch('user.mqttsubscribe.TopicManager'):
+            yield mock_client
+
+
+def assert_missing_ssl_constant(test_case, config_option, value, constant_name):
+    """ Hiding an ssl constant must make the subscriber reject the matching TLS option. """
+    config = create_subscriber_config(tls={'ca_certs': random_string(), config_option: value})
+    mock_logger = mock.Mock(spec=Logger)
+    with patched_subscriber():
+        try:
+            saved_constant = getattr(ssl, constant_name)
+            delattr(ssl, constant_name)
+        except AttributeError:
+            saved_constant = None
+        with test_case.assertRaises(ValueError) as error:
+            MQTTSubscriberTest(config, mock_logger)
+        if saved_constant:
+            setattr(ssl, constant_name, saved_constant)
+        test_case.assertEqual(error.exception.args[0], f"Invalid '{config_option}', {value}.")
+
+
 class MQTTSubscriberTest(MQTTSubscriber):
     def get_client(self, mqtt_options):
         return mock_client
@@ -44,14 +83,7 @@ class TestInitialization(BaseTestClass):
         global mock_client
         mock_logger = mock.Mock(spec=Logger)
 
-        config_dict = {
-            'message_callback': {},
-            'topics': {
-                random_string(): {}
-            }
-        }
-
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config()
 
         exception = Exception("Connect exception.")
 
@@ -80,14 +112,7 @@ class TestInitialization(BaseTestClass):
 
     def test_missing_archive_topic_in_topics(self):
         archive_topic = random_string()
-        config_dict = {
-            'archive_topic': archive_topic,
-            'message_callback': {},
-            'topics': {
-                random_string(): {}
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(archive_topic=archive_topic)
 
         mock_logger = mock.Mock(spec=Logger)
         with self.assertRaises(ValueError) as error:
@@ -98,132 +123,63 @@ class TestInitialization(BaseTestClass):
 
     @staticmethod
     def test_username_None():
-        global mock_client
         host = 'host'
         port = random.randint(1000, 9999)
         keepalive = random.randint(1, 10)
-        config_dict = {
-            'host': host,
-            'keepalive': keepalive,
-            'port': port,
-            'username': None,
-            'password': random_string(),
-            'archive_topic': None,
-            'message_callback': {},
-            'topics': {
-                random_string(): {}
-            }
-        }
-
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(host=host, keepalive=keepalive, port=port, username=None, password=random_string(), archive_topic=None)
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                SUT = MQTTSubscriberTest(config, mock_logger)
-
-                SUT.client.username_pw_set.assert_not_called()
-                SUT.client.connect.assert_called_once()
+        with patched_subscriber():
+            SUT = MQTTSubscriberTest(config, mock_logger)
+            SUT.client.username_pw_set.assert_not_called()
+            SUT.client.connect.assert_called_once()
 
     @staticmethod
     def test_password_None():
-        global mock_client
         host = 'host'
         port = random.randint(1000, 9999)
         keepalive = random.randint(1, 10)
-        config_dict = {
-            'host': host,
-            'keepalive': keepalive,
-            'port': port,
-            'username': random_string(),
-            'password': None,
-            'archive_topic': None,
-            'message_callback': {},
-            'topics': {
-                random_string(): {}
-            }
-        }
-
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(host=host, keepalive=keepalive, port=port, username=random_string(), password=None, archive_topic=None)
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                SUT = MQTTSubscriberTest(config, mock_logger)
-
-                SUT.client.username_pw_set.assert_not_called()
-                SUT.client.connect.assert_called()
+        with patched_subscriber():
+            SUT = MQTTSubscriberTest(config, mock_logger)
+            SUT.client.username_pw_set.assert_not_called()
+            SUT.client.connect.assert_called()
 
     @staticmethod
     def test_username_and_password_None():
-        global mock_client
         host = 'host'
         port = random.randint(1000, 9999)
         keepalive = random.randint(1, 10)
-        config_dict = {
-            'host': host,
-            'keepalive': keepalive,
-            'port': port,
-            'username': None,
-            'password': None,
-            'archive_topic': None,
-            'message_callback': {},
-            'topics': {
-                random_string(): {}
-            }
-        }
-
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(host=host, keepalive=keepalive, port=port, username=None, password=None, archive_topic=None)
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                SUT = MQTTSubscriberTest(config, mock_logger)
-
-                SUT.client.username_pw_set.assert_not_called()
-                SUT.client.connect.assert_called_once()
+        with patched_subscriber():
+            SUT = MQTTSubscriberTest(config, mock_logger)
+            SUT.client.username_pw_set.assert_not_called()
+            SUT.client.connect.assert_called_once()
 
     @staticmethod
     def test_username_and_password_set():
-        global mock_client
         host = 'host'
         port = random.randint(1000, 9999)
         keepalive = random.randint(1, 10)
         username = random_string()
         password = random_string()
-        config_dict = {
-            'host': host,
-            'keepalive': keepalive,
-            'port': port,
-            'username': username,
-            'password': password,
-            'archive_topic': None,
-            'message_callback': {},
-            'topics': {
-                random_string(): {}
-            }
-        }
-
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(host=host, keepalive=keepalive, port=port, username=username, password=password, archive_topic=None)
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                SUT = MQTTSubscriberTest(config, mock_logger)
-
-                SUT.client.username_pw_set.assert_called_once_with(username, password)
-                SUT.client.connect.assert_called_once()
+        with patched_subscriber():
+            SUT = MQTTSubscriberTest(config, mock_logger)
+            SUT.client.username_pw_set.assert_called_once_with(username, password)
+            SUT.client.connect.assert_called_once()
 
     def test_clean_start_not_valid(self):
-        global mock_client
         clean_start = random_string()
         config_dict = {
             'clean_start': clean_start,
@@ -236,295 +192,57 @@ class TestInitialization(BaseTestClass):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                with self.assertRaises(ValueError) as error:
+        with patched_subscriber():
+            with self.assertRaises(ValueError) as error:
 
-                    MQTTSubscriberTest(config, mock_logger)
-
-                self.assertEqual(error.exception.args[0], f"Invalid 'clean_start' option, {clean_start}.")
+                MQTTSubscriberTest(config, mock_logger)
+            self.assertEqual(error.exception.args[0], f"Invalid 'clean_start' option, {clean_start}.")
 
 
 class Testtls_configuration(BaseTestClass):
     @staticmethod
     def test_tls_configuration_good():
-        global mock_client
         ca_certs = random_string()
-        config_dict = {
-            'message_callback': {},
-            'tls': {
-                'ca_certs': ca_certs
-            },
-            'topics': {
-                random_string(): {}
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(tls={'ca_certs': ca_certs})
         mock_logger = mock.Mock(spec=Logger)
-
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                SUT = MQTTSubscriberTest(config, mock_logger)
-                SUT.client.tls_set.assert_called_once_with(ca_certs=ca_certs,
-                                                           certfile=None,
-                                                           keyfile=None,
-                                                           cert_reqs=ssl.CERT_REQUIRED,
-                                                           tls_version=TLS_1_2,
-                                                           ciphers=None)
+        with patched_subscriber():
+            SUT = MQTTSubscriberTest(config, mock_logger)
+            SUT.client.tls_set.assert_called_once_with(ca_certs=ca_certs,
+                                                       certfile=None,
+                                                       keyfile=None,
+                                                       cert_reqs=ssl.CERT_REQUIRED,
+                                                       tls_version=TLS_1_2,
+                                                       ciphers=None)
 
     def test_missing_PROTOCOL_TLS(self):
-        global mock_client
-        tls_version = 'tls'
-        config_dict = {
-            'message_callback': {},
-            'tls': {
-                'ca_certs': random_string(),
-                'tls_version': tls_version
-            },
-            'topics': {
-                random_string(): {}
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-        mock_logger = mock.Mock(spec=Logger)
-
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                try:
-                    saved_version = ssl.PROTOCOL_TLS
-                    del ssl.PROTOCOL_TLS
-                except AttributeError:
-                    saved_version = None
-                with self.assertRaises(ValueError) as error:
-                    MQTTSubscriberTest(config, mock_logger)
-                if saved_version:
-                    ssl.PROTOCOL_TLS = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version', {tls_version}.")
+        assert_missing_ssl_constant(self, 'tls_version', 'tls', 'PROTOCOL_TLS')
 
     def test_missing_PROTOCOL_TLSv1(self):
-        global mock_client
-        tls_version = 'tlsv1'
-        config_dict = {
-            'message_callback': {},
-            'tls': {
-                'ca_certs': random_string(),
-                'tls_version': tls_version
-            },
-            'topics': {
-                random_string(): {}
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-        mock_logger = mock.Mock(spec=Logger)
-
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                try:
-                    saved_version = ssl.PROTOCOL_TLSv1
-                    del ssl.PROTOCOL_TLSv1
-                except AttributeError:
-                    saved_version = None
-                with self.assertRaises(ValueError) as error:
-                    MQTTSubscriberTest(config, mock_logger)
-                if saved_version:
-                    ssl.PROTOCOL_TLSv1 = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version', {tls_version}.")
+        assert_missing_ssl_constant(self, 'tls_version', 'tlsv1', 'PROTOCOL_TLSv1')
 
     def test_missing_PROTOCOL_TLSv1_1(self):
-        global mock_client
-        tls_version = 'tlsv1_1'
-        config_dict = {
-            'message_callback': {},
-            'tls': {
-                'ca_certs': random_string(),
-                'tls_version': tls_version
-            },
-            'topics': {
-                random_string(): {}
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-        mock_logger = mock.Mock(spec=Logger)
-
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                try:
-                    saved_version = ssl.PROTOCOL_TLSv1_1
-                    del ssl.PROTOCOL_TLSv1_1
-                except AttributeError:
-                    saved_version = None
-                with self.assertRaises(ValueError) as error:
-                    MQTTSubscriberTest(config, mock_logger)
-                if saved_version:
-                    ssl.PROTOCOL_TLSv1_1 = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version', {tls_version}.")
+        assert_missing_ssl_constant(self, 'tls_version', 'tlsv1_1', 'PROTOCOL_TLSv1_1')
 
     def test_missing_PROTOCOL_TLSv1_2(self):
-        global mock_client
-        tls_version = 'tlsv1_2'
-        config_dict = {
-            'message_callback': {},
-            'tls': {
-                'ca_certs': random_string(),
-                'tls_version': tls_version
-            },
-            'topics': {
-                random_string(): {}
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-        mock_logger = mock.Mock(spec=Logger)
-
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                try:
-                    saved_version = ssl.PROTOCOL_TLSv1_2
-                    del ssl.PROTOCOL_TLSv1_2
-                except AttributeError:
-                    saved_version = None
-                with self.assertRaises(ValueError) as error:
-                    MQTTSubscriberTest(config, mock_logger)
-                if saved_version:
-                    ssl.PROTOCOL_TLSv1_2 = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version', {tls_version}.")
+        assert_missing_ssl_constant(self, 'tls_version', 'tlsv1_2', 'PROTOCOL_TLSv1_2')
 
     def test_missing_PROTOCOL_SSLv2(self):
-        global mock_client
-        tls_version = 'sslv2'
-        config_dict = {
-            'message_callback': {},
-            'tls': {
-                'ca_certs': random_string(),
-                'tls_version': tls_version
-            },
-            'topics': {
-                random_string(): {}
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-        mock_logger = mock.Mock(spec=Logger)
-
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                try:
-                    saved_version = ssl.PROTOCOL_SSLv2
-                    del ssl.PROTOCOL_SSLv2
-                except AttributeError:
-                    saved_version = None
-                with self.assertRaises(ValueError) as error:
-                    MQTTSubscriberTest(config, mock_logger)
-                if saved_version:
-                    ssl.PROTOCOL_SSLv2 = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version', {tls_version}.")
+        assert_missing_ssl_constant(self, 'tls_version', 'sslv2', 'PROTOCOL_SSLv2')
 
     def test_missing_PROTOCOL_SSLv23(self):
-        global mock_client
-        tls_version = 'sslv23'
-        config_dict = {
-            'message_callback': {},
-            'tls': {
-                'ca_certs': random_string(),
-                'tls_version': tls_version
-            },
-            'topics': {
-                random_string(): {}
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-        mock_logger = mock.Mock(spec=Logger)
-
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                try:
-                    saved_version = ssl.PROTOCOL_SSLv23
-                    del ssl.PROTOCOL_SSLv23
-                except AttributeError:
-                    saved_version = None
-                with self.assertRaises(ValueError) as error:
-                    MQTTSubscriberTest(config, mock_logger)
-                if saved_version:
-                    ssl.PROTOCOL_SSLv23 = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version', {tls_version}.")
+        assert_missing_ssl_constant(self, 'tls_version', 'sslv23', 'PROTOCOL_SSLv23')
 
     def test_missing_PROTOCOL_SSLv3(self):
-        global mock_client
-        tls_version = 'sslv3'
-        config_dict = {
-            'message_callback': {},
-
-            'tls': {
-                'ca_certs': random_string(),
-                'tls_version': tls_version
-            },
-            'topics': {
-                random_string(): {}
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-        mock_logger = mock.Mock(spec=Logger)
-
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                try:
-                    saved_version = ssl.PROTOCOL_SSLv3
-                    del ssl.PROTOCOL_SSLv3
-                except AttributeError:
-                    saved_version = None
-                with self.assertRaises(ValueError) as error:
-                    MQTTSubscriberTest(config, mock_logger)
-                if saved_version:
-                    ssl.PROTOCOL_SSLv3 = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'tls_version', {tls_version}.")
+        assert_missing_ssl_constant(self, 'tls_version', 'sslv3', 'PROTOCOL_SSLv3')
 
     def test_invalid_certs_required(self):
-        global mock_client
-        certs_required = random_string()
-        config_dict = {
-            'message_callback': {},
-            'tls': {
-                'ca_certs': random_string(),
-                'certs_required': certs_required
-            },
-            'topics': {
-                random_string(): {}
-            }
-        }
-        config = configobj.ConfigObj(config_dict)
-        mock_logger = mock.Mock(spec=Logger)
-
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                try:
-                    saved_version = ssl.PROTOCOL_SSLv3
-                    del ssl.PROTOCOL_SSLv3
-                except AttributeError:
-                    saved_version = None
-                with self.assertRaises(ValueError) as error:
-                    MQTTSubscriberTest(config, mock_logger)
-                if saved_version:
-                    ssl.PROTOCOL_SSLv3 = saved_version
-                self.assertEqual(error.exception.args[0], f"Invalid 'certs_required', {certs_required}.")
+        assert_missing_ssl_constant(self, 'certs_required', random_string(), 'PROTOCOL_SSLv3')
 
 class TestDeprecatedOptions(BaseTestClass):
     def test_a_deprecated_config_options_is_logged_and_exception_not_raised(self):
         global mock_client
         mock_client = mock.Mock()
-        config_dict = {}
-        config_dict['stop_on_validation_errors'] = False
-        config_dict['message_callback'] = {}
-        config_dict['topics'] = {}
-        config_dict['topic'] = random_string()
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(stop_on_validation_errors=False, topics={}, topic=random_string())
 
         mock_logger = mock.Mock(spec=Logger)
 
@@ -537,12 +255,7 @@ class TestDeprecatedOptions(BaseTestClass):
                 mock_logger.info.assert_any_call(32016, "'topic' is deprecated, use '[[topics]][[[topic name]]]'.")
 
     def test_topic_is_deprecated(self):
-        config_dict = {}
-        config_dict['stop_on_validation_errors'] = True
-        config_dict['message_callback'] = {}
-        config_dict['topics'] = {}
-        config_dict['topic'] = random_string()
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(stop_on_validation_errors=True, topics={}, topic=random_string())
 
         mock_logger = mock.Mock(spec=Logger)
 
@@ -554,12 +267,7 @@ class TestDeprecatedOptions(BaseTestClass):
                 self.assertEqual(error.exception.args[0], "'topic' is deprecated, use '[[topics]][[[topic name]]]'.")
 
     def test_overlap_is_deprecated(self):
-        config_dict = {}
-        config_dict['stop_on_validation_errors'] = True
-        config_dict['message_callback'] = {}
-        config_dict['topics'] = {}
-        config_dict['overlap'] = random_string()
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(stop_on_validation_errors=True, topics={}, overlap=random_string())
 
         mock_logger = mock.Mock(spec=Logger)
 
@@ -570,12 +278,7 @@ class TestDeprecatedOptions(BaseTestClass):
                 self.assertEqual(error.exception.args[0], "'overlap' is deprecated, use 'adjust_start_time'.")
 
     def test_archive_field_cache_is_deprecated(self):
-        config_dict = {}
-        config_dict['stop_on_validation_errors'] = True
-        config_dict['message_callback'] = {}
-        config_dict['topics'] = {}
-        config_dict['archive_field_cache'] = random_string()
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(stop_on_validation_errors=True, topics={}, archive_field_cache=random_string())
 
         mock_logger = mock.Mock(spec=Logger)
 
@@ -587,12 +290,7 @@ class TestDeprecatedOptions(BaseTestClass):
                                  "'archive_field_cache' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'.")
 
     def test_full_topic_fieldname_is_deprecated(self):
-        config_dict = {}
-        config_dict['stop_on_validation_errors'] = True
-        config_dict['message_callback'] = {}
-        config_dict['topics'] = {}
-        config_dict['message_callback']['full_topic_fieldname'] = random_string()
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(stop_on_validation_errors=True, message_callback={'full_topic_fieldname': random_string()}, topics={})
 
         mock_logger = mock.Mock(spec=Logger)
 
@@ -604,12 +302,7 @@ class TestDeprecatedOptions(BaseTestClass):
                                  "'full_topic_fieldname' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'.")
 
     def test_contains_total_is_deprecated(self):
-        config_dict = {}
-        config_dict['stop_on_validation_errors'] = True
-        config_dict['message_callback'] = {}
-        config_dict['topics'] = {}
-        config_dict['message_callback']['contains_total'] = random_string()
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(stop_on_validation_errors=True, message_callback={'contains_total': random_string()}, topics={})
 
         mock_logger = mock.Mock(spec=Logger)
 
@@ -621,12 +314,7 @@ class TestDeprecatedOptions(BaseTestClass):
                                  "'contains_total' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]' contains_total setting.")
 
     def test_label_map_is_deprecated(self):
-        config_dict = {}
-        config_dict['stop_on_validation_errors'] = True
-        config_dict['message_callback'] = {}
-        config_dict['topics'] = {}
-        config_dict['message_callback']['label_map'] = {}
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(stop_on_validation_errors=True, message_callback={'label_map': {}}, topics={})
 
         mock_logger = mock.Mock(spec=Logger)
 
@@ -638,12 +326,7 @@ class TestDeprecatedOptions(BaseTestClass):
                                  "'label_map' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]' name setting.")
 
     def test_fields_is_deprecated(self):
-        config_dict = {}
-        config_dict['stop_on_validation_errors'] = True
-        config_dict['message_callback'] = {}
-        config_dict['topics'] = {}
-        config_dict['message_callback']['fields'] = {}
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(stop_on_validation_errors=True, message_callback={'fields': {}}, topics={})
 
         mock_logger = mock.Mock(spec=Logger)
 
@@ -655,7 +338,6 @@ class TestDeprecatedOptions(BaseTestClass):
                                  "'fields' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]'.")
 
     def test_use_topic_as_fieldname(self):
-        global mock_client
         config_dict = {}
         config_dict['topics'] = {}
         config_dict['topics']['use_topic_as_fieldname'] = 'true'
@@ -663,30 +345,19 @@ class TestDeprecatedOptions(BaseTestClass):
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                SUT = MQTTSubscriberTest(config, mock_logger)
-
-                self.assertEqual(SUT.logger.info.call_count, 14)
-                mock_logger.info.assert_any_call(32015, "'use_topic_as_fieldname' option is no longer needed and can be removed.")
+        with patched_subscriber():
+            SUT = MQTTSubscriberTest(config, mock_logger)
+            self.assertEqual(SUT.logger.info.call_count, 14)
+            mock_logger.info.assert_any_call(32015, "'use_topic_as_fieldname' option is no longer needed and can be removed.")
 
     def test_log_is_deprecated(self):
-        global mock_client
-        config_dict = {}
-        config_dict['message_callback'] = {}
-        config_dict['topics'] = {}
-        config_dict['log'] = 'true'
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(topics={}, log='true')
 
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                MQTTSubscriberTest(config, mock_logger)
-
-                mock_logger.info.assert_any_call(32015, "'log' is deprecated, use 'log_mqtt'.")
+        with patched_subscriber():
+            MQTTSubscriberTest(config, mock_logger)
+            mock_logger.info.assert_any_call(32015, "'log' is deprecated, use 'log_mqtt'.")
 
 class TestStart(BaseTestClass):
     def set_connection_success(self, *args, **kwargs):
@@ -704,10 +375,7 @@ class TestStart(BaseTestClass):
             5: "Connection Refused: not authorised.",
         }
 
-        config_dict = {}
-        config_dict['message_callback'] = {}
-        config_dict['topics'] = {}
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(topics={})
         connect_rc = random.randint(1, 10)
         flags = random.randint(0, 255)
         rc_string = rc_strings.get(connect_rc, "Connection Refused: unknown reason.")
@@ -735,10 +403,7 @@ class TestStart(BaseTestClass):
         global mock_client
         mock_logger = mock.Mock(spec=Logger)
 
-        config_dict = {}
-        config_dict['message_callback'] = {}
-        config_dict['topics'] = {}
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(topics={})
 
         with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
             with mock.patch('user.mqttsubscribe.TopicManager'):
@@ -758,10 +423,7 @@ class TestStart(BaseTestClass):
         global mock_client
         mock_logger = mock.Mock(spec=Logger)
 
-        config_dict = {}
-        config_dict['message_callback'] = {}
-        config_dict['topics'] = {}
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(topics={})
 
         with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
             with mock.patch('user.mqttsubscribe.TopicManager'):
@@ -782,24 +444,15 @@ class TestStart(BaseTestClass):
 class Test_disconnect(BaseTestClass):
     @staticmethod
     def test_disconnect():
-        global mock_client
         mock_logger = mock.Mock(spec=Logger)
 
-        config_dict = {}
-        config_dict['message_callback'] = {}
-        config_dict['topics'] = {}
-        config = configobj.ConfigObj(config_dict)
+        config = create_subscriber_config(topics={})
 
-        with mock.patch('user.mqttsubscribe.MessageCallbackProvider'):
-            with mock.patch('user.mqttsubscribe.TopicManager'):
-                mock_client = mock.Mock()
-                SUT = MQTTSubscriberTest(config, mock_logger)
-
-                SUT.disconnect()
-
-                SUT.client.disconnect.assert_called_once()
-                # The network loop must be stopped before the logger thread, so its final entries are queued.
-                SUT.client.loop_stop.assert_called_once()
+        with patched_subscriber():
+            SUT = MQTTSubscriberTest(config, mock_logger)
+            SUT.disconnect()
+            SUT.client.disconnect.assert_called_once()
+            SUT.client.loop_stop.assert_called_once()
 
 class Teston_connect(BaseTestClass):
     unit_system_name = 'US'
@@ -838,11 +491,8 @@ class Teston_connect(BaseTestClass):
                 type(mock_manager.return_value).subscribed_topics = mock.PropertyMock(return_value=subscribed_topics)
                 type(mock_manager.return_value).get_qos = mock.Mock(return_value=qos)
                 mock_client.subscribe.return_value = [1, 0]
-
                 SUT = MQTTSubscriberTest(config, mock_logger)
-
                 SUT._subscribe(mock_client)
-
                 self.assertEqual(mock_client.subscribe.call_count, 2)
                 mock_client.subscribe.assert_any_call(topic1, qos)
                 mock_client.subscribe.assert_any_call(topic2, qos)
