@@ -4,19 +4,15 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import contextlib
 import helpers
 import unittest
 import mock
 
 import configobj
-import random
-import string
 from io import StringIO
 
 import weewx.engine
-
-def random_string(length=32):
-    return ''.join([random.choice(string.ascii_letters + string.digits) for n in range(length)])
 
 config_dict = f"""
 
@@ -69,7 +65,7 @@ WEEWX_ROOT = tmp
     [[topics]]
         [[[message]]]
             type = individual
-        [[[{random_string()}]]]
+        [[[{helpers.random_string()}]]]
             ignore_start_time = True # at least while developing
             ignore_end_time = True # at least while developing
             adjust_start_time = 1 # at least while developing
@@ -79,41 +75,46 @@ WEEWX_ROOT = tmp
 
 """ # noqa
 
+
+@contextlib.contextmanager
+def engine_with_cache(max_archive_records, simulator_options=None, topic=None):
+    """ Build a simulator engine with a mocked RecordCache; yield (engine, cache). """
+    with mock.patch('user.mqttsubscribe.RecordCache') as mock_cache:
+        config = configobj.ConfigObj(StringIO(config_dict))
+        config['Simulator']['max_archive_records'] = max_archive_records
+        for option, value in (simulator_options or {}).items():
+            config['Simulator'][option] = value
+        if topic:
+            config['MQTTSubscribeService']['topics'][topic] = {}
+        yield weewx.engine.StdEngine(config), mock_cache.return_value
+
+
+def assert_loop_count(test_case, engine, mock_cache_instance):
+    """ Every loop packet must invalidate the cached observation. """
+    mock_cache_instance.invalidate_value.assert_called()
+    test_case.assertEqual(mock_cache_instance.invalidate_value.call_count, engine.console.count_loop_packets)
+
+
 class test_record_cache(unittest.TestCase):
     def test_new_loop_packet(self):
-        with mock.patch('user.mqttsubscribe.RecordCache') as mock_cache:
-            max_archive_records = 0
-            config = configobj.ConfigObj(StringIO(config_dict))
-            config['Simulator']['max_archive_records'] = max_archive_records
-            config['MQTTSubscribeService']['topics'][random_string()] = {}
-
-            SUT = weewx.engine.StdEngine(config)
-            mock_cache_instance = mock_cache.return_value
-
+        with engine_with_cache(0, topic=helpers.random_string()) as (SUT, mock_cache_instance):
             with self.assertRaises(Exception):
                 SUT.run()
                 print("exception")
 
-            mock_cache_instance.invalidate_value.assert_called()
-            self.assertEqual(mock_cache_instance.invalidate_value.call_count, SUT.console.count_loop_packets)
+            assert_loop_count(self, SUT, mock_cache_instance)
 
     def test_observation_not_in_archive_record(self):
-        with mock.patch('user.mqttsubscribe.RecordCache') as mock_cache:
-            max_archive_records = 1
-            config = configobj.ConfigObj(StringIO(config_dict))
-            config['Simulator']['max_archive_records'] = max_archive_records
-            config['Simulator']['remove_fields_from_archive_record'] = 'outTemp'
-
-            SUT = weewx.engine.StdEngine(config)
-            mock_cache_instance = mock_cache.return_value
+        max_archive_records = 1
+        options = {'remove_fields_from_archive_record': 'outTemp'}
+        with engine_with_cache(max_archive_records, simulator_options=options) as (SUT, mock_cache_instance):
             mock_cache_instance.get_value.return_value = 0
 
             with self.assertRaises(Exception):
                 SUT.run()
                 print("exception")
 
-            mock_cache_instance.invalidate_value.assert_called()
-            self.assertEqual(mock_cache_instance.invalidate_value.call_count, SUT.console.count_loop_packets)
+            assert_loop_count(self, SUT, mock_cache_instance)
 
             mock_cache_instance.update_value.assert_not_called()
 
@@ -121,24 +122,18 @@ class test_record_cache(unittest.TestCase):
             self.assertEqual(mock_cache_instance.get_value.call_count, max_archive_records)
 
     def test_observation_in_archive_record(self):
-        with mock.patch('user.mqttsubscribe.RecordCache') as mock_cache:
-            max_archive_records = 1
-            config = configobj.ConfigObj(StringIO(config_dict))
-            config['Simulator']['max_archive_records'] = max_archive_records
-
-            SUT = weewx.engine.StdEngine(config)
-            mock_cache_instance = mock_cache.return_value
-
+        max_archive_records = 1
+        with engine_with_cache(max_archive_records) as (SUT, mock_cache_instance):
             with self.assertRaises(Exception):
                 SUT.run()
 
-            mock_cache_instance.invalidate_value.assert_called()
-            self.assertEqual(mock_cache_instance.invalidate_value.call_count, SUT.console.count_loop_packets)
+            assert_loop_count(self, SUT, mock_cache_instance)
 
             mock_cache_instance.update_value.assert_called()
             self.assertEqual(mock_cache_instance.update_value.call_count, max_archive_records)
 
             mock_cache_instance.get_value.assert_not_called()
+
 
 if __name__ == '__main__':
     helpers.run_tests()
