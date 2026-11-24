@@ -11,15 +11,7 @@ import paho
 import paho.mqtt
 import paho.mqtt.client
 
-class Msg:
-    '''
-    A helper class to create an MQTT message.
-    '''
-    def __init__(self, topic, payload, qos, retain):
-        self.topic = topic
-        self.payload = payload
-        self.qos = qos
-        self.retain = retain
+from user.tests.message_helpers import create_message
 
 class ClientStub:
     '''
@@ -69,7 +61,7 @@ class ClientStub:
         print("Connected")
 
         # ToDo: temporarily try calling the message callback, this will need to be moved
-        msg = Msg(self.topic, "0.0".encode('UTF-8'), 0, 0)
+        msg = create_message(self.topic, "0.0".encode('UTF-8'))
         self.on_message(self, self.userdata, msg)
 
 paho.mqtt.client.Client = ClientStub

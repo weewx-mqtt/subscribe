@@ -19,13 +19,7 @@ test_weewx_stubs.setup_stubs()
 
 from user.mqttcommon import Logger
 from user.ExampleMessageCallbackProvider import MessageCallbackProvider
-
-class Msg:
-    def __init__(self, topic, payload, qos, retain):
-        self.topic = topic
-        self.payload = payload
-        self.qos = qos
-        self.retain = retain
+from user.tests.message_helpers import create_message
 
 class Test1(unittest.TestCase):
     def setUp(self):
@@ -81,7 +75,7 @@ class Test1(unittest.TestCase):
         observation_dict = self.create_observation_dict(5)
         root = self.create_observation_xml('observations', observation_dict)
         xml_string = xml.etree.ElementTree.tostring(root)
-        msg = Msg("topic", xml_string, 0, 0)
+        msg = create_message("topic", xml_string, 0, 0)
 
         SUT = MessageCallbackProvider({}, mock_logger, mock_manager)
 

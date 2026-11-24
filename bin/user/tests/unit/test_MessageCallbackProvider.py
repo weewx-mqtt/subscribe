@@ -23,6 +23,7 @@ test_weewx_stubs.setup_stubs()
 import user.mqttsubscribe
 from user.mqttcommon import Logger
 from user.mqttsubscribe import TopicManager
+from user.tests.message_helpers import create_message
 
 # todo - mock?
 def to_float(x):
@@ -48,14 +49,6 @@ def create_topic_config(message_dict=None, fields=None, **kwargs):
     }
     config.update(kwargs)
     return config
-
-class Msg:
-    # pylint: disable=too-few-public-methods
-    def __init__(self, topic, payload, qos, retain):
-        self.topic = topic
-        self.payload = payload
-        self.qos = qos
-        self.retain = retain
 
 class TestInitialization(unittest.TestCase):
     def setUp(self):
@@ -276,7 +269,7 @@ class TestMultiMessageMethod(unittest.TestCase):
         payload = payload.encode('UTF-8')
         topic = random_string()
 
-        msg = Msg(topic, payload, 0, 0)
+        msg = create_message(topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
         mock_logger.error.assert_called_with(44010, f"Unknown message_type={type}. Skipping topic={topic} and payload={payload}.")
@@ -299,7 +292,7 @@ class TestMultiMessageMethod(unittest.TestCase):
         payload = payload.encode('UTF-8')
         topic = random_string()
 
-        msg = Msg(topic, payload, 0, 0)
+        msg = create_message(topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
         self.assertEqual(mock_logger.error.call_count, 3)
@@ -333,7 +326,7 @@ class TestKeywordload(unittest.TestCase):
         payload = ''
         payload = payload.encode('UTF-8')
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
         self.assertEqual(mock_logger.error.call_count, 3)
@@ -351,7 +344,7 @@ class TestKeywordload(unittest.TestCase):
         payload = 'field=value'
         payload = payload.encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
         self.assertEqual(mock_logger.error.call_count, 3)
@@ -369,7 +362,7 @@ class TestKeywordload(unittest.TestCase):
         payload = 'field1=1 field2=2'
         payload = payload.encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
         self.assertEqual(mock_logger.error.call_count, 3)
@@ -387,7 +380,7 @@ class TestKeywordload(unittest.TestCase):
         payload = ' field:1'
         payload = payload.encode('UTF-8')
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
         self.assertEqual(mock_logger.error.call_count, 3)
@@ -414,7 +407,7 @@ class TestKeywordload(unittest.TestCase):
 
         payload_str = payload_str.encode('UTF-8')
 
-        msg = Msg(self.topic, payload_str, 0, 0)
+        msg = create_message(self.topic, payload_str, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -442,7 +435,7 @@ class TestKeywordload(unittest.TestCase):
 
         payload_str = payload_str.encode('UTF-8')
 
-        msg = Msg(self.topic, payload_str, 0, 0)
+        msg = create_message(self.topic, payload_str, 0, 0)
 
         SUT.on_message_multi(msg)
         mock_manager.append_data.assert_called_once_with(msg.topic, payload_dict)
@@ -470,7 +463,7 @@ class TestKeywordload(unittest.TestCase):
 
         payload_str = payload_str.encode('UTF-8')
 
-        msg = Msg(self.topic, payload_str, 0, 0)
+        msg = create_message(self.topic, payload_str, 0, 0)
 
         SUT.on_message_multi(msg)
         mock_manager.append_data.assert_called_once_with(msg.topic, payload_dict)
@@ -505,7 +498,7 @@ class TestKeywordload(unittest.TestCase):
 
         payload_str = payload_str.encode('UTF-8')
 
-        msg = Msg(self.topic, payload_str, 0, 0)
+        msg = create_message(self.topic, payload_str, 0, 0)
 
         SUT.on_message_multi(msg)
         self.assertFalse(mock_manager.append_data.called)
@@ -550,7 +543,7 @@ class TestKeywordload(unittest.TestCase):
 
         payload_str = payload_str.encode('UTF-8')
 
-        msg = Msg(self.topic, payload_str, 0, 0)
+        msg = create_message(self.topic, payload_str, 0, 0)
 
         SUT.on_message_multi(msg)
         mock_manager.append_data.assert_called_once_with(msg.topic, payload_dict)
@@ -591,7 +584,7 @@ class TestKeywordload(unittest.TestCase):
 
         payload_str = payload_str.encode('UTF-8')
 
-        msg = Msg(self.topic, payload_str, 0, 0)
+        msg = create_message(self.topic, payload_str, 0, 0)
 
         SUT.on_message_multi(msg)
         mock_manager.append_data.assert_called_once_with(msg.topic, payload_dict)
@@ -617,10 +610,7 @@ class TestJsonPayload(unittest.TestCase):
 
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(self.message_handler_config_dict), mock_logger, mock_manager)
 
-        msg = Msg(self.topic,
-                  random_string(),
-                  0,
-                  0)
+        msg = create_message(self.topic, random_string())
 
         SUT.on_message_multi(msg)
         self.assertEqual(mock_logger.error.call_count, 3)
@@ -635,7 +625,7 @@ class TestJsonPayload(unittest.TestCase):
 
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(self.message_handler_config_dict), mock_logger, mock_manager)
 
-        msg = Msg(self.topic, '', 0, 0)
+        msg = create_message(self.topic, '', 0, 0)
 
         SUT.on_message_multi(msg)
         self.assertEqual(mock_logger.error.call_count, 3)
@@ -655,7 +645,7 @@ class TestJsonPayload(unittest.TestCase):
 
         payload = json.dumps(payload_dict).encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -676,7 +666,7 @@ class TestJsonPayload(unittest.TestCase):
 
         payload = json.dumps(payload_dict).encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -698,7 +688,7 @@ class TestJsonPayload(unittest.TestCase):
 
         payload = json.dumps(payload_dict).encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -731,7 +721,7 @@ class TestJsonPayload(unittest.TestCase):
         for key, value in payload_dict.items():
             final_dict[key + '_' + str(msg_id)] = value
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -768,7 +758,7 @@ class TestJsonPayload(unittest.TestCase):
 
         mock_manager.get_topic_config.return_value['fields_ignoring_msg_id'] = ignore_msg_id_field_fields
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -801,7 +791,7 @@ class TestJsonPayload(unittest.TestCase):
 
         payload = json.dumps(payload_dict).encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -839,7 +829,7 @@ class TestJsonPayload(unittest.TestCase):
 
         payload = json.dumps(payload_dict).encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -877,7 +867,7 @@ class TestJsonPayload(unittest.TestCase):
         output_dict['extraTemp1'] = payload_dict['extraTemps'][0]
         output_dict['extraTemp2'] = payload_dict['extraTemps'][1]
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -911,7 +901,7 @@ class TestJsonPayload(unittest.TestCase):
         output_dict['extraTemp1'] = payload_dict['extraTemps'][0]
         output_dict['extraTemp2'] = payload_dict['extraTemps'][1]
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -950,7 +940,7 @@ class TestJsonPayload(unittest.TestCase):
 
         payload = json.dumps(payload_dict).encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -990,7 +980,7 @@ class TestJsonPayload(unittest.TestCase):
 
         payload = json.dumps(payload_dict).encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -1020,7 +1010,7 @@ class TestJsonPayload(unittest.TestCase):
 
         payload = json.dumps(payload_dict).encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -1059,7 +1049,7 @@ class TestJsonPayload(unittest.TestCase):
 
         payload = json.dumps(payload_dict).encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -1086,7 +1076,7 @@ class TestJsonPayload(unittest.TestCase):
 
         payload = json.dumps(payload_dict).encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -1126,7 +1116,7 @@ class TestJsonPayload(unittest.TestCase):
 
         payload = json.dumps(payload_dict).encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -1166,7 +1156,7 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
         payload = ''
         payload = payload.encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
         self.assertEqual(mock_logger.error.call_count, 3)
@@ -1184,7 +1174,7 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
         payload = ''
         payload = payload.encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
         self.assertEqual(mock_logger.error.call_count, 3)
@@ -1200,7 +1190,7 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(self.message_handler_config_dict), mock_logger, mock_manager)
 
         payload = None
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
 
@@ -1221,7 +1211,7 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
         payload = round(random.uniform(1, 100), 2)
         payload_str = str(payload).encode('UTF-8')
 
-        msg = Msg(topic, payload_str, 0, 0)
+        msg = create_message(topic, payload_str, 0, 0)
 
         SUT.on_message_multi(msg)
         mock_manager.append_data.assert_called_once_with(msg.topic, {msg.topic: payload}, msg.topic)
@@ -1244,7 +1234,7 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
         payload = round(random.uniform(1, 100), 2)
         payload_str = str(payload).encode('UTF-8')
 
-        msg = Msg(self.single_topic, payload_str, 0, 0)
+        msg = create_message(self.single_topic, payload_str, 0, 0)
 
         SUT.on_message_multi(msg)
         mock_manager.append_data.assert_called_once_with(msg.topic, {self.topic_end: payload}, self.topic_end)
@@ -1262,10 +1252,7 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
         payload = round(random.uniform(1, 100), 2)
         payload_str = str(payload).encode('UTF-8')
 
-        msg = Msg(self.multi_topic,
-                  payload_str,
-                  0,
-                  0)
+        msg = create_message(self.multi_topic, payload_str)
 
         SUT.on_message_multi(msg)
         mock_manager.append_data.assert_called_once_with(msg.topic, {msg.topic: payload}, msg.topic)
@@ -1283,10 +1270,7 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
         payload = round(random.uniform(1, 100), 2)
         payload_str = str(payload).encode('UTF-8')
 
-        msg = Msg(self.topic,
-                  payload_str,
-                  0,
-                  0)
+        msg = create_message(self.topic, payload_str)
 
         SUT.on_message_multi(msg)
         mock_manager.append_data.assert_called_once_with(msg.topic, {msg.topic: payload}, msg.topic)
@@ -1312,7 +1296,7 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
         payload = round(random.uniform(1, 100), 2)
         payload_str = str(payload).encode('UTF-8')
 
-        msg = Msg(self.single_topic, payload_str, 0, 0)
+        msg = create_message(self.single_topic, payload_str, 0, 0)
 
         SUT.on_message_multi(msg)
         self.assertFalse(mock_manager.append_data.called)
@@ -1343,7 +1327,7 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
         payload = round(random.uniform(1, 100), 2)
         payload_str = str(payload).encode('UTF-8')
 
-        msg = Msg(self.single_topic, payload_str, 0, 0)
+        msg = create_message(self.single_topic, payload_str, 0, 0)
 
         SUT.on_message_multi(msg)
         mock_manager.append_data.assert_called_once_with(msg.topic, {self.topic_end: payload}, self.topic_end)
@@ -1372,7 +1356,7 @@ class TestIndividualPayloadSingleTopicFieldName(unittest.TestCase):
         payload = round(random.uniform(1, 100), 2)
         payload_str = str(payload).encode('UTF-8')
 
-        msg = Msg(self.single_topic, payload_str, 0, 0)
+        msg = create_message(self.single_topic, payload_str, 0, 0)
 
         SUT.on_message_multi(msg)
         self.assertFalse(mock_manager.append_data.called)
@@ -1408,7 +1392,7 @@ class TestIndividualPayloadFullTopicFieldName(unittest.TestCase):
         payload = random_string()
         payload = payload.encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
         self.assertEqual(mock_logger.error.call_count, 3)
@@ -1425,7 +1409,7 @@ class TestIndividualPayloadFullTopicFieldName(unittest.TestCase):
 
         payload = ''
         payload = payload.encode("utf-8")
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
 
         SUT.on_message_multi(msg)
         self.assertEqual(mock_logger.error.call_count, 3)
@@ -1442,7 +1426,7 @@ class TestIndividualPayloadFullTopicFieldName(unittest.TestCase):
 
         SUT = user.mqttsubscribe.MessageCallbackProvider(configobj.ConfigObj(message_handler_config_dict), mock_logger, mock_manager)
 
-        msg = Msg(self.topic, None, 0, 0)
+        msg = create_message(self.topic, None, 0, 0)
 
         SUT.on_message_multi(msg)
         mock_manager.append_data.assert_called_once_with(msg.topic, {msg.topic: None}, msg.topic)
@@ -1460,7 +1444,7 @@ class TestIndividualPayloadFullTopicFieldName(unittest.TestCase):
         payload = round(random.uniform(1, 100), 2)
         payload_str = str(payload).encode('UTF-8')
 
-        msg = Msg(self.single_topic, payload_str, 0, 0)
+        msg = create_message(self.single_topic, payload_str, 0, 0)
 
         SUT.on_message_multi(msg)
         mock_manager.append_data.assert_called_once_with(msg.topic, {self.topic_end: payload}, self.topic_end)

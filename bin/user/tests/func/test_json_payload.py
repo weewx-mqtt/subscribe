@@ -20,16 +20,10 @@ import time
 from io import StringIO
 
 from user.mqttsubscribe import create_logger as Logger, MessageCallbackProvider, TopicManager
+from user.tests.message_helpers import create_message
 
 def random_string(length=32):
     return ''.join([random.choice(string.ascii_letters + string.digits) for n in range(length)])
-
-class Msg:
-    def __init__(self, topic, payload, qos, retain):
-        self.topic = topic
-        self.payload = payload
-        self.qos = qos
-        self.retain = retain
 
 class TestJSONMessage(unittest.TestCase):
     @classmethod
@@ -54,7 +48,7 @@ class TestJSONMessage(unittest.TestCase):
 
         payload = json.dumps(payload_dict).encode("utf-8")
 
-        msg = Msg(self.topic, payload, 0, 0)
+        msg = create_message(self.topic, payload, 0, 0)
         message_callback._on_message_json(msg)
 
         queue = topic_manager._get_queue(self.topic)
@@ -260,7 +254,7 @@ class TestJSONMessageFlattenDelimiter(unittest.TestCase):
             'inTemps.inTemp2': payload_dict['sensors'][1][1],
         }
 
-        msg = Msg(self.topic, json.dumps(payload_dict).encode("utf-8"), 0, 0)
+        msg = create_message(self.topic, json.dumps(payload_dict).encode("utf-8"), 0, 0)
         message_callback._on_message_json(msg)
 
         data = topic_manager._get_queue(self.topic)['data'].popleft()['data']

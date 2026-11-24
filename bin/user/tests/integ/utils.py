@@ -18,6 +18,8 @@ import string
 
 import weeutil
 
+from user.tests.message_helpers import create_message
+
 BROKER_HOST = '127.0.0.1'
 
 
@@ -115,7 +117,7 @@ def send_mqtt_msg(publisher, topic, payload, userdata, self):
 
 def send_direct_msg(publisher, topic, payload, userdata, self):
     # match function signature pylint: disable=unused-argument
-    publisher(Msg(topic, payload, 0, 0))
+    publisher(create_message(topic, payload))
 
 def send_msg(sender, msg_type, publisher, topic, topic_info, userdata=None, self=None):
     # pylint: disable=too-many-arguments
@@ -197,10 +199,3 @@ def check(self, test_type, results, expected_results):
                     msg = f"\n\t for field {field}"
                     self.assertEqual(results[i][field], expected_result[field], msg)
         i += 1
-
-class Msg:
-    def __init__(self, topic, payload, qos, retain):
-        self.topic = topic
-        self.payload = payload
-        self.qos = qos
-        self.retain = retain
