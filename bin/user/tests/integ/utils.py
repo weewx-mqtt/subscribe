@@ -61,6 +61,41 @@ class MosquittoBroker():
 def random_string(length=32):
     return ''.join([random.choice(string.ascii_letters + string.digits) for n in range(length)])
 
+def load_test_data(file_pointer):
+    """ Load a templated JSON data file, returning its config text and testruns. """
+    test_id = random_string()
+    data_template = string.Template(file_pointer.read())
+    test_data = json.loads(data_template.substitute(test_id=test_id), object_hook=byteify)
+    return test_data['config'], test_data['testruns']
+
+
+def find_expected_result(test_case, testrun, payload, marker):
+    """ Find the result whose test tag and payload list match this payload. """
+    for result in testrun['results']:
+        if marker in result['test'] and payload in result['payloads']:
+            return result
+    test_case.fail(f"No results for {payload}")
+    return None
+
+
+def create_min_weewx_config():
+    """ The minimal Station/Simulator/Engine config used to build a WeeWX engine. """
+    return {
+        'Station': {
+            'altitude': [0, 'foot'],
+            'latitude': 0,
+            'station_type': 'Simulator',
+            'longitude': 0
+        },
+        'Simulator': {
+            'driver': 'weewx.drivers.simulator',
+        },
+        'Engine': {
+            'Services': {}
+        }
+    }
+
+
 def byteify(data, ignore_dicts=False):
     # if this is a list of values, return list of byteified values
     if isinstance(data, list):

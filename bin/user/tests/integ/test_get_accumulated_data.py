@@ -5,8 +5,6 @@
 #
 
 import helpers
-import json
-import string
 import time
 import unittest
 import configobj
@@ -18,11 +16,8 @@ from user.mqttsubscribe import TopicManager, create_logger as Logger
 
 class TestAccumulatedData(unittest.TestCase):
     def runit(self, payload, file_pointer, check_results=True):
-        test_id = utils.random_string()
-        data_template = string.Template(file_pointer.read())
-        test_data = json.loads(data_template.substitute(test_id=test_id), object_hook=utils.byteify)
-        config_dict = configobj.ConfigObj(test_data['config'])['MQTTSubscribeService']
-        testruns = test_data['testruns']
+        config_text, testruns = utils.load_test_data(file_pointer)
+        config_dict = configobj.ConfigObj(config_text)['MQTTSubscribeService']
 
         logger = Logger('IntegTest')
         topics_dict = config_dict.get('topics', {})
@@ -48,15 +43,7 @@ class TestAccumulatedData(unittest.TestCase):
                 records.append(data)
 
             if check_results:
-                results = testrun['results']
-                result = {}
-                found = False
-                for result in results:
-                    if 'accumulate' in result['test']:
-                        if payload in result['payloads']:
-                            found = True
-                            break
-                self.assertTrue(found, f"No results for {payload}")
+                result = utils.find_expected_result(self, testrun, payload, 'accumulate')
 
                 utils.check(self, payload, records, result['records'])
             else:

@@ -5,9 +5,7 @@
 #
 
 import helpers
-import json
 import shutil
-import string
 import time
 import unittest
 import configobj
@@ -26,12 +24,9 @@ class TestService(unittest.TestCase):
         self.addCleanup(self.broker.cleanup)
 
     def runit(self, payload, file_pointer, check_results=True):
-        test_id = utils.random_string()
-        data_template = string.Template(file_pointer.read())
-        test_data = json.loads(data_template.substitute(test_id=test_id), object_hook=utils.byteify)
+        config_text, testruns = utils.load_test_data(file_pointer)
 
-        config_dict = configobj.ConfigObj(test_data['config'])
-        testruns = test_data['testruns']
+        config_dict = configobj.ConfigObj(config_text)
 
         cdict = config_dict['MQTTSubscribeService']
         cdict['host'] = utils.BROKER_HOST
@@ -45,20 +40,7 @@ class TestService(unittest.TestCase):
             raise ValueError(f"Unknown unit system, {unit_system_name}.")
         unit_system = weewx.units.unit_constants[unit_system_name]
 
-        min_config_dict = {
-            'Station': {
-                'altitude': [0, 'foot'],
-                'latitude': 0,
-                'station_type': 'Simulator',
-                'longitude': 0
-            },
-            'Simulator': {
-                'driver': 'weewx.drivers.simulator',
-            },
-            'Engine': {
-                'Services': {}
-            }
-        }
+        min_config_dict = utils.create_min_weewx_config()
 
         engine = StdEngine(min_config_dict)
         service = MQTTSubscribeService(engine, config_dict)
@@ -107,15 +89,7 @@ class TestService(unittest.TestCase):
             records = [record]
 
             if check_results:
-                results = testrun['results']
-                result = {}
-                found = False
-                for result in results:
-                    if 'service' in result['test']:
-                        if payload in result['payloads']:
-                            found = True
-                            break
-                self.assertTrue(found, f"No results for {payload}")
+                result = utils.find_expected_result(self, testrun, payload, 'service')
 
                 utils.check(self, payload, records, result['records'])
             else:

@@ -5,9 +5,7 @@
 #
 
 import helpers
-import json
 import shutil
-import string
 import unittest
 
 import configobj
@@ -26,12 +24,9 @@ class TestDriver(unittest.TestCase):
         self.addCleanup(self.broker.cleanup)
 
     def runit(self, payload, file_pointer, check_results=True):
-        test_id = utils.random_string()
-        data_template = string.Template(file_pointer.read())
-        test_data = json.loads(data_template.substitute(test_id=test_id), object_hook=utils.byteify)
+        config_text, testruns = utils.load_test_data(file_pointer)
 
-        config_dict = configobj.ConfigObj(test_data['config'])
-        testruns = test_data['testruns']
+        config_dict = configobj.ConfigObj(config_text)
 
         stndict = config_dict['MQTTSubscribeService']
         if 'message_callback' not in config_dict['MQTTSubscribeService']:
@@ -42,20 +37,7 @@ class TestDriver(unittest.TestCase):
         stndict['host'] = utils.BROKER_HOST
         stndict['port'] = self.broker.port
 
-        min_config_dict = {
-            'Station': {
-                'altitude': [0, 'foot'],
-                'latitude': 0,
-                'station_type': 'Simulator',
-                'longitude': 0
-            },
-            'Simulator': {
-                'driver': 'weewx.drivers.simulator',
-            },
-            'Engine': {
-                'Services': {}
-            }
-        }
+        min_config_dict = utils.create_min_weewx_config()
 
         engine = weewx.engine.StdEngine(min_config_dict)
         driver = MQTTSubscribeDriver(cdict, engine)
@@ -117,15 +99,7 @@ class TestDriver(unittest.TestCase):
                             more_data = True
 
             if check_results:
-                results = testrun['results']
-                result = {}
-                found = False
-                for result in results:
-                    if 'driver' in result['test']:
-                        if payload in result['payloads']:
-                            found = True
-                            break
-                self.assertTrue(found, f"No results for {payload}")
+                result = utils.find_expected_result(self, testrun, payload, 'driver')
 
                 utils.check(self, payload, records, result['records'])
             else:
