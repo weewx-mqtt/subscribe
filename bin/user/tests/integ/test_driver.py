@@ -113,72 +113,59 @@ class TestDriver(unittest.TestCase):
 class TestAccumulatedRain(TestDriver):
     # @unittest.skip("")
     def test_accumulatedrain_individual(self):
-        with open("bin/user/tests/integ/data/accumulatedrain.json", encoding="UTF-8") as file_pointer:
-            self.runit('individual', file_pointer)
+        utils.run_data_file(self, 'individual', 'accumulatedrain.json')
 
     # @unittest.skip("")
     def test_accumulatedrain_json(self):
-        with open("bin/user/tests/integ/data/accumulatedrain.json", encoding="UTF-8") as file_pointer:
-            self.runit('json', file_pointer)
+        utils.run_data_file(self, 'json', 'accumulatedrain.json')
 
     # @unittest.skip("")
     def test_accumulatedrain_keyword(self):
-        with open("bin/user/tests/integ/data/accumulatedrain.json", encoding="UTF-8") as file_pointer:
-            self.runit('keyword', file_pointer)
+        utils.run_data_file(self, 'keyword', 'accumulatedrain.json')
 
 class TestBasic(TestDriver):
     # @unittest.skip("")
     def test_basic_individual(self):
-        with open("bin/user/tests/integ/data/basic.json", encoding="UTF-8") as file_pointer:
-            self.runit('individual', file_pointer)
+        utils.run_data_file(self, 'individual', 'basic.json')
 
     # @unittest.skip("")
     def test_basic_json(self):
-        with open("bin/user/tests/integ/data/basic.json", encoding="UTF-8") as file_pointer:
-            self.runit('json', file_pointer)
+        utils.run_data_file(self, 'json', 'basic.json')
 
     # @unittest.skip("")
     def test_basic_keyword(self):
-        with open("bin/user/tests/integ/data/basic.json", encoding="UTF-8") as file_pointer:
-            self.runit('keyword', file_pointer)
+        utils.run_data_file(self, 'keyword', 'basic.json')
 
 class TestEmpty(TestDriver):
     # @unittest.skip("")
     def test_empty_individual(self):
-        with open("bin/user/tests/integ/data/empty.json", encoding="UTF-8") as file_pointer:
-            self.runit('individual', file_pointer)
+        utils.run_data_file(self, 'individual', 'empty.json')
 
     # @unittest.skip("")
     def test_empty_json(self):
-        with open("bin/user/tests/integ/data/empty.json", encoding="UTF-8") as file_pointer:
-            self.runit('json', file_pointer)
+        utils.run_data_file(self, 'json', 'empty.json')
 
     # @unittest.skip("")
     def test_empty_keyword(self):
-        with open("bin/user/tests/integ/data/empty.json", encoding="UTF-8") as file_pointer:
-            self.runit('keyword', file_pointer)
+        utils.run_data_file(self, 'keyword', 'empty.json')
 
 class TestWindIndividualTopics(TestDriver):
     # @unittest.skip("")
     def test_wind_individual_topic(self):
-        with open("bin/user/tests/integ/data/wind-individual.json", encoding="UTF-8") as file_pointer:
-            self.runit('individual', file_pointer)
+        utils.run_data_file(self, 'individual', 'wind-individual.json')
 
 class TestWindIndividualWind(TestDriver):
     # @unittest.skip("")
     def test_wind_individual(self):
-        with open("bin/user/tests/integ/data/wind.json", encoding="UTF-8") as file_pointer:
-            self.runit('individual', file_pointer)
+        utils.run_data_file(self, 'individual', 'wind.json')
 
     # @unittest.skip("")
     def test_wind_json(self):
-        with open("bin/user/tests/integ/data/wind.json", encoding="UTF-8") as file_pointer:
-            self.runit('json', file_pointer)
+        utils.run_data_file(self, 'json', 'wind.json')
 
     # @unittest.skip("")
     def test_wind_keyword(self):
-        with open("bin/user/tests/integ/data/wind.json", encoding="UTF-8") as file_pointer:
-            self.runit('keyword', file_pointer)
+        utils.run_data_file(self, 'keyword', 'wind.json')
 
 if __name__ == '__main__':
     helpers.run_tests()

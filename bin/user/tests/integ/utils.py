@@ -22,6 +22,13 @@ import weeutil
 from user.tests.message_helpers import create_message
 
 BROKER_HOST = '127.0.0.1'
+DATA_DIR = 'bin/user/tests/integ/data'
+
+
+def run_data_file(test_case, payload, filename, check_results=True):
+    """ Run one data file through the test case's runit() method. """
+    with open(f'{DATA_DIR}/{filename}', encoding='utf-8') as file_pointer:
+        test_case.runit(payload, file_pointer, check_results=check_results)
 
 
 class MosquittoBroker():

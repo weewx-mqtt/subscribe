@@ -5,6 +5,7 @@
 #
 
 import helpers
+import utils
 
 from test_get_data import TestGetData
 from test_driver import TestDriver
@@ -14,26 +15,22 @@ from test_service import TestService
 class TestGetDataExampleMessageCallbackProvider(TestGetData):
     # @unittest.skip("")
     def test_xml(self):
-        with open("bin/user/tests/integ/data/example_callback_provider.json", encoding="UTF-8") as file_pointer:
-            self.runit('xml', file_pointer, check_results=True)
+        utils.run_data_file(self, 'xml', 'example_callback_provider.json')
 
 class TestDriverExamoleMessageCallbackProvider(TestDriver):
     # @unittest.skip("")
     def test_xml(self):
-        with open("bin/user/tests/integ/data/example_callback_provider.json", encoding="UTF-8") as file_pointer:
-            self.runit('xml', file_pointer, check_results=True)
+        utils.run_data_file(self, 'xml', 'example_callback_provider.json')
 
 class TestAccunulatedDataExampleMessageCallbackProvider(TestAccumulatedData):
     # @unittest.skip("")
     def test_xml(self):
-        with open("bin/user/tests/integ/data/example_callback_provider.json", encoding="UTF-8") as file_pointer:
-            self.runit('xml', file_pointer, check_results=True)
+        utils.run_data_file(self, 'xml', 'example_callback_provider.json')
 
 class TestServiceExampleMessageCallbackProvider(TestService):
     # @unittest.skip("")
     def test_xml(self):
-        with open("bin/user/tests/integ/data/example_callback_provider.json", encoding="UTF-8") as file_pointer:
-            self.runit('xml', file_pointer, check_results=True)
+        utils.run_data_file(self, 'xml', 'example_callback_provider.json')
 
 if __name__ == '__main__':
     helpers.run_tests()
