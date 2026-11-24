@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import contextlib
 import helpers
 import unittest
 import mock
@@ -23,6 +24,43 @@ test_weewx_stubs.setup_stubs()
 from user.mqttcommon import Logger
 from user.mqttsubscribe import TopicManager
 
+def create_topic_manager(config=None):
+    """ Build a TopicManager and its logger mock; accepts a dict or a ConfigObj. """
+    mock_logger = mock.Mock(spec=Logger)
+    if not isinstance(config, configobj.ConfigObj):
+        config = configobj.ConfigObj(config if config is not None else {})
+    return TopicManager(None, config, mock_logger), mock_logger
+
+def create_queue_data(fieldname=None):
+    """ Build a loop packet with optional single-field wind data. """
+    data = {'usUnits': 1, 'dateTime': time.time()}
+    if fieldname:
+        data[fieldname] = random.uniform(1, 100)
+    else:
+        data['inTemp'] = random.uniform(1, 100)
+        data['outTemp'] = random.uniform(1, 100)
+    return data
+
+def create_final_record_data():
+    """ Build the record an accumulated-data test expects back. """
+    return {
+        'inTemp': random.uniform(1, 100),
+        'outTemp': random.uniform(1, 100),
+        'usUnits': random.uniform(0, 2),
+        'interval': 5,
+        'dateTime': time.time()
+    }
+
+@contextlib.contextmanager
+def patch_accumulator(final_record_data=None, is_empty=False):
+    """ Patch the accumulator and unit conversion, yielding their mocks. """
+    with mock.patch('user.mqttsubscribe.weewx.accum.Accum') as mock_Accum:
+        with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
+            type(mock_Accum.return_value).isEmpty = mock.PropertyMock(return_value=is_empty)
+            if final_record_data is not None:
+                mock_to_std_system.return_value = final_record_data
+            yield mock_Accum, mock_to_std_system
+
 class TestInit(BaseTestClass):
     def test_missing_topic(self):
         mock_logger = mock.Mock(spec=Logger)
@@ -37,13 +75,9 @@ class TestInit(BaseTestClass):
         self.assertEqual(error.exception.args[0], "At least one topic must be configured.")
 
     def test_process_queue_reports_data_queue_size(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {topic: {}}
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, mock_logger = create_topic_manager(config_dict)
 
         data_queue = deque([{'data': {'dateTime': 100}}])
         queue = {
@@ -118,17 +152,11 @@ class TestInit(BaseTestClass):
 
 class TestHelperFunctions(BaseTestClass):
     def test_topic_not_found(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         config_dict = {}
-
         topic = random_string()
         topic2 = ''.join(reversed(topic))
         config_dict[topic] = {}
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         with self.assertRaises(ValueError) as error:
             SUT._lookup_topic(topic2)
@@ -136,14 +164,9 @@ class TestHelperFunctions(BaseTestClass):
         self.assertEqual(error.exception.args[0], f"Unknown topic, {topic2}.")
 
     def test_get_topic_config(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {topic: {'contains_total': True}}
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         topic_config = SUT.get_topic_config(topic)
         self.assertIn(topic, topic_config['fields'])
@@ -152,12 +175,8 @@ class TestHelperFunctions(BaseTestClass):
         self.assertEqual(SUT.get_message_dict(topic), topic_config[SUT.message_config_name])
 
     def test_get_topic_config_unknown_topic(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
-        config = configobj.ConfigObj({topic: {}})
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager({topic: {}})
 
         unknown_topic = random_string()
         with self.assertRaises(ValueError) as error:
@@ -167,10 +186,7 @@ class TestHelperFunctions(BaseTestClass):
 
 class TestConfigureMessage(BaseTestClass):
     def test_default_message_configuration(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
-
         config_dict = {}
         config_dict['message'] = {}
         config_dict['message']['type'] = random_string(10)
@@ -178,10 +194,7 @@ class TestConfigureMessage(BaseTestClass):
         config_dict['message']['keyword_delimiter'] = random_string(5)
         config_dict['message']['keyword_separator'] = random_string(5)
         config_dict[topic] = {}
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertIn(SUT.message_config_name, SUT.subscribed_topics[topic])
         self.assertEqual(SUT.subscribed_topics[topic][SUT.message_config_name]['type'],
@@ -194,10 +207,8 @@ class TestConfigureMessage(BaseTestClass):
                          config_dict['message']['keyword_separator'])
 
     def test_override_default(self):
-        mock_logger = mock.Mock(spec=Logger)
         topic = random_string()
         config_key = random_string(10)
-
         config_dict = {}
         config_dict['message'] = {}
         config_dict['message']['type'] = random_string(10)
@@ -205,17 +216,13 @@ class TestConfigureMessage(BaseTestClass):
         config_dict['message']['keyword_delimiter'] = random_string(5)
         config_dict['message']['keyword_separator'] = random_string(5)
         config_dict['message'][config_key] = random_string()
-
         config_dict[topic] = {}
         config_dict[topic]['message'] = {}
         config_dict[topic]['message']['type'] = random_string(10)
         config_dict[topic]['message']['flatten_delimiter'] = random_string(5)
         config_dict[topic]['message']['keyword_delimiter'] = random_string(5)
         config_dict[topic]['message']['keyword_separator'] = random_string(5)
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertIn(SUT.message_config_name, SUT.subscribed_topics[topic])
         self.assertEqual(SUT.subscribed_topics[topic][SUT.message_config_name]['type'],
@@ -230,17 +237,14 @@ class TestConfigureMessage(BaseTestClass):
                          config_dict['message'][config_key])
 
     def test_no_default_setting(self):
-        mock_logger = mock.Mock(spec=Logger)
         topic = random_string()
         config_key = random_string(10)
-
         config_dict = {}
         config_dict['message'] = {}
         config_dict['message']['type'] = random_string(10)
         config_dict['message']['flatten_delimiter'] = random_string(5)
         config_dict['message']['keyword_delimiter'] = random_string(5)
         config_dict['message']['keyword_separator'] = random_string(5)
-
         config_dict[topic] = {}
         config_dict[topic]['message'] = {}
         config_dict[topic]['message']['type'] = random_string(10)
@@ -248,10 +252,7 @@ class TestConfigureMessage(BaseTestClass):
         config_dict[topic]['message']['keyword_delimiter'] = random_string(5)
         config_dict[topic]['message']['keyword_separator'] = random_string(5)
         config_dict[topic]['message'][config_key] = random_string()
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertIn(SUT.message_config_name, SUT.subscribed_topics[topic])
         self.assertEqual(SUT.subscribed_topics[topic][SUT.message_config_name]['type'],
@@ -266,20 +267,14 @@ class TestConfigureMessage(BaseTestClass):
                          config_dict[topic]['message'][config_key])
 
     def test_topic_named_message(self):
-        mock_logger = mock.Mock(spec=Logger)
         topic = random_string()
-
         config_dict = {}
         config_dict['message'] = {}
         config_dict['message']['flatten_delimiter'] = random_string(5)
         config_dict['message']['keyword_delimiter'] = random_string(5)
         config_dict['message']['keyword_separator'] = random_string(5)
-
         config_dict[topic] = {}
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertIn('message', SUT.subscribed_topics)
         self.assertIn(SUT.message_config_name, SUT.subscribed_topics['message'])
@@ -287,30 +282,22 @@ class TestConfigureMessage(BaseTestClass):
 
     # def test_field_named_message(self):
     def test_one(self):
-        mock_logger = mock.Mock(spec=Logger)
         topic = random_string()
         config_key = random_string(10)
-
         config_dict = {}
-
         config_dict[topic] = {}
         config_dict[topic]['message'] = {}
         config_dict[topic]['message']['flatten_delimiter'] = random_string(5)
         config_dict[topic]['message']['keyword_delimiter'] = random_string(5)
         config_dict[topic]['message']['keyword_separator'] = random_string(5)
         config_dict[topic]['message'][config_key] = random_string()
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertIn('message', SUT.subscribed_topics[topic]['fields'])
         self.assertNotIn('message', SUT.subscribed_topics[topic])
 
 class TestConfigureFields(BaseTestClass):
     def test_no_field_configuration(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         configured_field = {}
         configured_field[topic] = {}
@@ -319,12 +306,8 @@ class TestConfigureFields(BaseTestClass):
         configured_field[topic]['conversion_type'] = 'float'
         configured_field[topic]['conversion_error_to_none'] = False
         config_dict = {}
-
         config_dict[topic] = {'contains_total': True}
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertIn(topic, SUT.subscribed_topics[topic]['fields'])
         # ToDo - figure out a more robust check
@@ -332,46 +315,31 @@ class TestConfigureFields(BaseTestClass):
         self.assertEqual(SUT.subscribed_topics[topic]['fields'][topic]['conversion_func']['source'], 'lambda x: to_float(x)')
 
     def test_conversion_error_to_none_topic_string_false(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {topic: {'conversion_error_to_none': 'False'}}
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertFalse(SUT.subscribed_topics[topic]['fields'][topic]['conversion_error_to_none'])
 
     def test_conversion_error_to_none_field_string_false(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         fieldname = random_string()
         config_dict = {topic: {fieldname: {'conversion_error_to_none': 'False'}}}
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertFalse(SUT.subscribed_topics[topic]['fields'][fieldname]['conversion_error_to_none'])
 
     def test_global_defaults(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {}
         config_dict['ignore'] = 'true'
         config_dict['ignore_msg_id_field'] = 'true'
         config_dict['contains_total'] = 'true'
         config_dict['conversion_type'] = 'int'
-
         config_dict[topic] = {}
-
         fieldname = random_string()
         config_dict[topic][fieldname] = {}
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertTrue(SUT.subscribed_topics[topic]['fields'][fieldname]['ignore'])
         self.assertEqual(SUT.subscribed_topics[topic]['fields_ignoring_msg_id'], [fieldname])
@@ -379,23 +347,16 @@ class TestConfigureFields(BaseTestClass):
         self.assertEqual(SUT.subscribed_topics[topic]['fields'][fieldname]['conversion_func']['source'], 'lambda x: to_int(x)')
 
     def test_topic_defaults(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {}
-
         config_dict[topic] = {}
         config_dict[topic]['ignore'] = 'true'
         config_dict[topic]['ignore_msg_id_field'] = 'true'
         config_dict[topic]['contains_total'] = 'true'
         config_dict[topic]['conversion_type'] = 'int'
-
         fieldname = random_string()
         config_dict[topic][fieldname] = {}
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertTrue(SUT.subscribed_topics[topic]['fields'][fieldname]['ignore'])
         self.assertEqual(SUT.subscribed_topics[topic]['fields_ignoring_msg_id'], [fieldname])
@@ -403,13 +364,9 @@ class TestConfigureFields(BaseTestClass):
         self.assertEqual(SUT.subscribed_topics[topic]['fields'][fieldname]['conversion_func']['source'], 'lambda x: to_int(x)')
 
     def test_configure_field(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {}
-
         config_dict[topic] = {}
-
         fieldname = random_string()
         config_dict[topic][fieldname] = {}
         config_dict[topic][fieldname]['ignore'] = 'true'
@@ -421,10 +378,7 @@ class TestConfigureFields(BaseTestClass):
         config_dict[topic][fieldname]['expires_after'] = 'none'
         unit_name = 'unit_name'
         config_dict[topic][fieldname]['units'] = unit_name
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertTrue(SUT.subscribed_topics[topic]['fields'][fieldname]['ignore'])
         self.assertEqual(SUT.subscribed_topics[topic]['fields_ignoring_msg_id'], [fieldname])
@@ -435,44 +389,29 @@ class TestConfigureFields(BaseTestClass):
         self.assertIsNone(SUT.cached_fields[weewx_name]['expires_after'])
 
     def test_configure_cached_field_without_name(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {}
         config_dict[topic] = {}
-
         fieldname = random_string()
         config_dict[topic][fieldname] = {}
         config_dict[topic][fieldname]['expires_after'] = 'none'
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertIsNone(SUT.cached_fields[fieldname]['expires_after'])
 
     def test_configure_cached_topic_as_field_without_name(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {}
         config_dict[topic] = {}
         config_dict[topic]['expires_after'] = 'none'
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertIsNone(SUT.cached_fields[topic]['expires_after'])
 
     def test_configure_subfields(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {}
-
         config_dict[topic] = {}
-
         fieldname = random_string()
         config_dict[topic][fieldname] = {}
         config_dict[topic][fieldname]['ignore'] = 'true'
@@ -487,10 +426,7 @@ class TestConfigureFields(BaseTestClass):
         config_dict[topic][fieldname]['subfields'] = {}
         subfield_name = 'subfield1'
         config_dict[topic][fieldname]['subfields'][subfield_name] = {}
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertIn(fieldname, SUT.subscribed_topics[topic]['fields'])
 
@@ -502,115 +438,70 @@ class TestConfigureFields(BaseTestClass):
         self.assertIsNone(SUT.cached_fields[weewx_name]['expires_after'])
 
     def test_field_conversion_type_bool(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {}
-
         config_dict[topic] = {}
         config_dict[topic]['conversion_type'] = 'int'
-
         fieldname = random_string()
         config_dict[topic][fieldname] = {}
-
         config_dict[topic][fieldname]['conversion_type'] = 'bool'
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertEqual(SUT.subscribed_topics[topic]['fields'][fieldname]['conversion_func']['source'], 'lambda x: to_bool(x)')
 
     def test_field_conversion_type_float(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {}
-
         config_dict[topic] = {}
         config_dict[topic]['conversion_type'] = 'float'
-
         fieldname = random_string()
         config_dict[topic][fieldname] = {}
-
         config_dict[topic][fieldname]['conversion_type'] = 'float'
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertEqual(SUT.subscribed_topics[topic]['fields'][fieldname]['conversion_func']['source'], 'lambda x: to_float(x)')
 
     def test_field_conversion_type_int(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {}
-
         config_dict[topic] = {}
-
         fieldname = random_string()
         config_dict[topic][fieldname] = {}
-
         config_dict[topic][fieldname]['conversion_type'] = 'int'
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertEqual(SUT.subscribed_topics[topic]['fields'][fieldname]['conversion_func']['source'], 'lambda x: to_int(x)')
 
     def test_field_conversion_type_unknown(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {}
-
         config_dict[topic] = {}
-
         fieldname = random_string()
         config_dict[topic][fieldname] = {}
-
         config_dict[topic][fieldname]['conversion_type'] = 'unknown'
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertEqual(SUT.subscribed_topics[topic]['fields'][fieldname]['conversion_func']['source'], 'lambda x: x')
 
     # todo - issue 126, remove? rename?
     def test_field_conversion_type_unknown2(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {}
-
         config_dict[topic] = {}
         config_dict[topic]['conversion_type'] = 'int'
-
         fieldname = random_string()
         config_dict[topic][fieldname] = {}
-
         config_dict[topic][fieldname]['conversion_type'] = 'bool'
         config_dict[topic][fieldname]['conversion_func'] = 'lambda x: "foo"'
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertEqual(SUT.subscribed_topics[topic]['fields'][fieldname]['conversion_func']['source'], 'lambda x: "foo"')
 
     def test_filter_out_message(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         value_count = random.randint(1, 5)
-
         topic = random_string()
         config_dict = {}
-
         config_dict[topic] = {}
-
         fieldname = random_string()
         config_dict[topic][fieldname] = {}
         config_dict[topic][fieldname]['filter_out_message_when'] = []
@@ -620,10 +511,7 @@ class TestConfigureFields(BaseTestClass):
             config_dict[topic][fieldname]['filter_out_message_when'].append(i)
             filters[fieldname].append(float(i))
             i += 1
-
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertEqual(SUT.subscribed_topics[topic]['filters'], filters)
 
@@ -634,9 +522,7 @@ class TestQueueSizeCheck(BaseTestClass):
     config = configobj.ConfigObj(config_dict)
 
     def test_queue_max_reached(self):
-        mock_logger = mock.Mock(spec=Logger)
-
-        SUT = TopicManager(None, self.config, mock_logger)
+        SUT, mock_logger = create_topic_manager(self.config)
 
         queue = deque()
         queue.append(random_string(), )
@@ -651,9 +537,7 @@ class TestQueueSizeCheck(BaseTestClass):
         self.assertEqual(len(queue), max_queue - 1)
 
     def test_queue_max_not_reached(self):
-        mock_logger = mock.Mock(spec=Logger)
-
-        SUT = TopicManager(None, self.config, mock_logger)
+        SUT, mock_logger = create_topic_manager(self.config)
 
         queue = deque()
         queue.append(random_string(), )
@@ -668,9 +552,7 @@ class TestQueueSizeCheck(BaseTestClass):
         self.assertEqual(len(queue), orig_queue_size)
 
     def test_queue_max_equal(self):
-        mock_logger = mock.Mock(spec=Logger)
-
-        SUT = TopicManager(None, self.config, mock_logger)
+        SUT, mock_logger = create_topic_manager(self.config)
 
         queue = deque()
         queue.append(random_string(), )
@@ -685,35 +567,23 @@ class TestQueueSizeCheck(BaseTestClass):
         self.assertEqual(len(queue), max_queue - 1)
 
     def test_max_queue_topic_string(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {topic: {'max_queue': '2'}}
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertEqual(SUT.subscribed_topics[topic]['queue']['max_size'], 2)
 
     def test_max_queue_default_string(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {'max_queue': '2', topic: {}}
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config_dict)
 
         self.assertEqual(SUT.subscribed_topics[topic]['queue']['max_size'], 2)
 
     def test_append_data_respects_max_queue(self):
-        mock_logger = mock.Mock(spec=Logger)
-
         topic = random_string()
         config_dict = {topic: {'max_queue': '2'}}
-        config = configobj.ConfigObj(config_dict)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, mock_logger = create_topic_manager(config_dict)
 
         for value in range(3):
             SUT.append_data(topic, {'dateTime': time.time(), 'usUnits': 1, 'inTemp': value})
@@ -721,11 +591,9 @@ class TestQueueSizeCheck(BaseTestClass):
         self.assertEqual(len(SUT.subscribed_topics[topic]['queue']['data']), 2)
         self.assertEqual(mock_logger.error.call_count, 1)
 
-
 def midday_epoch():
     """ Today at noon; the offset tests below must not land in a DST transition's ambiguous hour. """
     return int(datetime.datetime.now().replace(hour=12, minute=0, second=0, microsecond=0).timestamp())
-
 
 class TestAppendData(BaseTestClass):
     topic = random_string()
@@ -741,9 +609,7 @@ class TestAppendData(BaseTestClass):
             'dateTime': time.time()
         }
 
-        mock_logger = mock.Mock(spec=Logger)
-
-        SUT = TopicManager(None, self.config, mock_logger)
+        SUT, _ = create_topic_manager(self.config)
 
         SUT.append_data(self.topic, queue_data)
         queue = SUT._get_queue(self.topic)['data']
@@ -764,10 +630,7 @@ class TestAppendData(BaseTestClass):
 
         config = copy.deepcopy(self.config)
         config['use_server_datetime'] = True
-
-        mock_logger = mock.Mock(spec=Logger)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config)
 
         SUT.append_data(self.topic, queue_data)
         queue = SUT._get_queue(self.topic)['data']
@@ -786,9 +649,7 @@ class TestAppendData(BaseTestClass):
             'usUnits': 1
         }
 
-        mock_logger = mock.Mock(spec=Logger)
-
-        SUT = TopicManager(None, self.config, mock_logger)
+        SUT, _ = create_topic_manager(self.config)
 
         SUT.append_data(self.topic, queue_data)
         queue = SUT._get_queue(self.topic)['data']
@@ -806,9 +667,7 @@ class TestAppendData(BaseTestClass):
             'dateTime': time.time()
         }
 
-        mock_logger = mock.Mock(spec=Logger)
-
-        SUT = TopicManager(None, self.config, mock_logger)
+        SUT, _ = create_topic_manager(self.config)
 
         SUT.append_data(self.topic, queue_data)
         queue = SUT._get_queue(self.topic)['data']
@@ -846,10 +705,7 @@ class TestAppendData(BaseTestClass):
         config = copy.deepcopy(self.config)
         config['datetime_format'] = datetime_format
         config['offset_format'] = offset_format
-
-        mock_logger = mock.Mock(spec=Logger)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config)
 
         SUT.append_data(self.topic, queue_data)
         queue = SUT._get_queue(self.topic)['data']
@@ -887,10 +743,7 @@ class TestAppendData(BaseTestClass):
         config = copy.deepcopy(self.config)
         config['datetime_format'] = datetime_format
         config['offset_format'] = offset_format
-
-        mock_logger = mock.Mock(spec=Logger)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config)
 
         SUT.append_data(self.topic, queue_data)
         queue = SUT._get_queue(self.topic)['data']
@@ -922,10 +775,7 @@ class TestAppendData(BaseTestClass):
 
         config = copy.deepcopy(self.config)
         config['datetime_format'] = datetime_format
-
-        mock_logger = mock.Mock(spec=Logger)
-
-        SUT = TopicManager(None, config, mock_logger)
+        SUT, _ = create_topic_manager(config)
 
         SUT.append_data(self.topic, queue_data)
         queue = SUT._get_queue(self.topic)['data']
@@ -938,9 +788,7 @@ class TestAppendData(BaseTestClass):
         self.assertEqual(adjusted_epoch, data['dateTime'])
 
     def test_to_epoch_trace_uses_datetime_format(self):
-        mock_logger = mock.Mock(spec=Logger)
-
-        SUT = TopicManager(None, self.config, mock_logger)
+        SUT, mock_logger = create_topic_manager(self.config)
 
         datetime_format = "%Y-%m-%d %H:%M:%S"
         datetime_input = "2024-01-02 03:04:05"
@@ -957,15 +805,6 @@ class TestGetQueueData(unittest.TestCase):
     config_dict = {}
     config_dict[topic] = {}
     config = configobj.ConfigObj(config_dict)
-
-    @staticmethod
-    def create_queue_data():
-        return {
-            'inTemp': random.uniform(1, 100),
-            'outTemp': random.uniform(1, 100),
-            'usUnits': 1,
-            'dateTime': time.time()
-        }
 
     def test_queue_empty(self):
         mock_logger = mock.Mock(spec=Logger)
@@ -985,7 +824,7 @@ class TestGetQueueData(unittest.TestCase):
         with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             type(mock_CollectData.return_value).get_data = mock.Mock(return_value={})
             SUT = TopicManager(None, self.config, mock_logger)
-            SUT.append_data(self.topic, self.create_queue_data())
+            SUT.append_data(self.topic, create_queue_data())
             gen = SUT.get_data(SUT.subscribed_topics[self.topic]['queue'], 0)
             data = next(gen, None)
 
@@ -997,9 +836,9 @@ class TestGetQueueData(unittest.TestCase):
         with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             type(mock_CollectData.return_value).get_data = mock.Mock(return_value={})
             SUT = TopicManager(None, self.config, mock_logger)
-            elem_one = self.create_queue_data()
-            elem_two = self.create_queue_data()
-            elem_three = self.create_queue_data()
+            elem_one = create_queue_data()
+            elem_two = create_queue_data()
+            elem_three = create_queue_data()
             SUT.append_data(self.topic, elem_one)
             SUT.append_data(self.topic, elem_two)
             SUT.append_data(self.topic, elem_three)
@@ -1052,20 +891,13 @@ class TestGetWindQueueData(BaseTestClass):
 
     fieldname = 'windSpeed'
 
-    def create_queue_data(self):
-        return {
-            self.fieldname: random.uniform(1, 100),
-            'usUnits': 1,
-            'dateTime': time.time()
-        }
-
     def test_queue_datetime_in_future(self):
         mock_logger = mock.Mock(spec=Logger)
 
         with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             type(mock_CollectData.return_value).get_data = mock.Mock(return_value={})
             SUT = TopicManager(None, self.config, mock_logger)
-            SUT.append_data(self.topic, self.create_queue_data(), fieldname=self.fieldname)
+            SUT.append_data(self.topic, create_queue_data(self.fieldname), fieldname=self.fieldname)
 
             gen = SUT.get_data(SUT.subscribed_topics[self.topic]['queue'], 0)
             data = next(gen, None)
@@ -1075,12 +907,12 @@ class TestGetWindQueueData(BaseTestClass):
     def test_add_to_collector_returns_data(self):
         mock_logger = mock.Mock(spec=Logger)
 
-        collected_data = self.create_queue_data()
+        collected_data = create_queue_data(self.fieldname)
         with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             type(mock_CollectData.return_value).get_data = mock.Mock(return_value={})
             type(mock_CollectData.return_value).add_data = mock.Mock(return_value=collected_data)
             SUT = TopicManager(None, self.config, mock_logger)
-            SUT.append_data(self.topic, self.create_queue_data(), fieldname=self.fieldname)
+            SUT.append_data(self.topic, create_queue_data(self.fieldname), fieldname=self.fieldname)
             # ToDo - need to get the topic a better way
             # perhaps find it by searching on subscribed topic 'type'
             gen = SUT.get_data(SUT.subscribed_topics[SUT.collected_topic]['queue'])
@@ -1094,7 +926,7 @@ class TestGetWindQueueData(BaseTestClass):
     def test_get_from_collector_returns_data(self):
         mock_logger = mock.Mock(spec=Logger)
 
-        collected_data = self.create_queue_data()
+        collected_data = create_queue_data(self.fieldname)
         with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             type(mock_CollectData.return_value).get_data = mock.Mock(return_value=collected_data)
             SUT = TopicManager(None, self.config, mock_logger)
@@ -1133,20 +965,13 @@ class TestGetCollectedData(BaseTestClass):
 
     fieldname = 'windSpeed'
 
-    def create_queue_data(self):
-        return {
-            self.fieldname: random.uniform(1, 100),
-            'usUnits': 1,
-            'dateTime': time.time()
-        }
-
     def test_get_from_collector_returns_data(self):
         mock_logger = mock.Mock(spec=Logger)
         config = copy.deepcopy(self.config)
         config['collect_wind_across_loops'] = True
         config['collect_observations'] = True
 
-        collected_data = self.create_queue_data()
+        collected_data = create_queue_data(self.fieldname)
         with mock.patch('user.mqttsubscribe.CollectData') as mock_CollectData:
             type(mock_CollectData.return_value).get_data = mock.Mock(return_value=collected_data)
             SUT = TopicManager(None, config, mock_logger)
@@ -1166,25 +991,10 @@ class TestAccumulatedData(BaseTestClass):
     config_dict[topic] = {}
     config = configobj.ConfigObj(config_dict)
 
-    @staticmethod
-    def create_queue_data():
-        return {
-            'inTemp': random.uniform(1, 100),
-            'outTemp': random.uniform(1, 100),
-            'usUnits': 1,
-            'dateTime': time.time()
-        }
-
     def test_ignore_start_set(self):
         mock_logger = mock.Mock(spec=Logger)
 
-        final_record_data = {
-            'inTemp': random.uniform(1, 100),
-            'outTemp': random.uniform(1, 100),
-            'usUnits': random.uniform(0, 2),
-            'interval': 5,
-            'dateTime': time.time()
-        }
+        final_record_data = create_final_record_data()
 
         start_ts = time.time()
         end_ts = time.time()
@@ -1193,29 +1003,17 @@ class TestAccumulatedData(BaseTestClass):
         config = copy.deepcopy(self.config)
         config['ignore_start_time'] = True
 
-        with mock.patch('user.mqttsubscribe.weewx.accum.Accum') as mock_Accum:
-            with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
-                type(mock_Accum.return_value).isEmpty = mock.PropertyMock(return_value=False)
-                mock_to_std_system.return_value = final_record_data
-
-                SUT = TopicManager(None, config, mock_logger)
-                SUT.append_data(self.topic, {'dateTime': start_ts})
-
-                accumulated_data = SUT.get_accumulated_data(SUT.subscribed_topics[self.topic]['queue'], 0, end_ts, 0)
-
-                mock_Accum.assert_called_once_with(test_weewx_stubs.TimeSpan(start_ts - adjust_start_time, end_ts))
-                self.assertDictEqual(accumulated_data, final_record_data)
+        with patch_accumulator(final_record_data) as (mock_Accum, _):
+            SUT = TopicManager(None, config, mock_logger)
+            SUT.append_data(self.topic, {'dateTime': start_ts})
+            accumulated_data = SUT.get_accumulated_data(SUT.subscribed_topics[self.topic]['queue'], 0, end_ts, 0)
+            mock_Accum.assert_called_once_with(test_weewx_stubs.TimeSpan(start_ts - adjust_start_time, end_ts))
+            self.assertDictEqual(accumulated_data, final_record_data)
 
     def test_ignore_start_set_and_adjusted(self):
         mock_logger = mock.Mock(spec=Logger)
 
-        final_record_data = {
-            'inTemp': random.uniform(1, 100),
-            'outTemp': random.uniform(1, 100),
-            'usUnits': random.uniform(0, 2),
-            'interval': 5,
-            'dateTime': time.time()
-        }
+        final_record_data = create_final_record_data()
 
         start_ts = time.time()
         end_ts = time.time()
@@ -1225,51 +1023,33 @@ class TestAccumulatedData(BaseTestClass):
         config['ignore_start_time'] = True
         config['adjust_start_time'] = adjust_start_time
 
-        with mock.patch('user.mqttsubscribe.weewx.accum.Accum') as mock_Accum:
-            with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
-                type(mock_Accum.return_value).isEmpty = mock.PropertyMock(return_value=False)
-                mock_to_std_system.return_value = final_record_data
-
-                SUT = TopicManager(None, config, mock_logger)
-                SUT.append_data(self.topic, {'dateTime': start_ts})
-
-                accumulated_data = SUT.get_accumulated_data(SUT.subscribed_topics[self.topic]['queue'], 0, end_ts, 0)
-
-                mock_Accum.assert_called_once_with(test_weewx_stubs.TimeSpan(start_ts - adjust_start_time, end_ts))
-                self.assertDictEqual(accumulated_data, final_record_data)
+        with patch_accumulator(final_record_data) as (mock_Accum, _):
+            SUT = TopicManager(None, config, mock_logger)
+            SUT.append_data(self.topic, {'dateTime': start_ts})
+            accumulated_data = SUT.get_accumulated_data(SUT.subscribed_topics[self.topic]['queue'], 0, end_ts, 0)
+            mock_Accum.assert_called_once_with(test_weewx_stubs.TimeSpan(start_ts - adjust_start_time, end_ts))
+            self.assertDictEqual(accumulated_data, final_record_data)
 
     def test_ignore_end_set(self):
         mock_logger = mock.Mock(spec=Logger)
 
-        final_record_data = {
-            'inTemp': random.uniform(1, 100),
-            'outTemp': random.uniform(1, 100),
-            'usUnits': random.uniform(0, 2),
-            'interval': 5,
-            'dateTime': time.time()
-        }
+        final_record_data = create_final_record_data()
 
         end_ts = time.time()
 
         config = copy.deepcopy(self.config)
         config['ignore_end_time'] = True
 
-        with mock.patch('user.mqttsubscribe.weewx.accum.Accum') as mock_Accum:
-            with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
-                type(mock_Accum.return_value).isEmpty = mock.PropertyMock(return_value=False)
-                mock_to_std_system.return_value = final_record_data
-
-                SUT = TopicManager(None, config, mock_logger)
-                SUT.append_data(self.topic, {'dateTime': end_ts})
-
-                accumulated_data = SUT.get_accumulated_data(SUT.subscribed_topics[self.topic]['queue'], 0, 0, 0)
-
-                mock_Accum.assert_called_once_with(test_weewx_stubs.TimeSpan(0, end_ts))
-                self.assertDictEqual(accumulated_data, final_record_data)
+        with patch_accumulator(final_record_data) as (mock_Accum, _):
+            SUT = TopicManager(None, config, mock_logger)
+            SUT.append_data(self.topic, {'dateTime': end_ts})
+            accumulated_data = SUT.get_accumulated_data(SUT.subscribed_topics[self.topic]['queue'], 0, 0, 0)
+            mock_Accum.assert_called_once_with(test_weewx_stubs.TimeSpan(0, end_ts))
+            self.assertDictEqual(accumulated_data, final_record_data)
 
     def test_queue_element_before_start(self):
         mock_logger = mock.Mock(spec=Logger)
-        queue_data = self.create_queue_data()
+        queue_data = create_queue_data()
 
         with mock.patch('user.mqttsubscribe.weewx.accum.Accum') as mock_Accum:
             with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
@@ -1290,42 +1070,25 @@ class TestAccumulatedData(BaseTestClass):
     def test_queue_empty(self):
         mock_logger = mock.Mock(spec=Logger)
 
-        with mock.patch('user.mqttsubscribe.weewx.accum.Accum') as mock_Accum:
-            with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
-                type(mock_Accum.return_value).isEmpty = mock.PropertyMock(return_value=True)
-
-                SUT = TopicManager(None, self.config, mock_logger)
-
-                accumulated_data = SUT.get_accumulated_data(SUT.subscribed_topics[self.topic]['queue'], 0, time.time(), 0)
-
-                self.assertDictEqual(accumulated_data, {})
-                mock_Accum.assert_not_called()
-                mock_Accum.addRecord.assert_not_called()
-                mock_Accum.getRecord.assert_not_called()
-                mock_to_std_system.assert_not_called()
+        with patch_accumulator(is_empty=True) as (mock_Accum, mock_to_std_system):
+            SUT = TopicManager(None, self.config, mock_logger)
+            accumulated_data = SUT.get_accumulated_data(SUT.subscribed_topics[self.topic]['queue'], 0, time.time(), 0)
+            self.assertDictEqual(accumulated_data, {})
+            mock_Accum.assert_not_called()
+            mock_Accum.addRecord.assert_not_called()
+            mock_Accum.getRecord.assert_not_called()
+            mock_to_std_system.assert_not_called()
 
     def test_queue_valid(self):
         mock_logger = mock.Mock(spec=Logger)
 
-        final_record_data = {
-            'inTemp': random.uniform(1, 100),
-            'outTemp': random.uniform(1, 100),
-            'usUnits': random.uniform(0, 2),
-            'interval': 5,
-            'dateTime': time.time()
-        }
+        final_record_data = create_final_record_data()
 
-        with mock.patch('user.mqttsubscribe.weewx.accum.Accum') as mock_Accum:
-            with mock.patch('user.mqttsubscribe.weewx.units.to_std_system') as mock_to_std_system:
-                type(mock_Accum.return_value).isEmpty = mock.PropertyMock(return_value=False)
-                mock_to_std_system.return_value = final_record_data
-
-                SUT = TopicManager(None, self.config, mock_logger)
-                SUT.append_data(self.topic, {})
-
-                accumulated_data = SUT.get_accumulated_data(SUT.subscribed_topics[self.topic]['queue'], 0, time.time(), 0)
-
-                self.assertDictEqual(accumulated_data, final_record_data)
+        with patch_accumulator(final_record_data) as (_, _):
+            SUT = TopicManager(None, self.config, mock_logger)
+            SUT.append_data(self.topic, {})
+            accumulated_data = SUT.get_accumulated_data(SUT.subscribed_topics[self.topic]['queue'], 0, time.time(), 0)
+            self.assertDictEqual(accumulated_data, final_record_data)
 
 if __name__ == '__main__':
     helpers.run_tests()
