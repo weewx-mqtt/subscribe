@@ -14,7 +14,6 @@ import unittest
 import configobj
 import json
 import random
-import string
 import time
 
 from io import StringIO
@@ -22,25 +21,20 @@ from io import StringIO
 from user.mqttsubscribe import create_logger as Logger, MessageCallbackProvider, TopicManager
 from user.tests.message_helpers import create_message
 
-def random_string(length=32):
-    return ''.join([random.choice(string.ascii_letters + string.digits) for n in range(length)])
 
-class TestJSONMessage(unittest.TestCase):
+class JSONPayloadTestBase(unittest.TestCase):
+    """Shared setup and payload runner for the JSON payload function tests."""
+
+    __test__ = False  # shared base; only the concrete subclasses are collected
+
     @classmethod
     def setUpClass(cls):
         cls.logger = Logger('FuncTest', level='ERROR', console=True)
+        cls.topic = helpers.random_string()
 
-        cls.topic = random_string()
-        cls.config_str = '''
-[MQTTSubscribe]
-    [[topics]]
-        [[[%s]]]
-            [[[[message]]]]
-                type = json
-'''
-
-    def run_test(self, payload_dict, expected_data):
-        config = configobj.ConfigObj(StringIO(self.config_str % self.topic))
+    def run_test(self, payload_dict, expected_data, config_str=None):
+        config_text = self.config_str % self.topic if config_str is None else config_str
+        config = configobj.ConfigObj(StringIO(config_text))
 
         topic_manager = TopicManager(None, config['MQTTSubscribe']['topics'], self.logger)
 
@@ -55,6 +49,18 @@ class TestJSONMessage(unittest.TestCase):
         data = queue['data'].popleft()['data']
 
         self.assertDictEqual(data, expected_data)
+
+
+class TestJSONMessage(JSONPayloadTestBase):
+    __test__ = True
+
+    config_str = '''
+[MQTTSubscribe]
+    [[topics]]
+        [[[%s]]]
+            [[[[message]]]]
+                type = json
+'''
 
     def test_basic_message(self):
         payload_dict = {
@@ -198,11 +204,8 @@ class TestJSONMessage(unittest.TestCase):
 
         self.run_test(payload_dict, expected_data)
 
-class TestJSONMessageFlattenDelimiter(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.logger = Logger('FuncTest', level='ERROR', console=True)
-        cls.topic = random_string()
+class TestJSONMessageFlattenDelimiter(JSONPayloadTestBase):
+    __test__ = True
 
     def test_nested_json_and_arrays(self):
         config_str = f'''
@@ -225,10 +228,6 @@ class TestJSONMessageFlattenDelimiter(unittest.TestCase):
                     [[[[[[inTemp1]]]]]]
                     [[[[[[inTemp2]]]]]]
 '''
-
-        config = configobj.ConfigObj(StringIO(config_str))
-        topic_manager = TopicManager(None, config['MQTTSubscribe']['topics'], self.logger)
-        message_callback = MessageCallbackProvider(None, self.logger, topic_manager)
 
         payload_dict = {
             'dateTime': time.time(),
@@ -254,12 +253,7 @@ class TestJSONMessageFlattenDelimiter(unittest.TestCase):
             'inTemps.inTemp2': payload_dict['sensors'][1][1],
         }
 
-        msg = create_message(self.topic, json.dumps(payload_dict).encode("utf-8"), 0, 0)
-        message_callback._on_message_json(msg)
-
-        data = topic_manager._get_queue(self.topic)['data'].popleft()['data']
-
-        self.assertDictEqual(data, expected_data)
+        self.run_test(payload_dict, expected_data, config_str)
 
 if __name__ == '__main__':
     helpers.run_tests()
