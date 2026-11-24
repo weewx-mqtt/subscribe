@@ -17,6 +17,8 @@ from test_weewx_stubs import random_string, BaseTestClass
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 import user.mqttsubscribe
+from user.tests.unit.service_driver_helpers import (archive_window, configure_mock_subscriber,
+                                                    create_queue)
 
 class atestInitialization(BaseTestClass):
     def test_invalid_binding(self):
@@ -178,29 +180,18 @@ class Testnew_loop_packet(BaseTestClass):
         self.config_dict['MQTTSubscribeService'] = {}
         self.config_dict['MQTTSubscribeService']['topic'] = random_string()
 
-    @staticmethod
-    def generator(test_data):
-        for data in test_data:
-            yield data
-
     def test_queue_valid(self):
         topic = random_string()
-        current_time = int(time.time() + 0.5)
-        end_period_ts = (int(current_time / 300) + 1) * 300
-        start_ts = end_period_ts - 300
+        start_ts, end_period_ts = archive_window()
         self.setup_queue_tests(start_ts, end_period_ts)
         self.final_packet_data.update(self.target_data)
-        queue = dict(
-            {'name': topic}
-        )
+        queue = create_queue(topic)
 
         mock_new_loop_packet_event = mock.NonCallableMagicMock()
         mock_new_loop_packet_event.packet = self.packet_data
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe:
-            type(mock_MQTTSubscribe.return_value).queues = mock.PropertyMock(return_value=[queue])
-            type(mock_MQTTSubscribe.return_value).get_accumulated_data = mock.Mock(return_value=self.target_data)
-            type(mock_MQTTSubscribe.return_value).cached_fields = mock.PropertyMock(return_value=None)
+            configure_mock_subscriber(mock_MQTTSubscribe, queues=[queue], get_accumulated_data=self.target_data, cached_fields=None)
 
             SUT = user.mqttsubscribe.MQTTSubscribeService(self.mock_StdEngine, self.config_dict)
             SUT.end_ts = start_ts
@@ -212,9 +203,7 @@ class Testnew_loop_packet(BaseTestClass):
             SUT.shutDown()
 
     def test_packet_is_in_past(self):
-        current_time = int(time.time() + 0.5)
-        end_period_ts = (int(current_time / 300) + 1) * 300
-        start_ts = end_period_ts - 300
+        start_ts, end_period_ts = archive_window()
         self.setup_queue_tests(start_ts, end_period_ts)
         self.final_packet_data.update(self.target_data)
 
@@ -223,8 +212,7 @@ class Testnew_loop_packet(BaseTestClass):
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe:
             with mock.patch('user.mqttcommon.Logger'):
-                type(mock_MQTTSubscribe.return_value).get_accumulated_data = mock.Mock(return_value=self.target_data)
-                type(mock_MQTTSubscribe.return_value).cached_fields = mock.PropertyMock(return_value=None)
+                configure_mock_subscriber(mock_MQTTSubscribe, get_accumulated_data=self.target_data, cached_fields=None)
 
                 SUT = user.mqttsubscribe.MQTTSubscribeService(self.mock_StdEngine, self.config_dict)
                 SUT.end_ts = end_period_ts + 10
@@ -237,14 +225,10 @@ class Testnew_loop_packet(BaseTestClass):
 
     def test_cached_field_in_packet(self):
         topic = random_string()
-        current_time = int(time.time() + 0.5)
-        end_period_ts = (int(current_time / 300) + 1) * 300
-        start_ts = end_period_ts - 300
+        start_ts, end_period_ts = archive_window()
         self.setup_queue_tests(start_ts, end_period_ts)
         self.final_packet_data.update(self.target_data)
-        queue = dict(
-            {'name': topic}
-        )
+        queue = create_queue(topic)
 
         packet = {
             'outTemp': random.uniform(1, 100),
@@ -258,9 +242,10 @@ class Testnew_loop_packet(BaseTestClass):
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_MQTTSubscribe:
             with mock.patch('user.mqttsubscribe.RecordCache'):
-                type(mock_MQTTSubscribe.return_value).queues = mock.PropertyMock(return_value=[queue])
-                type(mock_MQTTSubscribe.return_value).get_accumulated_data = mock.Mock(return_value=self.target_data)
-                type(mock_MQTTSubscribe.return_value).cached_fields = mock.PropertyMock(return_value={'outTemp': {}})
+                configure_mock_subscriber(mock_MQTTSubscribe,
+                                          queues=[queue],
+                                          get_accumulated_data=self.target_data,
+                                          cached_fields={'outTemp': {}})
 
                 SUT = user.mqttsubscribe.MQTTSubscribeService(self.mock_StdEngine, self.config_dict)
                 SUT.end_ts = start_ts
@@ -315,29 +300,18 @@ class Testnew_archive_record(BaseTestClass):
         self.config_dict['MQTTSubscribeService']['topic'] = topic
         self.config_dict['MQTTSubscribeService']['binding'] = 'archive'
 
-    @staticmethod
-    def generator(test_data):
-        for data in test_data:
-            yield data
-
     def test_queue_valid(self):
         topic = random_string()
-        current_time = int(time.time() + 0.5)
-        end_period_ts = (int(current_time / 300) + 1) * 300
-        start_ts = end_period_ts - 300
+        start_ts, end_period_ts = archive_window()
         self.setup_archive_queue_tests(start_ts, end_period_ts, topic)
         self.final_record_data.update(self.target_data)
-        queue = dict(
-            {'name': topic}
-        )
+        queue = create_queue(topic)
 
         mock_new_archive_record_event = mock.MagicMock()
         mock_new_archive_record_event.record = self.record_data
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
-            type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
-            type(mock_manager.return_value).get_accumulated_data = mock.Mock(return_value=self.target_data)
-            type(mock_manager.return_value).cached_fields = mock.PropertyMock(return_value=None)
+            configure_mock_subscriber(mock_manager, queues=[queue], get_accumulated_data=self.target_data, cached_fields=None)
 
             SUT = user.mqttsubscribe.MQTTSubscribeService(self.mock_StdEngine, self.config_dict)
             SUT.end_ts = start_ts

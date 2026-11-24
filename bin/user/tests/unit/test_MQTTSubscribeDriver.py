@@ -19,6 +19,8 @@ test_weewx_stubs.setup_stubs()
 
 from user.mqttcommon import Logger
 from user.mqttsubscribe import MQTTSubscribeDriver
+from user.tests.unit.service_driver_helpers import (as_generator, configure_mock_subscriber,
+                                                    create_queue, empty_generator)
 
 class TestclosePort(BaseTestClass):
     def test_close_port(self):
@@ -160,31 +162,19 @@ class TestgenLoopPackets(BaseTestClass):
 
         self.config_dict['MQTTSubscribeDriver']['topic'] = topic
 
-    @staticmethod
-    def generator(test_data):
-        for data in test_data:
-            yield data
-
-    @staticmethod
-    def empty_generator():
-        return
-        yield  # needed to make this a generator
-
     def test_packet_is_earlier_than_previous(self):
         mock_engine = mock.Mock()
         topic = random_string()
         self.setup_queue_tests(topic)
-        queue = dict(
-            {'name': topic}
-        )
+        queue = create_queue(topic)
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             with mock.patch('user.mqttcommon.Logger'):
                 type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
                 queue_data = copy.deepcopy(self.queue_data)
                 queue_data['dateTime'] = queue_data['dateTime'] + 2000
-                type(mock_manager.return_value).get_data = mock.Mock(side_effect=[self.generator([self.queue_data]),
-                                                                                  self.generator([queue_data])])
+                type(mock_manager.return_value).get_data = mock.Mock(side_effect=[as_generator([self.queue_data]),
+                                                                                  as_generator([queue_data])])
 
                 SUT = MQTTSubscribeDriver(self.config_dict, mock_engine)
 
@@ -202,14 +192,13 @@ class TestgenLoopPackets(BaseTestClass):
         mock_engine = mock.Mock()
         topic = random_string()
         self.setup_queue_tests(topic)
-        queue = dict(
-            {'name': topic}
-        )
+        queue = create_queue(topic)
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             with mock.patch('user.mqttsubscribe.time') as mock_time:
-                type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
-                type(mock_manager.return_value).get_data = mock.Mock(side_effect=[self.empty_generator(), self.generator([self.queue_data])])
+                configure_mock_subscriber(mock_manager,
+                                          queues=[queue],
+                                          get_data_side_effect=[empty_generator(), as_generator([self.queue_data])])
 
                 SUT = MQTTSubscribeDriver(self.config_dict, mock_engine)
                 gen = SUT.genLoopPackets()
@@ -222,9 +211,7 @@ class TestgenLoopPackets(BaseTestClass):
         mock_engine = mock.Mock()
         topic = random_string()
         self.setup_queue_tests(topic)
-        queue = dict(
-            {'name': topic}
-        )
+        queue = create_queue(topic)
         config_dict = copy.deepcopy(self.config_dict)
         config_dict['MQTTSubscribeDriver']['max_loop_interval'] = 1
 
@@ -233,8 +220,9 @@ class TestgenLoopPackets(BaseTestClass):
         with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             with mock.patch('user.mqttsubscribe.time'):
                 with mock.patch('user.mqttcommon.Logger'):
-                    type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
-                    type(mock_manager.return_value).get_data = mock.Mock(side_effect=[self.empty_generator(), self.generator([self.queue_data])])
+                    configure_mock_subscriber(mock_manager,
+                                              queues=[queue],
+                                              get_data_side_effect=[empty_generator(), as_generator([self.queue_data])])
 
                     SUT = MQTTSubscribeDriver(config_dict, mock_engine)
                     SUT.start_loop_period_ts = start_loop_period_ts
@@ -253,14 +241,13 @@ class TestgenLoopPackets(BaseTestClass):
         mock_engine = mock.Mock()
         topic = random_string()
         self.setup_queue_tests(topic)
-        queue = dict(
-            {'name': topic}
-        )
+        queue = create_queue(topic)
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             with mock.patch('user.mqttsubscribe.time') as mock_time:
-                type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
-                type(mock_manager.return_value).get_data = mock.Mock(side_effect=[self.generator([None]), self.generator([self.queue_data])])
+                configure_mock_subscriber(mock_manager,
+                                          queues=[queue],
+                                          get_data_side_effect=[as_generator([None]), as_generator([self.queue_data])])
 
                 SUT = MQTTSubscribeDriver(self.config_dict, mock_engine)
                 gen = SUT.genLoopPackets()
@@ -303,14 +290,11 @@ class TestgenLoopPackets(BaseTestClass):
         mock_engine = mock.Mock()
         topic = random_string()
         self.setup_queue_tests(topic)
-        queue = dict(
-            {'name': topic}
-        )
+        queue = create_queue(topic)
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
             with mock.patch('user.mqttsubscribe.time') as mock_time:
-                type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
-                type(mock_manager.return_value).get_data = mock.Mock(return_value=self.generator([self.queue_data]))
+                configure_mock_subscriber(mock_manager, queues=[queue], get_data=as_generator([self.queue_data]))
 
                 SUT = MQTTSubscribeDriver(self.config_dict, mock_engine)
 
@@ -347,23 +331,13 @@ class TestgenArchiveRecords(BaseTestClass):
         self.config_dict['MQTTSubscribeDriver']['topics'][random_string()] = {}
         self.config_dict['MQTTSubscribeDriver']['topics'][archive_topic] = {}
 
-    @staticmethod
-    def generator(test_data):
-        for data in test_data:
-            yield data
-
-    @staticmethod
-    def empty_generator():
-        return
-        yield  # needed to make this a generator
-
     def test_empty_queue(self):
         mock_engine = mock.Mock()
         archive_topic = 'archive'
         self.setup_archive_queue_tests(archive_topic)
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
-            type(mock_manager.return_value).get_data = mock.Mock(return_value=self.empty_generator())
+            type(mock_manager.return_value).get_data = mock.Mock(return_value=empty_generator())
 
             SUT = MQTTSubscribeDriver(self.config_dict, mock_engine)
             gen = SUT.genArchiveRecords(0)
@@ -377,7 +351,7 @@ class TestgenArchiveRecords(BaseTestClass):
         self.setup_archive_queue_tests(archive_topic)
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
-            type(mock_manager.return_value).get_data = mock.Mock(return_value=self.generator([None]))
+            type(mock_manager.return_value).get_data = mock.Mock(return_value=as_generator([None]))
 
             SUT = MQTTSubscribeDriver(self.config_dict, mock_engine)
             gen = SUT.genArchiveRecords(0)
@@ -408,13 +382,10 @@ class TestgenArchiveRecords(BaseTestClass):
         archive_topic = 'archive'
         self.setup_archive_queue_tests(archive_topic)
         queue_list = [self.queue_data, self.queue_data]
-        queue = dict(
-            {'name': archive_topic}
-        )
+        queue = create_queue(archive_topic)
 
         with mock.patch('user.mqttsubscribe.MQTTSubscriber') as mock_manager:
-            type(mock_manager.return_value).queues = mock.PropertyMock(return_value=[queue])
-            type(mock_manager.return_value).get_data = mock.Mock(return_value=self.generator([self.queue_data, self.queue_data, None]))
+            configure_mock_subscriber(mock_manager, queues=[queue], get_data=as_generator([self.queue_data, self.queue_data, None]))
             records = []
 
             SUT = MQTTSubscribeDriver(self.config_dict, mock_engine)
