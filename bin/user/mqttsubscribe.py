@@ -1681,16 +1681,17 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
         # Wrap all the processing in a try, so it doesn't crash and burn on any error
         try:
             self._log_message(msg)
-            message_dict = self.topic_manager.get_message_dict(msg.topic)
-            fields = self.topic_manager.get_fields(msg.topic)
-            fields_ignore_default = self.topic_manager.get_ignore_value(msg.topic)
-            fields_conversion_func = self.topic_manager.get_conversion_func(msg.topic)
+            topic_config = self.topic_manager.get_topic_config(msg.topic)
+            message_dict = topic_config[self.topic_manager.message_config_name]
+            fields = topic_config['fields']
+            fields_ignore_default = topic_config['ignore']
+            fields_conversion_func = topic_config['conversion_func']
 
             payload_str = msg.payload.decode('utf-8')
 
             fielddata = payload_str.split(message_dict['keyword_delimiter'])
             data = {}
-            unit_system = self.topic_manager.get_unit_system(msg.topic)
+            unit_system = topic_config['unit_system']
             for field in fielddata:
                 eq_index = field.find(message_dict['keyword_separator'])
                 # Ignore all fields that do not have the separator
@@ -1720,9 +1721,10 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
         # Wrap all the processing in a try, so it doesn't crash and burn on any error
         try:
             self._log_message(msg)
-            message_dict = self.topic_manager.get_message_dict(msg.topic)
-            fields = self.topic_manager.get_fields(msg.topic)
-            fields_ignore_default = self.topic_manager.get_ignore_value(msg.topic)
+            topic_config = self.topic_manager.get_topic_config(msg.topic)
+            message_dict = topic_config[self.topic_manager.message_config_name]
+            fields = topic_config['fields']
+            fields_ignore_default = topic_config['ignore']
 
             payload_str = msg.payload.decode('utf-8')
 
@@ -1746,11 +1748,12 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
 
     def _process_json_dict(self, msg, fields, fields_ignore_default, data_flattened):
         # pylint: disable= too-many-locals
-        msg_id_field = self.topic_manager.get_msg_id_field(msg.topic)
-        fields_ignoring_msg_id = self.topic_manager.get_fields_ignoring_msg_id(msg.topic)
-        unit_system = self.topic_manager.get_unit_system(msg.topic)
-        filters = self.topic_manager.get_filters(msg.topic)
-        fields_conversion_func = self.topic_manager.get_conversion_func(msg.topic)
+        topic_config = self.topic_manager.get_topic_config(msg.topic)
+        msg_id_field = topic_config['msg_id_field']
+        fields_ignoring_msg_id = topic_config['fields_ignoring_msg_id']
+        unit_system = topic_config['unit_system']
+        filters = topic_config['filters']
+        fields_conversion_func = topic_config['conversion_func']
 
         data_final = {}
         msg_id = ''
@@ -1778,10 +1781,11 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
         # Wrap all the processing in a try, so it doesn't crash and burn on any error
         try:
             self._log_message(msg)
-            fields = self.topic_manager.get_fields(msg.topic)
-            fields_ignore_default = self.topic_manager.get_ignore_value(msg.topic)
-            fields_conversion_func = self.topic_manager.get_conversion_func(msg.topic)
-            topic_tail_is_fieldname = self.topic_manager.get_topic_tail_is_fieldname(msg.topic)
+            topic_config = self.topic_manager.get_topic_config(msg.topic)
+            fields = topic_config['fields']
+            fields_ignore_default = topic_config['ignore']
+            fields_conversion_func = topic_config['conversion_func']
+            topic_tail_is_fieldname = topic_config['topic_tail_is_fieldname']
 
             payload_str = msg.payload
 
@@ -1792,7 +1796,7 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
             if msg.payload is not None:
                 payload_str = msg.payload.decode('utf-8')
 
-            unit_system = self.topic_manager.get_unit_system(msg.topic)
+            unit_system = topic_config['unit_system']
             if not fields.get(key, {}).get('ignore', fields_ignore_default):
                 (fieldname, value) = self._update_data(msg.topic, key, payload_str, fields, fields_conversion_func, unit_system)
                 data = {}
@@ -1808,7 +1812,8 @@ class MessageCallbackProvider(AbstractMessageCallbackProvider):
         ''' The on message call back.'''
         # Wrap all the processing in a try, so it doesn't crash and burn on any error
         try:
-            message_dict = self.topic_manager.get_message_dict(msg.topic)
+            topic_config = self.topic_manager.get_topic_config(msg.topic)
+            message_dict = topic_config[self.topic_manager.message_config_name]
             message_type = message_dict['type']
             # ToDo: eliminate if/elif?
             if message_type == 'individual':
