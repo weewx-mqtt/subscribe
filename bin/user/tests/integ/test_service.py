@@ -11,7 +11,6 @@ import string
 import time
 import unittest
 import configobj
-import paho.mqtt.client as mqtt
 
 import utils
 
@@ -73,25 +72,8 @@ class TestService(unittest.TestCase):
             'connected_flag': False,
         }
 
-        try:
-            callback_api_version = mqtt.CallbackAPIVersion.VERSION2
-            client = mqtt.Client(callback_api_version=callback_api_version,  # (only available in v2)
-                                 userdata=userdata)
-            client.on_connect = utils.on_connect_v2
-        except AttributeError:
-            client = mqtt.Client(userdata=userdata)  # (v1 signature)
-            client.on_connect = utils.on_connect_v1
-
-        client.connect(host, port, keepalive)
-        client.loop_start()
-
-        max_connect_wait = 1  # ToDo - configure
-        i = 1
-        while not userdata['connected_flag']:
-            if i > max_connect_wait:
-                self.fail("Timed out waiting for connections.")
-            time.sleep(1)
-            i += 1
+        client = utils.create_paho_client(userdata, host, port, keepalive)
+        utils.wait_for_connected(self, userdata, "Timed out waiting for connections.")
 
         userdata2 = {
             'topics': cdict['topics'].sections,
@@ -100,25 +82,9 @@ class TestService(unittest.TestCase):
             'max_msg_wait': 1  # ToDo - configure
         }
 
-        try:
-            callback_api_version = mqtt.CallbackAPIVersion.VERSION2
-            client2 = mqtt.Client(callback_api_version=callback_api_version,  # (only available in v2)
-                                  userdata=userdata2)
-            client2.on_connect = utils.on_connect_v2
-        except AttributeError:
-            client2 = mqtt.Client(userdata=userdata2)  # (v1 signature)
-            client2.on_connect = utils.on_connect_v1
-
+        client2 = utils.create_paho_client(userdata2, host, port, keepalive)
         client2.on_message = utils.on_message
-        client2.connect(host, port, keepalive)
-        client2.loop_start()
-        max_connect2_wait = 1  # ToDo - configure
-        i = 1
-        while not userdata2['connected_flag']:
-            if i > max_connect2_wait:
-                self.fail("Timed out waiting for connection 2.")
-            time.sleep(1)
-            i += 1
+        utils.wait_for_connected(self, userdata2, "Timed out waiting for connection 2.")
 
         max_waits = 10
         for testrun in testruns:

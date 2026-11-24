@@ -13,6 +13,7 @@ import tempfile
 import time
 
 import configobj
+import paho.mqtt.client as mqtt
 import random
 import string
 
@@ -92,6 +93,32 @@ def on_connect_v2(client, userdata, _flags, _reason_code, _properties):
     for topic in userdata['topics']:
         (_result, _mid) = client.subscribe(topic)
     userdata['connected_flag'] = True
+
+def create_paho_client(userdata, host, port, keepalive):
+    """ Create a paho client for the installed API version and start its loop. """
+    try:
+        callback_api_version = mqtt.CallbackAPIVersion.VERSION2
+        client = mqtt.Client(callback_api_version=callback_api_version,  # (only available in v2)
+                             userdata=userdata)
+        client.on_connect = on_connect_v2
+    except AttributeError:
+        client = mqtt.Client(userdata=userdata)  # (v1 signature)
+        client.on_connect = on_connect_v1
+
+    client.connect(host, port, keepalive)
+    client.loop_start()
+    return client
+
+
+def wait_for_connected(test_case, userdata, message, max_wait=1):
+    """ Wait until the connect callback has set the flag in userdata. """
+    i = 1
+    while not userdata['connected_flag']:
+        if i > max_wait:
+            test_case.fail(message)
+        time.sleep(1)
+        i += 1
+
 
 def on_message(client, userdata, msg):
     userdata['msg'] = True
