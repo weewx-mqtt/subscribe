@@ -68,7 +68,7 @@ class TestInit(unittest.TestCase):
             'data': data_queue,
         }
 
-        list(SUT._process_queue(50, mock.Mock(), mock.Mock(), queue))  # pylint: disable=protected-access
+        list(SUT.topic_queues._process_queue(50, mock.Mock(), mock.Mock(), queue))  # pylint: disable=protected-access
 
         mock_logger.trace.assert_called_once_with(
             50006,
@@ -692,7 +692,7 @@ class TestQueueSizeCheck(unittest.TestCase):
         orig_queue_size = len(queue)
         max_queue = 2
 
-        SUT._queue_size_check(queue, max_queue)
+        SUT.topic_queues._queue_size_check(queue, max_queue)
         self.assertEqual(mock_logger.error.call_count, orig_queue_size - max_queue + 1)
         self.assertEqual(len(queue), max_queue - 1)
 
@@ -709,7 +709,7 @@ class TestQueueSizeCheck(unittest.TestCase):
         orig_queue_size = len(queue)
         max_queue = 7
 
-        SUT._queue_size_check(queue, max_queue)
+        SUT.topic_queues._queue_size_check(queue, max_queue)
         self.assertEqual(mock_logger.error.call_count, 0)
         self.assertEqual(len(queue), orig_queue_size)
 
@@ -726,7 +726,7 @@ class TestQueueSizeCheck(unittest.TestCase):
         orig_queue_size = len(queue)
         max_queue = 4
 
-        SUT._queue_size_check(queue, max_queue)
+        SUT.topic_queues._queue_size_check(queue, max_queue)
         self.assertEqual(mock_logger.error.call_count, orig_queue_size - max_queue + 1)
         self.assertEqual(len(queue), max_queue - 1)
 
@@ -1006,7 +1006,7 @@ class TestAppendData(unittest.TestCase):
         datetime_format = "%Y-%m-%d %H:%M:%S"
         datetime_input = "2024-01-02 03:04:05"
 
-        SUT._to_epoch(datetime_input, datetime_format)  # pylint: disable=protected-access
+        SUT.topic_queues._to_epoch(datetime_input, datetime_format)  # pylint: disable=protected-access
 
         mock_logger.trace.assert_any_call(
             50015,

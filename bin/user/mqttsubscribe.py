@@ -844,7 +844,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         self.topics = {}
         self.subscribed_topics = {}
         self.cached_fields = {}
-        self.queues = []
+        self.topic_queues = TopicQueues(self, weewx.units.unit_constants[topic_defaults['unit_system_name']])
 
         single_queue = to_bool(config.get('single_queue', False))
         self.logger.debug(51001, TopicManager.log_messages[51001].format(single_queue=single_queue))
@@ -860,7 +860,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
                 'max_size': topic_defaults['max_queue'],
                 'data': deque()
             }
-            self.queues.append(single_queue_obj)
+            self.topic_queues.queues.append(single_queue_obj)
 
         self._configure_topics(config, archive_topic, single_queue, single_queue_obj,
                                default_message_dict=default_message_dict,
@@ -871,6 +871,16 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
         self.logger.debug(51002, TopicManager.log_messages[51002].format(subscribed_topics=json.dumps(self.subscribed_topics, default=str)))
         self.logger.debug(51003, TopicManager.log_messages[51003].format(cached_fields=self.cached_fields))
+
+    @property
+    def queues(self):
+        """ The per-topic queues; see TopicQueues. """
+        return self.topic_queues.queues
+
+    @property
+    def collected_topic(self):
+        """ The name of the collector topic. """
+        return self.topic_queues.collected_topic
 
     def _configure_topics(self, config, archive_topic, single_queue, single_queue_obj, *,
                           default_message_dict, topic_defaults, field_defaults):
@@ -946,7 +956,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
                 'max_size': to_int(topic_dict.get('max_queue', topic_defaults['max_queue'])),
                 'data': deque()
             }
-            self.queues.append(queue)
+            self.topic_queues.queues.append(queue)
             self.subscribed_topics[topic]['queue'] = queue
         else:
             self.subscribed_topics[topic]['queue'] = single_queue_obj
@@ -1015,11 +1025,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
     def _add_collector_queue(self, topic_defaults):
         # The collector queue is a subscribed topic; a bit of a hack.
-        self.collected_units = weewx.units.unit_constants[topic_defaults['unit_system_name']]
-        self.collected_fields = ['windGust', 'windGustDir', 'windDir', 'windSpeed']
-        self.collected_queue = deque()
-        self.collected_topic = f"{time.time():f}-{'-'.join(self.collected_fields)}"
-        topic = self.collected_topic
+        topic = self.topic_queues.collected_topic = f"{time.time():f}-{'-'.join(TopicQueues.collected_fields)}"
         self.subscribed_topics[topic] = {}
         self.subscribed_topics[topic]['subscribe'] = False
         self.subscribed_topics[topic][self.message_config_name] = {}
@@ -1037,13 +1043,13 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
             'adjust_start_time': topic_defaults['adjust_start_time'],
             'adjust_end_time': topic_defaults['adjust_end_time'],
             'max_size': topic_defaults['max_queue'],
-            'data': self.collected_queue
+            'data': self.topic_queues.collected_queue
         }
         self.subscribed_topics[topic]['queue'] = queue
-        self.queues.append(queue)
+        self.topic_queues.queues.append(queue)
 
         if self.collect_wind_across_loops:
-            self.collector = CollectData(self.collected_fields, self.collected_units)
+            self.topic_queues.collector = CollectData(TopicQueues.collected_fields, self.topic_queues.collected_units)
 
     def _configure_topic_options(self, config):
         self.topic_options = ['collect_wind_across_loops', 'collect_observations', 'single_queue', 'unit_system',
@@ -1149,21 +1155,116 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
     def append_data(self, topic, in_data, fieldname=None):
         """ Add the MQTT data to the queue. """
+        self.topic_queues.append_data(topic, in_data, fieldname)
+
+    def has_data(self, topic):
+        """ Return True if queue has data. """
+        return self.topic_queues.has_data(topic)
+
+    def get_data(self, queue, end_ts=sys.maxsize):
+        """ Get data off the queue of MQTT data. """
+        return self.topic_queues.get_data(queue, end_ts)
+
+    def get_accumulated_data(self, queue, start_time, end_time, units):
+        """ Get the MQTT data after being accumulated. """
+        return self.topic_queues.get_accumulated_data(queue, start_time, end_time, units)
+
+    def get_fields(self, topic):
+        """ Get the fields. """
+        return self._get_value('fields', topic)
+
+    def get_filters(self, topic):
+        """ Get the filters. """
+        return self._get_value('filters', topic)
+
+    def get_qos(self, topic):
+        """ Get the QOS. """
+        return self._get_value('qos', topic)
+
+    def get_topic_tail_is_fieldname(self, topic):
+        """ Get the topic_tail_is_fieldname. """
+        return self._get_value('topic_tail_is_fieldname', topic)
+
+    def get_message_dict(self, topic):
+        """ Get the type. """
+        return self._get_value(self.message_config_name, topic)
+
+    def get_unit_system(self, topic):
+        """ Get the unit system """
+        return self._get_value('unit_system', topic)
+
+    def get_msg_id_field(self, topic):
+        """ Get the msg_id_field value """
+        return self._get_value('msg_id_field', topic)
+
+    def get_ignore_value(self, topic):
+        """ Get the ignore value """
+        return self._get_value('ignore', topic)
+
+    def get_conversion_func(self, topic):
+        """ Get the ignore value """
+        return self._get_value('conversion_func', topic)
+
+    def get_fields_ignoring_msg_id(self, topic):
+        """ Get the ignore_msg_id_field value """
+        return self._get_value('fields_ignoring_msg_id', topic)
+
+    def _get_queue(self, topic):
+        return self._get_value('queue', topic)
+
+    def _get_value(self, value, topic):
+        subscribed_topic = self._lookup_topic(topic)
+        return self.subscribed_topics[subscribed_topic][value]
+
+    def _lookup_topic(self, topic):
+        if topic in self.topics:
+            return self.topics[topic]
+
+        for subscribed_topic in self.subscribed_topics:
+            if mqtt.topic_matches_sub(subscribed_topic, topic):
+                self.topics[topic] = subscribed_topic
+                return subscribed_topic
+
+        raise ValueError(TopicManager.log_messages[59005].format(topic=topic))
+
+class TopicQueues:  # pylint: disable=protected-access
+    """ The runtime side of the queues: the operations the callback providers
+        append to and the driver/service drain.
+
+        The per-topic resolved config lives on the TopicManager; this class holds
+        the queues themselves and the arrival/consumption/accumulation operations
+        on them. The two are halves of one object: the manager's private config
+        lookups are used here on purpose, not reached across a boundary.
+    """
+    # The wind fields gathered into the collector queue; see TopicManager._add_collector_queue.
+    collected_fields = ['windGust', 'windGustDir', 'windDir', 'windSpeed']
+
+    def __init__(self, manager, collected_units):
+        self.manager = manager
+        self.logger = manager.logger
+        self.queues = []
+        self.collected_units = collected_units
+        self.collected_queue = deque()
+        self.collected_topic = None
+        self.collector = None
+
+    def append_data(self, topic, in_data, fieldname=None):
+        """ Add the MQTT data to the queue. """
         self.logger.debug(51007, TopicManager.log_messages[51007].format(topic=topic, in_data=to_sorted_string(in_data)))
         data = dict(in_data)
         payload = {}
 
-        queue = self._get_queue(topic)
-        use_server_datetime = self._get_value('use_server_datetime', topic)
+        queue = self.manager._get_queue(topic)
+        use_server_datetime = self.manager._get_value('use_server_datetime', topic)
 
         if 'dateTime' not in data or use_server_datetime:
             data['dateTime'] = time.time()
         if 'usUnits' not in data:
-            data['usUnits'] = self.get_unit_system(topic)
+            data['usUnits'] = self.manager.get_unit_system(topic)
 
-        datetime_format = self._get_value('datetime_format', topic)
+        datetime_format = self.manager._get_value('datetime_format', topic)
         if datetime_format and 'dateTime' in data:
-            data['dateTime'] = self._to_epoch(data['dateTime'], datetime_format, self._get_value('offset_format', topic))
+            data['dateTime'] = self._to_epoch(data['dateTime'], datetime_format, self.manager._get_value('offset_format', topic))
 
         payload['data'] = data
 
@@ -1177,7 +1278,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
         else:
             self._queue_size_check(queue['data'], queue['max_size'])
             self.logger.trace(50002, TopicManager.log_messages[50002].format(topic=topic,
-                                                                             topic_data=self._lookup_topic(topic),
+                                                                             topic_data=self.manager._lookup_topic(topic),
                                                                              dateTime=weeutil.weeutil.timestamp_to_string(data['dateTime']),
                                                                              data=to_sorted_string(data)))
             queue['data'].append(payload,)
@@ -1202,31 +1303,31 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
 
     def has_data(self, topic):
         """ Return True if queue has data. """
-        return bool(self._get_queue(topic)['data'])
+        return bool(self.manager._get_queue(topic)['data'])
 
     def get_data(self, queue, end_ts=sys.maxsize):
         """ Get data off the queue of MQTT data. """
         queue_name = queue['name']
         data_queue = queue['data']
         self.logger.trace(50005, TopicManager.log_messages[50005].format(queue_name=queue_name, size=len(data_queue)))
-        if self.collect_wind_across_loops:
+        if self.manager.collect_wind_across_loops:
             collector = self.collector
         else:
-            collector = CollectData(self.collected_fields, self.collected_units)
+            collector = CollectData(TopicQueues.collected_fields, self.collected_units)
 
         observation_collector = None
-        if self.collect_observations:
+        if self.manager.collect_observations:
             observation_collector = CollectData(None, self.collected_units)
 
         yield from self._process_queue(end_ts, collector, observation_collector, queue)
 
-        if not self.collect_wind_across_loops:
+        if not self.manager.collect_wind_across_loops:
             data = collector.get_data()
             if data:
                 self.logger.debug(51008, TopicManager.log_messages[51008].format(queue_name=queue_name, data=to_sorted_string(data)))
                 yield data
 
-        if self.collect_observations:
+        if self.manager.collect_observations:
             data = observation_collector.get_data()
             if data:
                 self.logger.debug(51009, TopicManager.log_messages[51009].format(queue_name=queue_name, data=to_sorted_string(data)))
@@ -1250,7 +1351,7 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
                                          dateTime=weeutil.weeutil.timestamp_to_string(payload['data']['dateTime']),
                                          payload=to_sorted_string(payload)))
                 data = collector.add_data(fieldname, payload['data'])
-            elif self.collect_observations:
+            elif self.manager.collect_observations:
                 data = observation_collector.add_dict(payload['data'])
             else:
                 data = payload['data']
@@ -1331,64 +1432,6 @@ class TopicManager():  # pylint: disable=too-many-instance-attributes
             element = queue.popleft()
             self.logger.error(54001,
                               TopicManager.log_messages[54001].format(max_queue=int(max_queue), element=element))
-
-    def get_fields(self, topic):
-        """ Get the fields. """
-        return self._get_value('fields', topic)
-
-    def get_filters(self, topic):
-        """ Get the filters. """
-        return self._get_value('filters', topic)
-
-    def get_qos(self, topic):
-        """ Get the QOS. """
-        return self._get_value('qos', topic)
-
-    def get_topic_tail_is_fieldname(self, topic):
-        """ Get the topic_tail_is_fieldname. """
-        return self._get_value('topic_tail_is_fieldname', topic)
-
-    def get_message_dict(self, topic):
-        """ Get the type. """
-        return self._get_value(self.message_config_name, topic)
-
-    def get_unit_system(self, topic):
-        """ Get the unit system """
-        return self._get_value('unit_system', topic)
-
-    def get_msg_id_field(self, topic):
-        """ Get the msg_id_field value """
-        return self._get_value('msg_id_field', topic)
-
-    def get_ignore_value(self, topic):
-        """ Get the ignore value """
-        return self._get_value('ignore', topic)
-
-    def get_conversion_func(self, topic):
-        """ Get the ignore value """
-        return self._get_value('conversion_func', topic)
-
-    def get_fields_ignoring_msg_id(self, topic):
-        """ Get the ignore_msg_id_field value """
-        return self._get_value('fields_ignoring_msg_id', topic)
-
-    def _get_queue(self, topic):
-        return self._get_value('queue', topic)
-
-    def _get_value(self, value, topic):
-        subscribed_topic = self._lookup_topic(topic)
-        return self.subscribed_topics[subscribed_topic][value]
-
-    def _lookup_topic(self, topic):
-        if topic in self.topics:
-            return self.topics[topic]
-
-        for subscribed_topic in self.subscribed_topics:
-            if mqtt.topic_matches_sub(subscribed_topic, topic):
-                self.topics[topic] = subscribed_topic
-                return subscribed_topic
-
-        raise ValueError(TopicManager.log_messages[59005].format(topic=topic))
 
     def _to_epoch(self, datetime_input, datetime_format, offset_format=None):
         self.logger.trace(50015, TopicManager.log_messages[50015].format(datetime_input=datetime_input,
