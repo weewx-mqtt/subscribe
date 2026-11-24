@@ -13,10 +13,9 @@ import configobj
 import copy
 import datetime
 import random
-import sys
 import time
 
-from test_weewx_stubs import random_string
+from test_weewx_stubs import random_string, BaseTestClass
 import test_weewx_stubs
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
@@ -24,22 +23,7 @@ test_weewx_stubs.setup_stubs()
 from user.mqttcommon import Logger
 from user.mqttsubscribe import TopicManager
 
-class TestInit(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class TestInit(BaseTestClass):
     def test_missing_topic(self):
         mock_logger = mock.Mock(spec=Logger)
 
@@ -132,22 +116,7 @@ class TestInit(unittest.TestCase):
 
         self.assertEqual(error.exception.args[0], f"Invalid units for {field}, {config_dict[topic][field]['units']}.")
 
-class TestHelperFunctions(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class TestHelperFunctions(BaseTestClass):
     def test_topic_not_found(self):
         mock_logger = mock.Mock(spec=Logger)
 
@@ -196,22 +165,7 @@ class TestHelperFunctions(unittest.TestCase):
 
         self.assertEqual(error.exception.args[0], f"Unknown topic, {unknown_topic}.")
 
-class TestConfigureMessage(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class TestConfigureMessage(BaseTestClass):
     def test_default_message_configuration(self):
         mock_logger = mock.Mock(spec=Logger)
 
@@ -353,22 +307,7 @@ class TestConfigureMessage(unittest.TestCase):
         self.assertIn('message', SUT.subscribed_topics[topic]['fields'])
         self.assertNotIn('message', SUT.subscribed_topics[topic])
 
-class TestConfigureFields(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class TestConfigureFields(BaseTestClass):
     def test_no_field_configuration(self):
         mock_logger = mock.Mock(spec=Logger)
 
@@ -688,26 +627,11 @@ class TestConfigureFields(unittest.TestCase):
 
         self.assertEqual(SUT.subscribed_topics[topic]['filters'], filters)
 
-class TestQueueSizeCheck(unittest.TestCase):
+class TestQueueSizeCheck(BaseTestClass):
     topic = random_string()
     config_dict = {}
     config_dict[topic] = {}
     config = configobj.ConfigObj(config_dict)
-
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
 
     def test_queue_max_reached(self):
         mock_logger = mock.Mock(spec=Logger)
@@ -803,26 +727,11 @@ def midday_epoch():
     return int(datetime.datetime.now().replace(hour=12, minute=0, second=0, microsecond=0).timestamp())
 
 
-class TestAppendData(unittest.TestCase):
+class TestAppendData(BaseTestClass):
     topic = random_string()
     config_dict = {}
     config_dict[topic] = {}
     config = configobj.ConfigObj(config_dict)
-
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
 
     def test_append_good_data(self):
         queue_data = {
@@ -1134,7 +1043,7 @@ class TestGetQueueData(unittest.TestCase):
 
             self.assertEqual(len(elements), 0)
 
-class TestGetWindQueueData(unittest.TestCase):
+class TestGetWindQueueData(BaseTestClass):
     topic = random_string()
     config_dict = {}
     config_dict['collect_wind_across_loops'] = False
@@ -1142,21 +1051,6 @@ class TestGetWindQueueData(unittest.TestCase):
     config = configobj.ConfigObj(config_dict)
 
     fieldname = 'windSpeed'
-
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
 
     def create_queue_data(self):
         return {
@@ -1230,7 +1124,7 @@ class TestGetWindQueueData(unittest.TestCase):
 
             mock_CollectData.get_data.assert_not_called()
 
-class TestGetCollectedData(unittest.TestCase):
+class TestGetCollectedData(BaseTestClass):
     topic = random_string()
     config_dict = {}
     config_dict['collect_wind_across_loops'] = False
@@ -1238,21 +1132,6 @@ class TestGetCollectedData(unittest.TestCase):
     config = configobj.ConfigObj(config_dict)
 
     fieldname = 'windSpeed'
-
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
 
     def create_queue_data(self):
         return {
@@ -1280,27 +1159,12 @@ class TestGetCollectedData(unittest.TestCase):
             data = next(gen, None)
             self.assertIsNone(data)
 
-class TestAccumulatedData(unittest.TestCase):
+class TestAccumulatedData(BaseTestClass):
 
     topic = random_string()
     config_dict = {}
     config_dict[topic] = {}
     config = configobj.ConfigObj(config_dict)
-
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
 
     @staticmethod
     def create_queue_data():

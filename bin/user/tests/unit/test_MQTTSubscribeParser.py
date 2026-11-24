@@ -5,36 +5,20 @@
 #
 
 import helpers
-import unittest
 import mock
 
 import argparse
 import os
-import sys
 import tempfile
 
 import test_weewx_stubs
+from test_weewx_stubs import BaseTestClass
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
 from user.mqttsubscribe import Parser
 
-class TestParserInit(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class TestParserInit(BaseTestClass):
     @staticmethod
     def make_options(config_path, top_level):
         return argparse.Namespace(

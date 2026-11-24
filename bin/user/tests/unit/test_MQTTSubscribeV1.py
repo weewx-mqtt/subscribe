@@ -5,15 +5,13 @@
 #
 
 import helpers
-import unittest
 import mock
 
 import configobj
 import random
-import sys
 
 import test_weewx_stubs
-from test_weewx_stubs import random_string
+from test_weewx_stubs import random_string, BaseTestClass
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
@@ -23,28 +21,7 @@ from user.mqttsubscribe import MQTTSubscriber
 
 mock_client = None
 
-# @unittest.skipIf(hasattr(paho.mqtt.client, 'CallbackAPIVersion'), "paho-mqtt is NOT v1, skipping tests.")
-class TestInit(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
-class TestCallbacks(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
+class TestCallbacks(BaseTestClass):
     def test_protocol_not_found(self):
         mock_logger = mock.Mock(spec=Logger)
 
@@ -57,17 +34,6 @@ class TestCallbacks(unittest.TestCase):
             MQTTSubscriber(config, mock_logger, api=user.mqttcommon.API_V1)
 
         self.assertEqual(error.exception.args[0], f"Invalid protocol, {protocol}.")
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
 
     def test_on_connect(self):
         mock_logger = mock.Mock(spec=Logger)

@@ -5,37 +5,20 @@
 #
 
 import helpers
-import unittest
 import mock
 
 import configobj
 import copy
 import random
-import sys
 import time
 
 import test_weewx_stubs
-from test_weewx_stubs import random_string
+from test_weewx_stubs import random_string, BaseTestClass
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 import user.mqttsubscribe
 
-class atestInitialization(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class atestInitialization(BaseTestClass):
     def test_invalid_binding(self):
         mock_StdEngine = mock.Mock()
 
@@ -151,23 +134,8 @@ class atestInitialization(unittest.TestCase):
 
                 user.mqttsubscribe.MQTTSubscribeService(mock_StdEngine, config_dict)
 
-class Testnew_loop_packet(unittest.TestCase):
+class Testnew_loop_packet(BaseTestClass):
     mock_StdEngine = mock.Mock()
-
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
 
     @classmethod
     def setUpClass(cls):
@@ -303,22 +271,7 @@ class Testnew_loop_packet(unittest.TestCase):
 
                 SUT.shutDown()
 
-class Testnew_archive_record(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class Testnew_archive_record(BaseTestClass):
     @classmethod
     def setUpClass(cls):
         cls.mock_StdEngine = mock.Mock()
@@ -476,22 +429,7 @@ class Testnew_archive_record(unittest.TestCase):
                 SUT.new_archive_record(mock_new_archive_record_event)
                 SUT.cache.update_value.assert_called_once()
 
-class TestshutDown(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class TestshutDown(BaseTestClass):
     def test_logs_the_start_and_the_completion(self):
         mock_StdEngine = mock.Mock()
         config_dict = {'MQTTSubscribeService': {'wait_for_thread_shutdown': 3}}

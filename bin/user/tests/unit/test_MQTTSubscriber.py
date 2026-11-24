@@ -5,16 +5,14 @@
 #
 
 import helpers
-import unittest
 import mock
 
 import configobj
 import random
 import ssl
-import sys
 
 import test_weewx_stubs
-from test_weewx_stubs import random_string
+from test_weewx_stubs import random_string, BaseTestClass
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
@@ -41,22 +39,7 @@ class Msg:
     def __init__(self):
         pass
 
-class TestInitialization(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class TestInitialization(BaseTestClass):
     def test_connect_exception(self):
         global mock_client
         mock_logger = mock.Mock(spec=Logger)
@@ -263,22 +246,7 @@ class TestInitialization(unittest.TestCase):
                 self.assertEqual(error.exception.args[0], f"Invalid 'clean_start' option, {clean_start}.")
 
 
-class Testtls_configuration(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class Testtls_configuration(BaseTestClass):
     @staticmethod
     def test_tls_configuration_good():
         global mock_client
@@ -547,22 +515,7 @@ class Testtls_configuration(unittest.TestCase):
                     ssl.PROTOCOL_SSLv3 = saved_version
                 self.assertEqual(error.exception.args[0], f"Invalid 'certs_required', {certs_required}.")
 
-class TestDeprecatedOptions(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class TestDeprecatedOptions(BaseTestClass):
     def test_a_deprecated_config_options_is_logged_and_exception_not_raised(self):
         global mock_client
         mock_client = mock.Mock()
@@ -735,22 +688,7 @@ class TestDeprecatedOptions(unittest.TestCase):
 
                 mock_logger.info.assert_any_call(32015, "'log' is deprecated, use 'log_mqtt'.")
 
-class TestStart(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class TestStart(BaseTestClass):
     def set_connection_success(self, *args, **kwargs):
         self.SUT.userdata['connect'] = True
 
@@ -841,22 +779,7 @@ class TestStart(unittest.TestCase):
                     SUT.client.loop_start.assert_called_once()
                     mock_time.sleep.assert_called_once()
 
-class Test_disconnect(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class Test_disconnect(BaseTestClass):
     @staticmethod
     def test_disconnect():
         global mock_client
@@ -878,23 +801,7 @@ class Test_disconnect(unittest.TestCase):
                 # The network loop must be stopped before the logger thread, so its final entries are queued.
                 SUT.client.loop_stop.assert_called_once()
 
-class TestCallbacks(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
-class Teston_connect(unittest.TestCase):
+class Teston_connect(BaseTestClass):
     unit_system_name = 'US'
     unit_system = 1
     config_dict = {
@@ -905,21 +812,6 @@ class Teston_connect(unittest.TestCase):
         'password': random_string(),
         'archive_topic': None
     }
-
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
 
     def test_multiple_topics(self):
         global mock_client

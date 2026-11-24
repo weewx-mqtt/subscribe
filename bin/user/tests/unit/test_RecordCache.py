@@ -11,14 +11,13 @@
 
 import helpers
 import random
-import sys
 import time
 
 import unittest
 import mock
 
 import test_weewx_stubs
-from test_weewx_stubs import random_string
+from test_weewx_stubs import random_string, BaseTestClass
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 from user.mqttcommon import Logger
@@ -39,22 +38,7 @@ class Test_clear_cache(unittest.TestCase):
         SUT.clear_cache()
         self.assertEqual(SUT.cached_values, {})
 
-class Test_update_value(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class Test_update_value(BaseTestClass):
     def test_value_is_updated(self):
         mock_logger = mock.Mock(spec=Logger)
         unit_system = random.randint(1, 10)
@@ -85,22 +69,7 @@ class Test_update_value(unittest.TestCase):
         self.assertRaises(ValueError,
                           SUT.update_value, key, value, unit_system_mismatch, timestamp)
 
-class Test_get_value(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class Test_get_value(BaseTestClass):
     def test_key_not_in_cache(self):
         mock_logger = mock.Mock(spec=Logger)
         SUT = RecordCache(mock_logger)
@@ -146,22 +115,7 @@ class Test_get_value(unittest.TestCase):
         self.assertIsNone(cached_value)
 
 @unittest.skip("Looking at removing the update_timestamp method on the RecordCache class.")
-class Test_update_timestamp(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class Test_update_timestamp(BaseTestClass):
     def test_key_does_not_exist(self):
         # somewhat silly test
         mock_logger = mock.Mock(spec=Logger)
@@ -187,22 +141,7 @@ class Test_update_timestamp(unittest.TestCase):
         SUT.update_timestamp(key, new_time)
         self.assertEqual(SUT.cached_values[key]['timestamp'], new_time)
 
-class Test_remove_value(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class Test_remove_value(BaseTestClass):
     def test_key_does_not_exist(self):
         # somewhat silly test
         mock_logger = mock.Mock(spec=Logger)

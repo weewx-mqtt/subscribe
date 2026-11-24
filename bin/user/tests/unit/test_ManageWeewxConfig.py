@@ -15,9 +15,8 @@ import importlib
 import sys
 import types
 
-import unittest
 
-from test_weewx_stubs import random_string
+from test_weewx_stubs import BaseTestClass, random_string
 import test_weewx_stubs
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
@@ -25,22 +24,10 @@ test_weewx_stubs.setup_stubs()
 import user.mqttsubscribe
 from user.mqttsubscribe import ManageWeewxConfig
 
-class TestObservationConfig(unittest.TestCase):
+class TestObservationConfig(BaseTestClass):
     def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
+        super().setUp()
         importlib.reload(user.mqttsubscribe)
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
 
     def test_configure_observation(self):
 

@@ -13,10 +13,9 @@ import contextlib
 import io
 
 import argparse
-import sys
 
 import test_weewx_stubs
-from test_weewx_stubs import random_string
+from test_weewx_stubs import random_string, BaseTestClass
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
@@ -265,22 +264,7 @@ class TestMutuallyExclusiveReplaceWithOptions(TestMutuallyExclusiveOptions):
             "error: argument --update-from: not allowed with argument --replace-with"
         )
 
-class TestInitConfigurator(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class TestInitConfigurator(BaseTestClass):
     def test_missing_primary_option(self):
         options = argparse.Namespace()
         options.type = None
@@ -509,26 +493,11 @@ class TestInitConfigurator(unittest.TestCase):
 
         mock_parser.error.assert_called_once_with("'--no-backup' is mutually exclusive with '--validate'.")
 
-class TestRunConfigurator(unittest.TestCase):
+class TestRunConfigurator(BaseTestClass):
     '''
     These are not 'real' tests. The results are not checked. The only check that the
     options run to completion.
     '''
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
     def test_create_example(self):
         options = argparse.Namespace()
         options.type = None

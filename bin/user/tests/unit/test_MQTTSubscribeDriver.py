@@ -5,39 +5,22 @@
 #
 
 import helpers
-import unittest
 import mock
 
 import copy
 import random
-import sys
 import time
 
 import weewx
 import test_weewx_stubs
-from test_weewx_stubs import random_string, startOfInterval, timestamp_to_string, to_sorted_string
+from test_weewx_stubs import random_string, startOfInterval, timestamp_to_string, to_sorted_string, BaseTestClass
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
 from user.mqttcommon import Logger
 from user.mqttsubscribe import MQTTSubscribeDriver
 
-class TestclosePort(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class TestclosePort(BaseTestClass):
     def test_close_port(self):
         mock_engine = mock.Mock()
         stn_dict = {}
@@ -122,22 +105,7 @@ class TestclosePort(unittest.TestCase):
             # Until the record is written, the lines carry the record that just ended.
             self.assertEqual(SUT.logger.archive_timestamp, end)
 
-class TestArchiveInterval(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class TestArchiveInterval(BaseTestClass):
     def test_no_archive_topic(self):
         mock_engine = mock.Mock()
         stn_dict = {}
@@ -168,23 +136,8 @@ class TestArchiveInterval(unittest.TestCase):
             archive_interval = SUT.archive_interval
             self.assertEqual(archive_interval, default_archive_interval)
 
-class TestgenLoopPackets(unittest.TestCase):
+class TestgenLoopPackets(BaseTestClass):
     mock_StdEngine = mock.Mock()
-
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
 
     @classmethod
     def setUpClass(cls):
@@ -367,23 +320,8 @@ class TestgenLoopPackets(unittest.TestCase):
                 mock_time.sleep.assert_not_called()
                 self.assertDictEqual(packet, self.queue_data)
 
-class TestgenArchiveRecords(unittest.TestCase):
+class TestgenArchiveRecords(BaseTestClass):
     mock_StdEngine = mock.Mock()
-
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
 
     @classmethod
     def setUpClass(cls):

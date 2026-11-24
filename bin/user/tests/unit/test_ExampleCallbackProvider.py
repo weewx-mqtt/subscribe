@@ -5,15 +5,13 @@
 #
 
 import helpers
-import unittest
 import mock
 
 import random
-import sys
 import xml.etree
 
 import test_weewx_stubs
-from test_weewx_stubs import random_ascii_letters
+from test_weewx_stubs import random_ascii_letters, BaseTestClass
 # setup stubs before importing MQTTSubscribe
 test_weewx_stubs.setup_stubs()
 
@@ -21,22 +19,7 @@ from user.mqttcommon import Logger
 from user.ExampleMessageCallbackProvider import MessageCallbackProvider
 from user.tests.message_helpers import create_message
 
-class Test1(unittest.TestCase):
-    def setUp(self):
-        # reset stubs for every test
-        test_weewx_stubs.setup_stubs()
-
-    def tearDown(self):
-        # cleanup stubs
-        del sys.modules['weecfg']
-        del sys.modules['weeutil']
-        del sys.modules['weeutil.config']
-        del sys.modules['weeutil.weeutil']
-        del sys.modules['weeutil.logger']
-        del sys.modules['weewx']
-        del sys.modules['weewx.drivers']
-        del sys.modules['weewx.engine']
-
+class Test1(BaseTestClass):
     @staticmethod
     def create_observation_dict(size):
         observation_dict = {}
