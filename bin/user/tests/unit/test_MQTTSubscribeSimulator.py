@@ -22,6 +22,28 @@ test_weewx_stubs.setup_stubs()
 
 from user.mqttsubscribe import Simulator
 
+
+def next_period(now, interval):
+    """ The next period boundary after now and the wait until it. """
+    current_time = int(now + 0.5)
+    end_ts = (int(current_time / interval) + 1) * interval
+    return end_ts, end_ts - current_time
+
+
+def create_simulator_options(sim_type, binding, record_count, **overrides):
+    """ Build a Namespace with every Simulator option defaulted to None. """
+    options = argparse.Namespace()
+    for name in ('type', 'binding', 'record_count', 'console', 'conf', 'logging_level',
+                 'logging_file', 'units', 'frequency', 'archive_delay', 'archive_interval'):
+        setattr(options, name, None)
+    options.type = sim_type
+    options.binding = binding
+    options.record_count = record_count
+    for name, value in overrides.items():
+        setattr(options, name, value)
+    return options
+
+
 class TestRunSimulator(unittest.TestCase):
     def test_simulate_service_archive(self):
         data = {}
@@ -30,21 +52,17 @@ class TestRunSimulator(unittest.TestCase):
         frequency = 10
 
         now = time.time()
-        current_time = int(now + 0.5)
-        end_period_ts = (int(current_time / frequency) + 1) * frequency
-        sleep_amount = end_period_ts - current_time
+        _, sleep_amount = next_period(now, frequency)
 
-        options = argparse.Namespace()
-        options.type = 'service'
-        options.binding = 'archive'
-        options.record_count = len(data)
-        options.console = None
-        options.conf = None
-
-        options.logging_level = None
-        options.logging_file = None
-        options.units = 'US'
-        options.frequency = frequency
+        options = create_simulator_options('service',
+                                           'archive',
+                                           len(data),
+                                           console=None,
+                                           conf=None,
+                                           logging_level=None,
+                                           logging_file=None,
+                                           units='US',
+                                           frequency=frequency)
 
         with mock.patch('user.mqttsubscribe.MQTTSubscribeService'):
             with mock.patch('user.mqttsubscribe.time') as mock_time:
@@ -68,21 +86,17 @@ class TestRunSimulator(unittest.TestCase):
         frequency = 10
 
         now = time.time()
-        current_time = int(now + 0.5)
-        end_period_ts = (int(current_time / frequency) + 1) * frequency
-        sleep_amount = end_period_ts - current_time
+        _, sleep_amount = next_period(now, frequency)
 
-        options = argparse.Namespace()
-        options.type = 'service'
-        options.binding = 'loop'
-        options.record_count = len(data)
-        options.console = None
-        options.conf = None
-
-        options.logging_level = None
-        options.logging_file = None
-        options.units = 'US'
-        options.frequency = frequency
+        options = create_simulator_options('service',
+                                           'loop',
+                                           len(data),
+                                           console=None,
+                                           conf=None,
+                                           logging_level=None,
+                                           logging_file=None,
+                                           units='US',
+                                           frequency=frequency)
 
         with mock.patch('user.mqttsubscribe.MQTTSubscribeService'):
             with mock.patch('user.mqttsubscribe.time') as mock_time:
@@ -107,22 +121,18 @@ class TestRunSimulator(unittest.TestCase):
         archive_interval = 300
         now = time.time()
 
-        current_time = int(now + 0.5)
-        end_period_ts = (int(current_time / archive_interval) + 1) * archive_interval
-        end_delay_ts = end_period_ts + archive_delay
-        sleep_amount = end_delay_ts - current_time
+        end_period_ts, sleep_amount = next_period(now, archive_interval)
+        sleep_amount += archive_delay
 
-        options = argparse.Namespace()
-        options.type = 'driver'
-        options.binding = 'archive'
-        options.record_count = len(data)
-        options.console = None
-        options.conf = None
-        options.logging_level = None
-        options.logging_file = None
-
-        options.archive_delay = archive_delay
-        options.archive_interval = archive_interval
+        options = create_simulator_options('driver',
+                                           'archive',
+                                           len(data),
+                                           console=None,
+                                           conf=None,
+                                           logging_level=None,
+                                           logging_file=None,
+                                           archive_delay=archive_delay,
+                                           archive_interval=archive_interval)
 
         SUT = Simulator(None, options)
 
@@ -142,17 +152,15 @@ class TestRunSimulator(unittest.TestCase):
         data = {}
         data['dateTime'] = 0
 
-        options = argparse.Namespace()
-        options.type = 'driver'
-        options.binding = 'loop'
-        options.record_count = len(data)
-        options.console = None
-        options.conf = None
-        options.logging_level = None
-        options.logging_file = None
-
-        options.archive_delay = None
-        options.archive_interval = None
+        options = create_simulator_options('driver',
+                                           'loop',
+                                           len(data),
+                                           console=None,
+                                           conf=None,
+                                           logging_level=None,
+                                           logging_file=None,
+                                           archive_delay=None,
+                                           archive_interval=None)
 
         SUT = Simulator(None, options)
 

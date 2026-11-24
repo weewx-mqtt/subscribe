@@ -4,6 +4,7 @@
 #    See the file LICENSE.txt for your full rights.
 #
 
+import contextlib
 import helpers
 import mock
 
@@ -21,13 +22,20 @@ test_weewx_stubs.setup_stubs()
 
 from user.mqttsubscribe import create_logger as Logger
 
+
+@contextlib.contextmanager
+def patch_logging(check_level=0):
+    """ Patch mqttcommon.logging with a known _checkLevel result. """
+    with mock.patch('user.mqttcommon.logging') as mock_logging:
+        mock_logging._checkLevel.return_value = check_level
+        yield mock_logging
+
+
 class TestInintialization(BaseTestClass):
     def test_init_set_trace_log_level(self):
         log_level = 5
 
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-
-            mock_logging._checkLevel.return_value = log_level
+        with patch_logging(log_level) as mock_logging:
             mock_logging.getLevelName.return_value = f'Level {int(log_level)}'
 
             mock_grandparent_handler = mock.Mock()
@@ -56,9 +64,7 @@ class TestInintialization(BaseTestClass):
 
     @staticmethod
     def test_init_filename_set():
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-
-            mock_logging._checkLevel.return_value = 0
+        with patch_logging() as mock_logging:
 
             mock_file_handler = mock.Mock()
             mock_logging.FileHandler.return_value = mock_file_handler
@@ -75,9 +81,7 @@ class TestInintialization(BaseTestClass):
 
     @staticmethod
     def test_init_console_set():
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-
-            mock_logging._checkLevel.return_value = 0
+        with patch_logging():
             name = random_string()
 
             SUT = Logger(name, console=True)
@@ -87,8 +91,7 @@ class TestInintialization(BaseTestClass):
     def test_throttle_notice_is_logged(self):
         name = random_string()
 
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-            mock_logging._checkLevel.return_value = 0
+        with patch_logging():
             thread_id = threading.get_native_id()
 
             SUT = Logger(name, {})
@@ -100,8 +103,7 @@ class TestInintialization(BaseTestClass):
 class TestLogging(BaseTestClass):
     @staticmethod
     def test_error_logged():
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-            mock_logging._checkLevel.return_value = 0
+        with patch_logging():
             thread_id = threading.get_native_id()
             name = random_string()
             message_text = random_string()
@@ -115,8 +117,7 @@ class TestLogging(BaseTestClass):
 
     @staticmethod
     def test_info_logged():
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-            mock_logging._checkLevel.return_value = 0
+        with patch_logging():
             thread_id = threading.get_native_id()
             name = random_string()
             message = random_string()
@@ -131,8 +132,7 @@ class TestLogging(BaseTestClass):
 
     @staticmethod
     def test_archive_record_context_is_logged():
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-            mock_logging._checkLevel.return_value = 0
+        with patch_logging():
             thread_id = threading.get_native_id()
             name = random_string()
             archive_timestamp = int(time.time())
@@ -149,8 +149,7 @@ class TestLogging(BaseTestClass):
 
     @staticmethod
     def test_debug_logged():
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-            mock_logging._checkLevel.return_value = 0
+        with patch_logging():
             thread_id = threading.get_native_id()
             name = random_string()
             message = random_string()
@@ -180,8 +179,7 @@ class TestLogging(BaseTestClass):
 
     @staticmethod
     def test_trace_logged_with_debug_not_set():
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-            mock_logging._checkLevel.return_value = 0
+        with patch_logging():
             thread_id = threading.get_native_id()
             name = random_string()
             message = random_string()
@@ -196,8 +194,7 @@ class TestLogging(BaseTestClass):
 
 class TestQueue(BaseTestClass):
     def test_log_entry_invalid_entry(self):
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-            mock_logging._checkLevel.return_value = 0
+        with patch_logging():
 
             SUT = Logger(random_string())
 
@@ -211,8 +208,7 @@ class TestQueue(BaseTestClass):
             SUT.shutdown()
 
     def test_shutdown_drains_queue(self):
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-            mock_logging._checkLevel.return_value = 0
+        with patch_logging() as mock_logging:
             mock_log = mock_logging.getLogger.return_value
 
             SUT = Logger(random_string())
@@ -229,8 +225,7 @@ class TestQueue(BaseTestClass):
             self.assertFalse(SUT.log_thread.is_alive())
 
     def test_shutdown_is_idempotent(self):
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-            mock_logging._checkLevel.return_value = 0
+        with patch_logging():
 
             SUT = Logger(random_string())
 
@@ -240,8 +235,7 @@ class TestQueue(BaseTestClass):
             self.assertFalse(SUT.log_thread.is_alive())
 
     def test_shutdown_timeout(self):
-        with mock.patch('user.mqttcommon.logging') as mock_logging:
-            mock_logging._checkLevel.return_value = 0
+        with patch_logging() as mock_logging:
             mock_log = mock_logging.getLogger.return_value
             name = random_string()
 

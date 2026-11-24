@@ -12,6 +12,25 @@ import configobj
 import user.mqttsubscribe
 from user.mqttsubscribe import MQTTSubscribeConfiguration, CONFIG_SPEC_TEXT
 
+
+def validate_topic_section(config_text, section, topic_name, use_deprecated=True):
+    """ Run _validate_topics_section on a topic section and return its messages. """
+    error_msgs = []
+    warn_msgs = []
+    deprecated = (MQTTSubscribeConfiguration.deprecated_options.get('MQTTSubscribe', {})
+                  .get('topics', {}).get('REPLACE_ME', {})) if use_deprecated else {}
+    SUT = MQTTSubscribeConfiguration(None)
+    SUT._validate_topics_section(topic_name,
+                                 f'{section}-topics-',
+                                 configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
+                                 section_configspec=configobj.ConfigObj(
+                                     CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
+                                 section_deprecated_options=deprecated,
+                                 error_msgs=error_msgs,
+                                 warn_msgs=warn_msgs)
+    return error_msgs, warn_msgs
+
+
 class TestDefaultConfiguration(unittest.TestCase):
     def test_default_configuration(self):
         # This test ensures that the example config contains the expected options
@@ -192,22 +211,7 @@ class TestValidateTopicsSection(unittest.TestCase):
         name = foo
 '''
 
-        error_msgs = []
-        warn_msgs = []
-
-        SUT = MQTTSubscribeConfiguration(None)
-
-        SUT._validate_topics_section(topic_name,
-                                     f'{section}-topics-',
-                                     configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
-                                     section_configspec=configobj.ConfigObj(
-                                         CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
-                                     section_deprecated_options=MQTTSubscribeConfiguration.deprecated_options
-                                     .get('MQTTSubscribe', {})
-                                     .get('topics', {})
-                                     .get('REPLACE_ME', {}),
-                                     error_msgs=error_msgs,
-                                     warn_msgs=warn_msgs)
+        error_msgs, warn_msgs = validate_topic_section(config_text, section, topic_name, use_deprecated=True)
 
         self.assertEqual(warn_msgs, [])
         self.assertEqual(error_msgs, [])
@@ -224,19 +228,7 @@ class TestValidateTopicsSection(unittest.TestCase):
         use_topic_as_fieldname = True
 '''
 
-        error_msgs = []
-        warn_msgs = []
-
-        SUT = MQTTSubscribeConfiguration(None)
-
-        SUT._validate_topics_section(topic_name,
-                                     f'{section}-topics-',
-                                     configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
-                                     section_configspec=configobj.ConfigObj(
-                                         CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
-                                     section_deprecated_options={},
-                                     error_msgs=error_msgs,
-                                     warn_msgs=warn_msgs)
+        error_msgs, warn_msgs = validate_topic_section(config_text, section, topic_name, use_deprecated=False)
 
         self.assertEqual(warn_msgs, ["'use_topic_as_fieldname' option is no longer needed and can be removed."])
         self.assertEqual(error_msgs, [])
@@ -255,19 +247,7 @@ class TestValidateTopicsSection(unittest.TestCase):
                     label_map = foo
 '''
 
-        error_msgs = []
-        warn_msgs = []
-
-        SUT = MQTTSubscribeConfiguration(None)
-
-        SUT._validate_topics_section(topic_name,
-                                     f'{section}-topics-',
-                                     configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
-                                     section_configspec=configobj.ConfigObj(
-                                         CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
-                                     section_deprecated_options={},
-                                     error_msgs=error_msgs,
-                                     warn_msgs=warn_msgs)
+        error_msgs, warn_msgs = validate_topic_section(config_text, section, topic_name, use_deprecated=False)
 
         self.assertEqual(warn_msgs, [])
         self.assertEqual(error_msgs, ["'label_map' is deprecated, use '[[topics]][[[topic name]]][[[[field name]]]]' name setting."])
@@ -286,19 +266,7 @@ class TestValidateTopicsSection(unittest.TestCase):
                     contains_total = True
 '''
 
-        error_msgs = []
-        warn_msgs = []
-
-        SUT = MQTTSubscribeConfiguration(None)
-
-        SUT._validate_topics_section(topic_name,
-                                     f'{section}-topics-',
-                                     configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
-                                     section_configspec=configobj.ConfigObj(
-                                         CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
-                                     section_deprecated_options={},
-                                     error_msgs=error_msgs,
-                                     warn_msgs=warn_msgs)
+        error_msgs, warn_msgs = validate_topic_section(config_text, section, topic_name, use_deprecated=False)
 
         self.assertEqual(warn_msgs, [])
         self.assertEqual(error_msgs, [])
@@ -315,22 +283,7 @@ class TestValidateTopicsSection(unittest.TestCase):
         [[[field1]]]
 '''
 
-        error_msgs = []
-        warn_msgs = []
-
-        SUT = MQTTSubscribeConfiguration(None)
-
-        SUT._validate_topics_section(topic_name,
-                                     f'{section}-topics-',
-                                     configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
-                                     section_configspec=configobj.ConfigObj(
-                                         CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
-                                     section_deprecated_options=MQTTSubscribeConfiguration.deprecated_options
-                                     .get('MQTTSubscribe', {})
-                                     .get('topics', {})
-                                     .get('REPLACE_ME', {}),
-                                     error_msgs=error_msgs,
-                                     warn_msgs=warn_msgs)
+        error_msgs, warn_msgs = validate_topic_section(config_text, section, topic_name, use_deprecated=True)
 
         self.assertEqual(warn_msgs, [])
         self.assertEqual(error_msgs, [f"Unknown option, MQTTSubscribeDriver-topics-{topic_name}-name."])
@@ -347,22 +300,7 @@ class TestValidateTopicsSection(unittest.TestCase):
         [[[message]]]
 '''
 
-        error_msgs = []
-        warn_msgs = []
-
-        SUT = MQTTSubscribeConfiguration(None)
-
-        SUT._validate_topics_section(topic_name,
-                                     f'{section}-topics-',
-                                     configobj.ConfigObj(config_text.splitlines())['topics'][topic_name],
-                                     section_configspec=configobj.ConfigObj(
-                                         CONFIG_SPEC_TEXT.splitlines())['MQTTSubscribe']['topics']['REPLACE_ME'],
-                                     section_deprecated_options=MQTTSubscribeConfiguration.deprecated_options
-                                     .get('MQTTSubscribe', {})
-                                     .get('topics', {})
-                                     .get('REPLACE_ME', {}),
-                                     error_msgs=error_msgs,
-                                     warn_msgs=warn_msgs)
+        error_msgs, warn_msgs = validate_topic_section(config_text, section, topic_name, use_deprecated=True)
 
         self.assertEqual(warn_msgs, [])
         self.assertEqual(error_msgs, [])

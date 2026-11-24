@@ -24,6 +24,18 @@ test_weewx_stubs.setup_stubs()
 import user.mqttsubscribe
 from user.mqttsubscribe import ManageWeewxConfig
 
+
+def create_unit_config(unit, group=None, unit_system=None, **options):
+    """ Build a ConfigObj with one unit section, including only the supplied options. """
+    section = {}
+    if group is not None:
+        section['group'] = group
+    if unit_system is not None:
+        section['unit_system'] = unit_system
+    section.update(options)
+    return configobj.ConfigObj({'units': {unit: section}})
+
+
 class TestObservationConfig(BaseTestClass):
     def setUp(self):
         super().setUp()
@@ -67,13 +79,7 @@ class TestObservationConfig(BaseTestClass):
     def test_missing_unit_system(self):
         unit = random_string(5)
         group = random_string(10)
-        config_dict = {}
-        config_dict = {}
-        config_dict['units'] = {}
-        config_dict['units'][unit] = {}
-        config_dict['units'][unit]['group'] = group
-
-        config = configobj.ConfigObj(config_dict)
+        config = create_unit_config(unit, group=group)
 
         with self.assertRaises(ValueError) as error:
             SUT = ManageWeewxConfig()
@@ -85,14 +91,7 @@ class TestObservationConfig(BaseTestClass):
         unit = random_string(5)
         group = random_string(10)
         unit_system = random_string(5)
-        config_dict = {}
-        config_dict = {}
-        config_dict['units'] = {}
-        config_dict['units'][unit] = {}
-        config_dict['units'][unit]['group'] = group
-        config_dict['units'][unit]['unit_system'] = unit_system
-
-        config = configobj.ConfigObj(config_dict)
+        config = create_unit_config(unit, group=group, unit_system=unit_system)
 
         with self.assertRaises(ValueError) as error:
             SUT = ManageWeewxConfig()
@@ -105,15 +104,7 @@ class TestObservationConfig(BaseTestClass):
         group = random_string(10)
         unit_system = 'us'
         label = random_string(10)
-        config_dict = {}
-        config_dict = {}
-        config_dict['units'] = {}
-        config_dict['units'][unit] = {}
-        config_dict['units'][unit]['group'] = group
-        config_dict['units'][unit]['unit_system'] = unit_system
-        config_dict['units'][unit]['label'] = label
-
-        config = configobj.ConfigObj(config_dict)
+        config = create_unit_config(unit, group=group, unit_system=unit_system, label=label)
 
         default_unit_label_dict = {}
         default_unit_label_dict[unit] = label
@@ -128,15 +119,7 @@ class TestObservationConfig(BaseTestClass):
         group = random_string(10)
         unit_system = 'us'
         format_value = random_string(10)
-        config_dict = {}
-        config_dict = {}
-        config_dict['units'] = {}
-        config_dict['units'][unit] = {}
-        config_dict['units'][unit]['group'] = group
-        config_dict['units'][unit]['unit_system'] = unit_system
-        config_dict['units'][unit]['format'] = format_value
-
-        config = configobj.ConfigObj(config_dict)
+        config = create_unit_config(unit, group=group, unit_system=unit_system, format=format_value)
 
         default_unit_format_dict = {}
         default_unit_format_dict[unit] = format_value
@@ -151,15 +134,7 @@ class TestObservationConfig(BaseTestClass):
         group = random_string(10)
         unit_system = 'us'
         to_unit = random_string(5)
-        config_dict = {}
-        config_dict['units'] = {}
-        config_dict['units'][unit] = {}
-        config_dict['units'][unit]['group'] = group
-        config_dict['units'][unit]['unit_system'] = unit_system
-        config_dict['units'][unit]['conversion'] = {}
-        config_dict['units'][unit]['conversion'][to_unit] = 'lambda x: x / 1'
-
-        config = configobj.ConfigObj(config_dict)
+        config = create_unit_config(unit, group=group, unit_system=unit_system, conversion={to_unit: 'lambda x: x / 1'})
 
         conversionDict = {}
         conversionDict['unit_name'] = {'foobar': lambda x: x / 1}
@@ -180,14 +155,7 @@ class TestObservationConfig(BaseTestClass):
         unit = random_string(5)
         group = random_string(10)
         unit_system = 'us'
-        config_dict = {}
-        config_dict['units'] = {}
-        config_dict['units'][unit] = {}
-        config_dict['units'][unit]['group'] = group
-        config_dict['units'][unit]['unit_system'] = unit_system
-        config_dict['units'][unit]['conversion'] = {}
-
-        config = configobj.ConfigObj(config_dict)
+        config = create_unit_config(unit, group=group, unit_system=unit_system, conversion={})
 
         units = test_weewx_stubs.ListOfDicts({})
         units.extend({group: unit})
@@ -204,14 +172,7 @@ class TestObservationConfig(BaseTestClass):
         unit = random_string(5)
         group = random_string(10)
         unit_system = 'metric'
-        config_dict = {}
-        config_dict['units'] = {}
-        config_dict['units'][unit] = {}
-        config_dict['units'][unit]['group'] = group
-        config_dict['units'][unit]['unit_system'] = unit_system
-        config_dict['units'][unit]['conversion'] = {}
-
-        config = configobj.ConfigObj(config_dict)
+        config = create_unit_config(unit, group=group, unit_system=unit_system, conversion={})
 
         units = test_weewx_stubs.ListOfDicts({})
         units.extend({group: unit})
@@ -228,14 +189,7 @@ class TestObservationConfig(BaseTestClass):
         unit = random_string(5)
         group = random_string(10)
         unit_system = 'metricwx'
-        config_dict = {}
-        config_dict['units'] = {}
-        config_dict['units'][unit] = {}
-        config_dict['units'][unit]['group'] = group
-        config_dict['units'][unit]['unit_system'] = unit_system
-        config_dict['units'][unit]['conversion'] = {}
-
-        config = configobj.ConfigObj(config_dict)
+        config = create_unit_config(unit, group=group, unit_system=unit_system, conversion={})
 
         units = test_weewx_stubs.ListOfDicts({})
         units.extend({group: unit})
