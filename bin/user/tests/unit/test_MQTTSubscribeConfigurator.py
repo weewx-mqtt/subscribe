@@ -20,22 +20,38 @@ from test_weewx_stubs import random_string, BaseTestClass
 test_weewx_stubs.setup_stubs()
 
 from user.mqttsubscribe import Configurator
+from user.tests.configurator_helpers import create_options
+
+
+def parse_args_expect_error(test_case, argv, expected_stderr):
+    """ Parse argv and assert the expected argparse failure. """
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest='command')
+    Configurator.add_parsers(subparsers)
+
+    stderr = io.StringIO()
+    with contextlib.redirect_stderr(stderr):
+        with test_case.assertRaises(SystemExit) as error:
+            parser.parse_args(argv)
+
+    test_case.assertEqual(error.exception.code, 2)
+    test_case.assertIn(expected_stderr, stderr.getvalue())
+
+
+def assert_configurator_error(test_case, options, expected_message):
+    """ A mutually-exclusive option must be reported through parser.error. """
+    mock_parser = mock.Mock()
+    mock_parser.error = mock.Mock(side_effect=Exception("done"))
+    with test_case.assertRaises(Exception):
+        Configurator(mock_parser, options)
+    mock_parser.error.assert_called_once_with(expected_message)
+
 
 class TestEnableArgParse(unittest.TestCase):
     def test_driver_enable(self):
-        parser = argparse.ArgumentParser()
-
-        subparsers = parser.add_subparsers(dest='command')
-
-        _ = Configurator.add_parsers(subparsers)
-
-        stderr = io.StringIO()
-        with contextlib.redirect_stderr(stderr):
-            with self.assertRaises(SystemExit) as error:
-                _ = parser.parse_args(['configure', 'driver', '--conf', random_string(), '--enable', 'true'])
-
-        self.assertEqual(error.exception.code, 2)
-        self.assertIn("error: unrecognized arguments: --enable", stderr.getvalue())
+        parse_args_expect_error(self,
+                                ['configure', 'driver', '--conf', random_string(), '--enable', 'true'],
+                                "error: unrecognized arguments: --enable")
 
     #  @unittest.skip("Not sure what to do with this test.")
     def test_service_enable(self):
@@ -50,54 +66,21 @@ class TestEnableArgParse(unittest.TestCase):
 
 class TestConfArgParse(unittest.TestCase):
     def test_create_example_conf(self):
-        parser = argparse.ArgumentParser()
-
-        subparsers = parser.add_subparsers(dest='command')
-
-        _ = Configurator.add_parsers(subparsers)
-
-        stderr = io.StringIO()
-        with contextlib.redirect_stderr(stderr):
-            with self.assertRaises(SystemExit) as error:
-                _ = parser.parse_args(['configure', '--create-example', '--conf', 'foo'])
-
-        self.assertEqual(error.exception.code, 2)
-        self.assertIn("--create-example: expected one argument", stderr.getvalue())
+        parse_args_expect_error(self, ['configure', '--create-example', '--conf', 'foo'], "--create-example: expected one argument")
 
     def test_service_missing_conf(self):
-        parser = argparse.ArgumentParser()
-
-        subparsers = parser.add_subparsers(dest='command')
-
-        _ = Configurator.add_parsers(subparsers)
-
-        stderr = io.StringIO()
-        with contextlib.redirect_stderr(stderr):
-            with self.assertRaises(SystemExit) as error:
-                _ = parser.parse_args(['configure', 'service'])
-
-        self.assertEqual(error.exception.code, 2)
-        self.assertIn("configure service: error: the following arguments are required: --conf", stderr.getvalue())
+        parse_args_expect_error(self, ['configure', 'service'], "configure service: error: the following arguments are required: --conf")
 
     def test_driver_missing_conf(self):
-        parser = argparse.ArgumentParser()
-
-        subparsers = parser.add_subparsers(dest='command')
-
-        _ = Configurator.add_parsers(subparsers)
-
-        stderr = io.StringIO()
-        with contextlib.redirect_stderr(stderr):
-            with self.assertRaises(SystemExit) as error:
-                _ = parser.parse_args(['configure', 'driver'])
-
-        self.assertEqual(error.exception.code, 2)
-        self.assertIn("configure driver: error: the following arguments are required: --conf", stderr.getvalue())
+        parse_args_expect_error(self, ['configure', 'driver'], "configure driver: error: the following arguments are required: --conf")
 
 class TestMutuallyExclusiveOptions(unittest.TestCase):
     def __init__(self, args):
         self.options = None
         super().__init__(args)
+
+    def setUp(self):
+        self.options = ['--conf', random_string()]
 
     def run_mutually_exclusive(self, mutually_exclusive, error_msg):
         self.options.extend(mutually_exclusive)
@@ -115,9 +98,6 @@ class TestMutuallyExclusiveOptions(unittest.TestCase):
         self.assertIn(error_msg, stderr.getvalue())
 
 class TestMutuallyExclusiveExportOptions(TestMutuallyExclusiveOptions):
-    def setUp(self):
-        self.options = ['--conf', random_string()]
-
     def test_export_mutually_exclusive_with_print_configspec(self):
         self.run_mutually_exclusive(
             ['--export', random_string(), '--print-configspec', random_string()],
@@ -155,9 +135,6 @@ class TestMutuallyExclusiveExportOptions(TestMutuallyExclusiveOptions):
         )
 
 class TestMutuallyExclusivePrintConfigSpecOptions(TestMutuallyExclusiveOptions):
-    def setUp(self):
-        self.options = ['--conf', random_string()]
-
     def test_print_configspec_mutually_exclusive_with_validate(self):
         self.run_mutually_exclusive(
             ['--print-configspec', random_string(), '--validate'],
@@ -189,9 +166,6 @@ class TestMutuallyExclusivePrintConfigSpecOptions(TestMutuallyExclusiveOptions):
         )
 
 class TestMutuallyExclusiveValidateOptions(TestMutuallyExclusiveOptions):
-    def setUp(self):
-        self.options = ['--conf', random_string()]
-
     def test_validate_mutually_exclusive_with_add_from(self):
         self.run_mutually_exclusive(
             ['--validate', random_string(), '--add-from', random_string()],
@@ -217,9 +191,6 @@ class TestMutuallyExclusiveValidateOptions(TestMutuallyExclusiveOptions):
         )
 
 class TestMutuallyExclusiveAddFromeOptions(TestMutuallyExclusiveOptions):
-    def setUp(self):
-        self.options = ['--conf', random_string()]
-
     def test_add_from_mutually_exclusive_with_remove(self):
         self.run_mutually_exclusive(
             ['--add-from', random_string(), '--remove'],
@@ -239,9 +210,6 @@ class TestMutuallyExclusiveAddFromeOptions(TestMutuallyExclusiveOptions):
         )
 
 class TestMutuallyExclusiveRemoveOptions(TestMutuallyExclusiveOptions):
-    def setUp(self):
-        self.options = ['--conf', random_string()]
-
     def test_remove_mutually_exclusive_with_replace_with(self):
         self.run_mutually_exclusive(
             ['--remove', '--replace-with', random_string()],
@@ -255,9 +223,6 @@ class TestMutuallyExclusiveRemoveOptions(TestMutuallyExclusiveOptions):
         )
 
 class TestMutuallyExclusiveReplaceWithOptions(TestMutuallyExclusiveOptions):
-    def setUp(self):
-        self.options = ['--conf', random_string()]
-
     def test_replace_with_mutually_exclusive_with_update_from(self):
         self.run_mutually_exclusive(
             ['--replace-with', random_string(), '--update-from', random_string()],
@@ -266,20 +231,19 @@ class TestMutuallyExclusiveReplaceWithOptions(TestMutuallyExclusiveOptions):
 
 class TestInitConfigurator(BaseTestClass):
     def test_missing_primary_option(self):
-        options = argparse.Namespace()
-        options.type = None
-        options.create_example = None
-        options.export = None
-        options.print_configspec = None
-        options.enable = None
-        options.validate = None
-        options.no_backup = True
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.output = None
-        options.conf = None
+        options = create_options(type=None,
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=True,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 output=None,
+                                 conf=None)
 
         mock_parser = mock.Mock()
         _ = Configurator(mock_parser, options)
@@ -287,211 +251,157 @@ class TestInitConfigurator(BaseTestClass):
         mock_parser.error.assert_called_once_with("Either 'service|driver' or '--create-example' is required.")
 
     def test_output_mutually_exclusive_with_export(self):
-        options = argparse.Namespace()
-        options.type = random_string()
-        options.create_example = None
-        options.export = 'bin/user/tests/data/output.conf'
-        options.print_configspec = None
-        options.enable = None
-        options.validate = None
-        options.no_backup = None
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.output = 'bin/user/tests/data/output.conf'
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type=random_string(),
+                                 create_example=None,
+                                 export='bin/user/tests/data/output.conf',
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=None,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 output='bin/user/tests/data/output.conf',
+                                 conf='bin/user/tests/data/weewx.conf')
 
-        mock_parser = mock.Mock()
-        mock_parser.error = mock.Mock(side_effect=Exception("done"))
-        with self.assertRaises(Exception):
-            _ = Configurator(mock_parser, options)
-
-        mock_parser.error.assert_called_once_with("'--output' is mutually exclusive with '--export'.")
+        assert_configurator_error(self, options, "'--output' is mutually exclusive with '--export'.")
 
     def test_output_mutually_exclusive_with_print_configspec(self):
-        options = argparse.Namespace()
-        options.type = random_string()
-        options.create_example = None
-        options.export = None
-        options.print_configspec = 'bin/user/tests/data/output.conf'
-        options.enable = None
-        options.validate = None
-        options.no_backup = None
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.output = 'bin/user/tests/data/output.conf'
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type=random_string(),
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec='bin/user/tests/data/output.conf',
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=None,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 output='bin/user/tests/data/output.conf',
+                                 conf='bin/user/tests/data/weewx.conf')
 
-        mock_parser = mock.Mock()
-        mock_parser.error = mock.Mock(side_effect=Exception("done"))
-        with self.assertRaises(Exception):
-            _ = Configurator(mock_parser, options)
-
-        mock_parser.error.assert_called_once_with("'--output' is mutually exclusive with '--print-configspec'.")
+        assert_configurator_error(self, options, "'--output' is mutually exclusive with '--print-configspec'.")
 
     def test_output_mutually_exclusive_with_validate(self):
-        options = argparse.Namespace()
-        options.type = random_string()
-        options.create_example = None
-        options.export = None
-        options.print_configspec = None
-        options.enable = None
-        options.validate = True
-        options.no_backup = None
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.output = 'bin/user/tests/data/output.conf'
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type=random_string(),
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=True,
+                                 no_backup=None,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 output='bin/user/tests/data/output.conf',
+                                 conf='bin/user/tests/data/weewx.conf')
 
-        mock_parser = mock.Mock()
-        mock_parser.error = mock.Mock(side_effect=Exception("done"))
-        with self.assertRaises(Exception):
-            _ = Configurator(mock_parser, options)
-
-        mock_parser.error.assert_called_once_with("'--output' is mutually exclusive with '--validate'.")
+        assert_configurator_error(self, options, "'--output' is mutually exclusive with '--validate'.")
 
     def test_enable_mutually_exclusive_with_export(self):
-        options = argparse.Namespace()
-        options.type = 'service'
-        options.create_example = None
-        options.export = 'bin/user/tests/data/output.conf'
-        options.print_configspec = None
-        options.enable = True
-        options.validate = None
-        options.no_backup = None
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.output = None
-        options.conf = None
+        options = create_options(type='service',
+                                 create_example=None,
+                                 export='bin/user/tests/data/output.conf',
+                                 print_configspec=None,
+                                 enable=True,
+                                 validate=None,
+                                 no_backup=None,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 output=None,
+                                 conf=None)
 
-        mock_parser = mock.Mock()
-        mock_parser.error = mock.Mock(side_effect=Exception("done"))
-        with self.assertRaises(Exception):
-            _ = Configurator(mock_parser, options)
-
-        mock_parser.error.assert_called_once_with("'--enable' is mutually exclusive with '--export'.")
+        assert_configurator_error(self, options, "'--enable' is mutually exclusive with '--export'.")
 
     def test_enable_mutually_exclusive_with_print_configspec(self):
-        options = argparse.Namespace()
-        options.type = 'service'
-        options.create_example = None
-        options.export = None
-        options.print_configspec = 'bin/user/tests/data/output.conf'
-        options.enable = True
-        options.validate = None
-        options.no_backup = None
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.output = None
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type='service',
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec='bin/user/tests/data/output.conf',
+                                 enable=True,
+                                 validate=None,
+                                 no_backup=None,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 output=None,
+                                 conf='bin/user/tests/data/weewx.conf')
 
-        mock_parser = mock.Mock()
-        mock_parser.error = mock.Mock(side_effect=Exception("done"))
-        with self.assertRaises(Exception):
-            _ = Configurator(mock_parser, options)
-
-        mock_parser.error.assert_called_once_with("'--enable' is mutually exclusive with '--print-configspec'.")
+        assert_configurator_error(self, options, "'--enable' is mutually exclusive with '--print-configspec'.")
 
     def test_enable_mutually_exclusive_with_validate(self):
-        options = argparse.Namespace()
-        options.type = 'service'
-        options.create_example = None
-        options.export = None
-        options.print_configspec = None
-        options.enable = True
-        options.validate = True
-        options.no_backup = None
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.output = None
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type='service',
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec=None,
+                                 enable=True,
+                                 validate=True,
+                                 no_backup=None,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 output=None,
+                                 conf='bin/user/tests/data/weewx.conf')
 
-        mock_parser = mock.Mock()
-        mock_parser.error = mock.Mock(side_effect=Exception("done"))
-        with self.assertRaises(Exception):
-            _ = Configurator(mock_parser, options)
-
-        mock_parser.error.assert_called_once_with("'--enable' is mutually exclusive with '--validate'.")
+        assert_configurator_error(self, options, "'--enable' is mutually exclusive with '--validate'.")
 
     def test_no_backup_mutually_exclusive_with_export(self):
-        options = argparse.Namespace()
-        options.type = random_string()
-        options.create_example = None
-        options.export = 'bin/user/tests/data/output.conf'
-        options.print_configspec = None
-        options.enable = None
-        options.validate = None
-        options.no_backup = True
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.output = None
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type=random_string(),
+                                 create_example=None,
+                                 export='bin/user/tests/data/output.conf',
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=True,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 output=None,
+                                 conf='bin/user/tests/data/weewx.conf')
 
-        mock_parser = mock.Mock()
-        mock_parser.error = mock.Mock(side_effect=Exception("done"))
-        with self.assertRaises(Exception):
-            _ = Configurator(mock_parser, options)
-
-        mock_parser.error.assert_called_once_with("'--no-backup' is mutually exclusive with '--export'.")
+        assert_configurator_error(self, options, "'--no-backup' is mutually exclusive with '--export'.")
 
     def test_no_backup_mutually_exclusive_with_print_configspec(self):
-        options = argparse.Namespace()
-        options.type = random_string()
-        options.create_example = None
-        options.export = None
-        options.print_configspec = 'bin/user/tests/data/output.conf'
-        options.enable = None
-        options.validate = None
-        options.no_backup = True
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.output = None
-        options.conf = None
+        options = create_options(type=random_string(),
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec='bin/user/tests/data/output.conf',
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=True,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 output=None,
+                                 conf=None)
 
-        mock_parser = mock.Mock()
-        mock_parser.error = mock.Mock(side_effect=Exception("done"))
-        with self.assertRaises(Exception):
-            _ = Configurator(mock_parser, options)
-
-        mock_parser.error.assert_called_once_with("'--no-backup' is mutually exclusive with '--print-configspec'.")
+        assert_configurator_error(self, options, "'--no-backup' is mutually exclusive with '--print-configspec'.")
 
     def test_no_backup_mutually_exclusive_with_validate(self):
-        options = argparse.Namespace()
-        options.type = random_string()
-        options.create_example = None
-        options.export = None
-        options.print_configspec = None
-        options.enable = None
-        options.validate = True
-        options.no_backup = True
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.output = None
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type=random_string(),
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=True,
+                                 no_backup=True,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 output=None,
+                                 conf='bin/user/tests/data/weewx.conf')
 
-        mock_parser = mock.Mock()
-        mock_parser.error = mock.Mock(side_effect=Exception("done"))
-        with self.assertRaises(Exception):
-            _ = Configurator(mock_parser, options)
-
-        mock_parser.error.assert_called_once_with("'--no-backup' is mutually exclusive with '--validate'.")
+        assert_configurator_error(self, options, "'--no-backup' is mutually exclusive with '--validate'.")
 
 class TestRunConfigurator(BaseTestClass):
     '''
@@ -499,167 +409,159 @@ class TestRunConfigurator(BaseTestClass):
     options run to completion.
     '''
     def test_create_example(self):
-        options = argparse.Namespace()
-        options.type = None
-        options.create_example = 'bin/user/tests/data/output.conf'
-        options.export = None
-        options.print_configspec = None
-        options.enable = None
-        options.validate = None
-        options.no_backup = True
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.output = 'bin/user/tests/data/output.conf'
-        options.conf = None
+        options = create_options(type=None,
+                                 create_example='bin/user/tests/data/output.conf',
+                                 export=None,
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=True,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 output='bin/user/tests/data/output.conf',
+                                 conf=None)
 
         SUT = Configurator(None, options)
 
         SUT.run()
 
     def test_export(self):
-        options = argparse.Namespace()
-        options.type = 'driver'
-        options.create_example = None
-        options.export = 'bin/user/tests/data/output.conf'
-        options.print_configspec = None
-        options.enable = None
-        options.validate = None
-        options.no_backup = None
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.output = None
-        options.top_level = None
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type='driver',
+                                 create_example=None,
+                                 export='bin/user/tests/data/output.conf',
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=None,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 output=None,
+                                 top_level=None,
+                                 conf='bin/user/tests/data/weewx.conf')
 
         SUT = Configurator(None, options)
 
         SUT.run()
 
     def test_print_configspec(self):
-        options = argparse.Namespace()
-        options.type = 'driver'
-        options.create_example = None
-        options.export = None
-        options.print_configspec = 'bin/user/tests/data/output.conf'
-        options.enable = None
-        options.validate = None
-        options.no_backup = None
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.output = None
-        options.conf = None
-        options.top_level = None
+        options = create_options(type='driver',
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec='bin/user/tests/data/output.conf',
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=None,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 output=None,
+                                 conf=None,
+                                 top_level=None)
 
         SUT = Configurator(None, options)
 
         SUT.run()
 
     def test_validate(self):
-        options = argparse.Namespace()
-        options.type = 'driver'
-        options.create_example = None
-        options.export = None
-        options.print_configspec = None
-        options.enable = None
-        options.validate = True
-        options.no_backup = None
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.output = None
-        options.top_level = None
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type='driver',
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=True,
+                                 no_backup=None,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 output=None,
+                                 top_level=None,
+                                 conf='bin/user/tests/data/weewx.conf')
 
         SUT = Configurator(None, options)
 
         SUT.run()
 
     def test_add_from(self):
-        options = argparse.Namespace()
-        options.type = 'driver'
-        options.create_example = None
-        options.export = None
-        options.print_configspec = None
-        options.enable = None
-        options.validate = None
-        options.no_backup = True
-        options.add_from = 'bin/user/tests/data/mqttsubscribe.conf'
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.top_level = None
-        options.output = 'bin/user/tests/data/output.conf'
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type='driver',
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=True,
+                                 add_from='bin/user/tests/data/mqttsubscribe.conf',
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 top_level=None,
+                                 output='bin/user/tests/data/output.conf',
+                                 conf='bin/user/tests/data/weewx.conf')
 
         SUT = Configurator(None, options)
 
         SUT.run()
 
     def test_remove(self):
-        options = argparse.Namespace()
-        options.type = 'driver'
-        options.create_example = None
-        options.export = None
-        options.print_configspec = None
-        options.enable = None
-        options.validate = None
-        options.no_backup = True
-        options.add_from = None
-        options.remove = True
-        options.replace_with = None
-        options.update_from = None
-        options.top_level = None
-        options.output = 'bin/user/tests/data/output.conf'
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type='driver',
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=True,
+                                 add_from=None,
+                                 remove=True,
+                                 replace_with=None,
+                                 update_from=None,
+                                 top_level=None,
+                                 output='bin/user/tests/data/output.conf',
+                                 conf='bin/user/tests/data/weewx.conf')
 
         SUT = Configurator(None, options)
 
         SUT.run()
 
     def test_replace_with(self):
-        options = argparse.Namespace()
-        options.type = 'driver'
-        options.create_example = None
-        options.export = None
-        options.print_configspec = None
-        options.enable = None
-        options.validate = None
-        options.no_backup = True
-        options.add_from = None
-        options.remove = None
-        options.replace_with = 'bin/user/tests/data/mqttsubscribe.conf'
-        options.update_from = None
-        options.output = 'bin/user/tests/data/output.conf'
-        options.conf = 'bin/user/tests/data/weewx.conf'
-        options.top_level = None
+        options = create_options(type='driver',
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=True,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with='bin/user/tests/data/mqttsubscribe.conf',
+                                 update_from=None,
+                                 output='bin/user/tests/data/output.conf',
+                                 conf='bin/user/tests/data/weewx.conf',
+                                 top_level=None)
 
         SUT = Configurator(None, options)
 
         SUT.run()
 
     def test_update_from(self):
-        options = argparse.Namespace()
-        options.type = 'driver'
-        options.create_example = None
-        options.export = None
-        options.print_configspec = None
-        options.enable = None
-        options.validate = None
-        options.no_backup = True
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.top_level = None
-        options.update_from = 'bin/user/tests/data/mqttsubscribe.conf'
-        options.output = 'bin/user/tests/data/output.conf'
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type='driver',
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=True,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 top_level=None,
+                                 update_from='bin/user/tests/data/mqttsubscribe.conf',
+                                 output='bin/user/tests/data/output.conf',
+                                 conf='bin/user/tests/data/weewx.conf')
 
         SUT = Configurator(None, options)
 

@@ -7,28 +7,26 @@
 import helpers
 import unittest
 
-import argparse
-
 from user.mqttsubscribe import Configurator
+from user.tests.configurator_helpers import create_options, assert_written_config
 
 class TestUpdateConfig(unittest.TestCase):
     # @unittest.skip("This is really not a unit test, it is testing weeutil.config.conditional_merge")
     def test_add_from(self):
-        options = argparse.Namespace()
-        options.type = 'driver'
-        options.create_example = None
-        options.export = None
-        options.print_configspec = None
-        options.enable = None
-        options.validate = None
-        options.no_backup = True
-        options.add_from = 'bin/user/tests/data/mqttsubscribe.conf'
-        options.remove = None
-        options.replace_with = None
-        options.update_from = None
-        options.top_level = None
-        options.output = 'bin/user/tests/data/output.conf'
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type='driver',
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=True,
+                                 add_from='bin/user/tests/data/mqttsubscribe.conf',
+                                 remove=None,
+                                 replace_with=None,
+                                 update_from=None,
+                                 top_level=None,
+                                 output='bin/user/tests/data/output.conf',
+                                 conf='bin/user/tests/data/weewx.conf')
 
         expected_config = '''[MQTTSubscribeDriver]
     [[topic]]
@@ -41,29 +39,23 @@ class TestUpdateConfig(unittest.TestCase):
 
         SUT.run()
 
-        config_items = []
-        SUT.config_dict.filename = None
-        for item in SUT.config_dict.write():
-            config_items.append(item.decode('utf-8'))
-
-        self.assertEqual(config_items, expected_config.split('\n'))
+        assert_written_config(self, SUT, expected_config)
 
     def test_remove(self):
-        options = argparse.Namespace()
-        options.type = 'driver'
-        options.create_example = None
-        options.export = None
-        options.print_configspec = None
-        options.enable = None
-        options.validate = None
-        options.no_backup = True
-        options.add_from = None
-        options.remove = True
-        options.replace_with = None
-        options.update_from = None
-        options.top_level = None
-        options.output = 'bin/user/tests/data/output.conf'
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type='driver',
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=True,
+                                 add_from=None,
+                                 remove=True,
+                                 replace_with=None,
+                                 update_from=None,
+                                 top_level=None,
+                                 output='bin/user/tests/data/output.conf',
+                                 conf='bin/user/tests/data/weewx.conf')
 
         SUT = Configurator(None, options)
 
@@ -75,21 +67,20 @@ class TestUpdateConfig(unittest.TestCase):
 
     # @unittest.skip("This tests uses weeutil.config.deep_copy")
     def test_replace_with(self):
-        options = argparse.Namespace()
-        options.type = 'driver'
-        options.create_example = None
-        options.export = None
-        options.print_configspec = None
-        options.enable = None
-        options.validate = None
-        options.no_backup = True
-        options.add_from = None
-        options.remove = None
-        options.top_level = None
-        options.replace_with = 'bin/user/tests/data/mqttsubscribe.conf'
-        options.update_from = None
-        options.output = 'bin/user/tests/data/output.conf'
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type='driver',
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=True,
+                                 add_from=None,
+                                 remove=None,
+                                 top_level=None,
+                                 replace_with='bin/user/tests/data/mqttsubscribe.conf',
+                                 update_from=None,
+                                 output='bin/user/tests/data/output.conf',
+                                 conf='bin/user/tests/data/weewx.conf')
 
         expected_config = '''[MQTTSubscribeDriver]
     [[topic]]
@@ -101,30 +92,24 @@ class TestUpdateConfig(unittest.TestCase):
 
         SUT.run()
 
-        config_items = []
-        SUT.config_dict.filename = None
-        for item in SUT.config_dict.write():
-            config_items.append(item.decode('utf-8'))
-
-        self.assertEqual(config_items, expected_config.split('\n'))
+        assert_written_config(self, SUT, expected_config)
 
     # @unittest.skip("This is really not a unit test, it is testing weeutil.config.merge_config")
     def test_update_from(self):
-        options = argparse.Namespace()
-        options.type = 'driver'
-        options.create_example = None
-        options.export = None
-        options.print_configspec = None
-        options.enable = None
-        options.validate = None
-        options.no_backup = True
-        options.add_from = None
-        options.remove = None
-        options.replace_with = None
-        options.top_level = None
-        options.update_from = 'bin/user/tests/data/mqttsubscribe.conf'
-        options.output = 'bin/user/tests/data/output.conf'
-        options.conf = 'bin/user/tests/data/weewx.conf'
+        options = create_options(type='driver',
+                                 create_example=None,
+                                 export=None,
+                                 print_configspec=None,
+                                 enable=None,
+                                 validate=None,
+                                 no_backup=True,
+                                 add_from=None,
+                                 remove=None,
+                                 replace_with=None,
+                                 top_level=None,
+                                 update_from='bin/user/tests/data/mqttsubscribe.conf',
+                                 output='bin/user/tests/data/output.conf',
+                                 conf='bin/user/tests/data/weewx.conf')
 
         expected_config = '''[MQTTSubscribeDriver]
     [[topic]]
@@ -137,12 +122,7 @@ class TestUpdateConfig(unittest.TestCase):
 
         SUT.run()
 
-        config_items = []
-        SUT.config_dict.filename = None
-        for item in SUT.config_dict.write():
-            config_items.append(item.decode('utf-8'))
-
-        self.assertEqual(config_items, expected_config.split('\n'))
+        assert_written_config(self, SUT, expected_config)
 
 if __name__ == '__main__':
     helpers.run_tests()
