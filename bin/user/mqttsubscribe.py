@@ -607,6 +607,14 @@ def log_direct(name, log_type, msg_text):
     args = (f"{entry['name']}-{entry['thread_id']}", entry['msg_text'])
     getattr(logging.getLogger(__name__), log_type.lower())(mqttcommon.Logger.LOG_FORMAT, *args)
 
+
+def finish_shutdown(logger, wait_for_thread_shutdown, completion_message=None):
+    """ Stop the logger thread, then log completion directly: queued entries are never written. """
+    logger.shutdown(wait_for_thread_shutdown)
+    if completion_message is not None:
+        log_direct(logger.name, 'INFO', completion_message.format(name=logger.name))
+
+
 class ConversionError(ValueError):
     """ Error converting data types. """
 
@@ -2325,7 +2333,7 @@ class MQTTSubscribeService(StdService):
     def shutDown(self):  # need to override parent
         """Run when an engine shutdown is requested."""
         if not self.enable:
-            self.logger.shutdown(self.wait_for_thread_shutdown)
+            finish_shutdown(self.logger, self.wait_for_thread_shutdown)
             return
 
         # The shutdown is not part of an archive record.
@@ -2334,10 +2342,7 @@ class MQTTSubscribeService(StdService):
         if self.subscriber:
             self.subscriber.disconnect()
         self.logger.info(22006, MQTTSubscribeService.log_messages[22006])
-        self.logger.shutdown(self.wait_for_thread_shutdown)
-        # Logged directly: queued entries are never written once the logger thread has stopped.
-        log_direct(self.logger.name, 'INFO',
-                   MQTTSubscribeService.log_messages[22005].format(name=self.logger.name))
+        finish_shutdown(self.logger, self.wait_for_thread_shutdown, MQTTSubscribeService.log_messages[22005])
 
     def new_loop_packet(self, event):
         """ Handle the new loop packet event. """
@@ -2513,10 +2518,7 @@ class MQTTSubscribeDriver(weewx.drivers.AbstractDevice):
         self.logger.info(12003, MQTTSubscribeDriver.log_messages[12003])
         self.subscriber.disconnect()
         self.logger.info(12005, MQTTSubscribeDriver.log_messages[12005])
-        self.logger.shutdown(self.wait_for_thread_shutdown)
-        # Logged directly: queued entries are never written once the logger thread has stopped.
-        log_direct(self.logger.name, 'INFO',
-                   MQTTSubscribeDriver.log_messages[12004].format(name=self.logger.name))
+        finish_shutdown(self.logger, self.wait_for_thread_shutdown, MQTTSubscribeDriver.log_messages[12004])
 
     def new_archive_record(self, event):
         """ Handle the new archive record event. """
