@@ -20,7 +20,7 @@ import paho.mqtt.client as mqtt
 
 # Bump when adding shared code consumers must have; each verifies it at import,
 # so a stale copy fails loudly.
-MQTTCOMMON_API = (1, 1)
+MQTTCOMMON_API = (1, 2)
 
 API_V1 = 'v1'
 API_V2_MQTT3 = 'v2-mqtt3'
@@ -608,6 +608,49 @@ def configure_reconnect_delay(client, *, min_delay, max_delay):
         The delays are the same for all api variants, so no api variant is needed.
     """
     client.reconnect_delay_set(min_delay=min_delay, max_delay=max_delay)
+
+
+class PublishTracker:  # pylint: disable=too-few-public-methods
+    """ Track publishes the paho network loop has not confirmed yet.
+
+        The tracker keeps one publish per message id, in insertion order, and waits on
+        the oldest unconfirmed publish, so a bounded window keeps paho's outgoing queue
+        from growing without limit. The window is the number of unconfirmed publishes;
+        None means unbounded and the consumer drains at shutdown.
+
+        The wait runs against paho's own condition on the message, so the tracker owns
+        bookkeeping only and needs no thread or lock of its own. """
+
+    def __init__(self, max_outstanding=None):
+        self.max_outstanding = max_outstanding
+        self.inflight = {}
+
+    def add(self, mqtt_message_info):
+        """ Track a publish, waiting for the oldest when the window is full. """
+        self.prune()
+        self.inflight[mqtt_message_info.mid] = mqtt_message_info
+        if self.max_outstanding is not None and len(self.inflight) > self.max_outstanding:
+            self.wait_for_oldest()
+
+    def prune(self):
+        """ Drop publishes paho has confirmed, or that cannot be confirmed. """
+        for mid, mqtt_message_info in list(self.inflight.items()):
+            try:
+                if mqtt_message_info.is_published():
+                    del self.inflight[mid]
+            except (ValueError, RuntimeError):
+                del self.inflight[mid]
+
+    def wait_for_oldest(self, timeout=None):
+        """ Wait for the oldest unconfirmed publish and forget it. """
+        if not self.inflight:
+            return
+        oldest_mid = next(iter(self.inflight))
+        mqtt_message_info = self.inflight.pop(oldest_mid)
+        try:
+            mqtt_message_info.wait_for_publish(timeout)
+        except (ValueError, RuntimeError):
+            pass
 
 
 def adapt_callback(api, event, callback):

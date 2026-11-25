@@ -272,6 +272,65 @@ class TestConfigureReconnectDelay(unittest.TestCase):
         client.reconnect_delay_set.assert_called_once_with(min_delay=1, max_delay=120)
 
 
+class TestPublishTracker(unittest.TestCase):
+    @staticmethod
+    def create_info(mid, published=False):
+        info = mock.Mock()
+        info.mid = mid
+        info.is_published.return_value = published
+        info.wait_for_publish.return_value = None
+        return info
+
+    def test_wait_for_oldest_is_a_no_op_when_empty(self):
+        tracker = user.mqttcommon.PublishTracker()
+
+        tracker.wait_for_oldest()
+
+        self.assertFalse(tracker.inflight)
+
+    def test_add_prunes_confirmed_publishes(self):
+        tracker = user.mqttcommon.PublishTracker()
+
+        tracker.add(self.create_info(1, published=True))
+        tracker.add(self.create_info(2, published=False))
+
+        self.assertEqual(list(tracker.inflight), [2])
+
+    def test_add_drops_publishes_that_cannot_be_confirmed(self):
+        tracker = user.mqttcommon.PublishTracker()
+
+        tracker.add(self.create_info(1, published=False))
+        failing = self.create_info(2)
+        failing.is_published.side_effect = ValueError()
+        tracker.inflight[2] = failing
+
+        tracker.prune()
+
+        self.assertEqual(len(tracker.inflight), 1)
+        self.assertEqual(list(tracker.inflight), [1])
+
+    def test_window_waits_for_the_oldest_unconfirmed_publish(self):
+        tracker = user.mqttcommon.PublishTracker(max_outstanding=1)
+
+        first = self.create_info(1, published=False)
+        tracker.add(first)
+        second = self.create_info(2, published=False)
+        tracker.add(second)
+
+        first.wait_for_publish.assert_called_once_with(None)
+        self.assertEqual(list(tracker.inflight), [2])
+
+    def test_unbounded_tracker_does_not_wait(self):
+        tracker = user.mqttcommon.PublishTracker()
+
+        first = self.create_info(1, published=False)
+        tracker.add(first)
+        tracker.add(self.create_info(2, published=False))
+
+        first.wait_for_publish.assert_not_called()
+        self.assertEqual(len(tracker.inflight), 2)
+
+
 class ReasonCodeStub:
     """ Mimics paho mqtt v2's ReasonCode, which is all the adapters rely on. """
     def __init__(self, value):
@@ -536,7 +595,7 @@ class TestApiLevel(unittest.TestCase):
     def test_api_level(self):
         # Bump deliberately when adding or changing shared surface, and raise the
         # consumers' required level in the same round.
-        self.assertEqual(user.mqttcommon.MQTTCOMMON_API, (1, 1))
+        self.assertEqual(user.mqttcommon.MQTTCOMMON_API, (1, 2))
 
 
 class TestLogger(unittest.TestCase):
