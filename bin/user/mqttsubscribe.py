@@ -1264,7 +1264,7 @@ class TopicQueues:  # pylint: disable=protected-access
         if 'dateTime' not in data or use_server_datetime:
             data['dateTime'] = time.time()
         if 'usUnits' not in data:
-            data['usUnits'] = self.manager.get_unit_system(topic)
+            data['usUnits'] = self.manager.get_topic_config(topic)['unit_system']
 
         datetime_format = self.manager._get_value('datetime_format', topic)
         if datetime_format and 'dateTime' in data:
@@ -2172,7 +2172,7 @@ class MQTTSubscriber():  # pylint: disable=too-many-instance-attributes
             if not info['subscribe']:
                 continue
 
-            (result, mid) = client.subscribe(topic, self.manager.get_qos(topic))
+            (result, mid) = client.subscribe(topic, self.manager.get_topic_config(topic)['qos'])
             self.logger.info(32019, MQTTSubscriber.log_messages[32019].format(topic=topic, mid=mid, result=result))
 
     def get_client(self, mqtt_options):

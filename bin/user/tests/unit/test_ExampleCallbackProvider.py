@@ -53,7 +53,7 @@ class Test1(BaseTestClass):
     def test_on_message(self):
         mock_logger = mock.Mock(spec=Logger)
         mock_manager = mock.Mock()
-        mock_manager.get_fields.return_value = {}
+        mock_manager.get_topic_config.return_value = {'fields': {}, 'unit_system': 1}
 
         observation_dict = self.create_observation_dict(5)
         root = self.create_observation_xml('observations', observation_dict)

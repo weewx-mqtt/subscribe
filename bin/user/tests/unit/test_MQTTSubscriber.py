@@ -489,7 +489,7 @@ class Teston_connect(BaseTestClass):
             with mock.patch('user.mqttsubscribe.TopicManager') as mock_manager:
                 mock_client = mock.Mock()
                 type(mock_manager.return_value).subscribed_topics = mock.PropertyMock(return_value=subscribed_topics)
-                type(mock_manager.return_value).get_qos = mock.Mock(return_value=qos)
+                type(mock_manager.return_value).get_topic_config = mock.Mock(return_value={'qos': qos})
                 mock_client.subscribe.return_value = [1, 0]
                 SUT = MQTTSubscriberTest(config, mock_logger)
                 SUT._subscribe(mock_client)

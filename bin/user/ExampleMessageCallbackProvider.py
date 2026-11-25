@@ -56,8 +56,9 @@ class MessageCallbackProvider(user.mqttsubscribe.AbstractMessageCallbackProvider
         # Wrap all the processing in a try, so it doesn't crash and burn on any error
         try:
             self.logger.debug(None, f"MessageCallbackProvider received {msg.topic}: {msg.payload}.")
-            fields = self.topic_manager.get_fields(msg.topic)
-            unit_system = self.topic_manager.get_unit_system(msg.topic)  # TODO - need public method
+            topic_config = self.topic_manager.get_topic_config(msg.topic)
+            fields = topic_config['fields']
+            unit_system = topic_config['unit_system']
             root = xml.etree.ElementTree.fromstring(msg.payload)
             observations = self.get_observations(msg.topic, root, "", fields, unit_system)
 
