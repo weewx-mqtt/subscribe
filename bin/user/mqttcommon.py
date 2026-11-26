@@ -625,12 +625,12 @@ class PublishTracker:  # pylint: disable=too-few-public-methods
         self.max_outstanding = max_outstanding
         self.inflight = {}
 
-    def add(self, mqtt_message_info):
+    def add(self, mqtt_message_info, timeout=None):
         """ Track a publish, waiting for the oldest when the window is full. """
         self.prune()
         self.inflight[mqtt_message_info.mid] = mqtt_message_info
         if self.max_outstanding is not None and len(self.inflight) > self.max_outstanding:
-            self.wait_for_oldest()
+            self.wait_for_oldest(timeout)
 
     def prune(self):
         """ Drop publishes paho has confirmed, or that cannot be confirmed. """

@@ -320,6 +320,17 @@ class TestPublishTracker(unittest.TestCase):
         first.wait_for_publish.assert_called_once_with(None)
         self.assertEqual(list(tracker.inflight), [2])
 
+    def test_window_wait_honours_the_timeout(self):
+        tracker = user.mqttcommon.PublishTracker(max_outstanding=1)
+
+        first = self.create_info(1, published=False)
+        tracker.add(first, timeout=7)
+        second = self.create_info(2, published=False)
+        tracker.add(second, timeout=7)
+
+        first.wait_for_publish.assert_called_once_with(7)
+        self.assertEqual(list(tracker.inflight), [2])
+
     def test_unbounded_tracker_does_not_wait(self):
         tracker = user.mqttcommon.PublishTracker()
 
