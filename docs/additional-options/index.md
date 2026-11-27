@@ -30,6 +30,16 @@ The default is `loop`.
 
 The clean_session parameter that is passed into the creation of the MQTT client. The default is `true`.
 
+With QoS 1 or 2, set to `false` and use a fixed `clientid` when messages must survive a restart or
+a shutdown. The broker then keeps the session and redelivers what was not acknowledged before the
+disconnect. With the default `true`, the broker discards the session on disconnect and in-flight
+messages are lost. This option is only used with `MQTTv31` and `MQTTv311`; see `clean_start` for
+`MQTTv5`.
+
+With QoS 2, one loss remains: paho keeps an inbound handshake in memory only. If the process
+restarts after the PUBREC and before the PUBREL, the broker redelivers the PUBREL, but paho no
+longer knows the message and acknowledges it, so the message is lost.
+
 ### clean_start
 
 The clean_start parameter that is passed into the creation of the MQTT client.
@@ -37,12 +47,19 @@ Valid values are `true`, `false`, and `MQTT_CLEAN_START_FIRST_ONLY`.
 The default is `MQTT_CLEAN_START_FIRST_ONLY`.
 This option is only valid with a the `protocol` option set to `MQTTv5`.
 
+MQTTv5 replaces the clean session flag with `clean_start` and a session expiry interval, and
+MQTTSubscribe does not set an expiry interval (the default, 0, ends the session when the connection
+closes). So `clean_start` does not keep a session, and the QoS 1/2 note under `clean_session` does
+not apply to `MQTTv5`.
+
 ### clientid
 
 The client id to use when connecting.
 When running as a service, the default is MQTTSubscribeService-xxxx.
 When running as a driver, the default is MQTTSubscribeDriver-xxxx.
 Where xxxx is a random number between 1000 and 9999.
+
+Set a fixed value when a session must survive a restart; see `clean_session`.
 
 ### log
 

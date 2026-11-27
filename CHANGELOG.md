@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 - Direct logging now comes from the shared `user.mqttcommon` (API 1.3).
+- Documented how `clean_session`, `clean_start` and `clientid` affect QoS 1 and 2 messages
+  across a restart.
 - Internal: resolved topic configuration is read directly by the remaining call sites,
   the service and driver share their shutdown tail, and test setup is shared across the suites.
 
