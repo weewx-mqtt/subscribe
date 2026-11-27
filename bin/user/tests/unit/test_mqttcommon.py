@@ -342,6 +342,46 @@ class TestPublishTracker(unittest.TestCase):
         self.assertEqual(len(tracker.inflight), 2)
 
 
+class TestDirectLogging(unittest.TestCase):
+    def test_writes_directly_to_the_logger(self):
+        with mock.patch('user.mqttcommon.logging') as mock_logging:
+            name = random_string()
+            text = random_string()
+
+            user.mqttcommon.log_direct(name, 'INFO', text)
+
+            entry = user.mqttcommon.Logger.create_entry(name, 'INFO', None, text)
+            mock_logging.getLogger.assert_called_once_with('user.mqttcommon')
+            mock_logging.getLogger.return_value.info.assert_called_once_with(
+                user.mqttcommon.Logger.LOG_FORMAT, f"{entry['name']}-{entry['thread_id']}", text)
+
+
+class TestWaitForInflight(unittest.TestCase):
+    def test_waits_within_the_deadline_then_clears(self):
+        tracker = user.mqttcommon.PublishTracker()
+        first = mock.Mock()
+        second = mock.Mock()
+        tracker.inflight = {1: first, 2: second}
+
+        with mock.patch('user.mqttcommon.time') as mock_time:
+            mock_time.time.side_effect = [100, 100, 100]
+            user.mqttcommon.wait_for_inflight(tracker, 2)
+
+        first.wait_for_publish.assert_called_once_with(2)
+        second.wait_for_publish.assert_called_once_with(2)
+        self.assertFalse(tracker.inflight)
+
+    def test_no_wait_without_a_timeout(self):
+        tracker = user.mqttcommon.PublishTracker()
+        info = mock.Mock()
+        tracker.inflight = {1: info}
+
+        user.mqttcommon.wait_for_inflight(tracker, 0)
+
+        info.wait_for_publish.assert_not_called()
+        self.assertEqual(len(tracker.inflight), 1)
+
+
 class ReasonCodeStub:
     """ Mimics paho mqtt v2's ReasonCode, which is all the adapters rely on. """
     def __init__(self, value):
@@ -606,7 +646,7 @@ class TestApiLevel(unittest.TestCase):
     def test_api_level(self):
         # Bump deliberately when adding or changing shared surface, and raise the
         # consumers' required level in the same round.
-        self.assertEqual(user.mqttcommon.MQTTCOMMON_API, (1, 2))
+        self.assertEqual(user.mqttcommon.MQTTCOMMON_API, (1, 3))
 
 
 class TestLogger(unittest.TestCase):

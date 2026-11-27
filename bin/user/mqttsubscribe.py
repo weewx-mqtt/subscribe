@@ -549,7 +549,6 @@ import argparse
 import copy
 import datetime
 import json
-import logging
 import os
 import random
 import re
@@ -588,7 +587,7 @@ from weewx.engine import StdEngine, StdService
 
 # All the weewx-mqtt extensions ship their own copy of mqttcommon. Fail loudly when the
 # loaded copy is older than this extension needs, instead of with a mysterious error later.
-if getattr(mqttcommon, 'MQTTCOMMON_API', (0, 0)) < (1, 2):
+if getattr(mqttcommon, 'MQTTCOMMON_API', (0, 0)) < (1, 3):
     raise ImportError("user.mqttcommon is too old. An older weewx-mqtt extension likely overwrote it during"
                       " install; reinstall or upgrade all the weewx-mqtt extensions.")
 
@@ -597,15 +596,8 @@ DRIVER_NAME = 'MQTTSubscribeDriver'
 DRIVER_VERSION = VERSION
 
 
-def log_direct(name, log_type, msg_text):
-    """ Log an entry without the queue, for a message that must not be lost.
-
-        A queued entry is written by the logger thread, so when that thread is stuck the entry
-        is never written. This writes from the calling thread instead. Only 'INFO' and 'ERROR'
-        are used. """
-    entry = mqttcommon.Logger.create_entry(name, log_type, None, msg_text)
-    args = (f"{entry['name']}-{entry['thread_id']}", entry['msg_text'])
-    getattr(logging.getLogger(__name__), log_type.lower())(mqttcommon.Logger.LOG_FORMAT, *args)
+# Kept as a module alias so callers and tests keep their existing patch point.
+log_direct = mqttcommon.log_direct
 
 
 def finish_shutdown(logger, wait_for_thread_shutdown, completion_message=None):

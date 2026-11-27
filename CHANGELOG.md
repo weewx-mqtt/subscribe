@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+- Direct logging now comes from the shared `user.mqttcommon` (API 1.3).
+- Internal: resolved topic configuration is read directly by the remaining call sites,
+  the service and driver share their shutdown tail, and test setup is shared across the suites.
+
 ## [3.4.0]
 
 ### Enhancements

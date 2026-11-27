@@ -20,7 +20,7 @@ import paho.mqtt.client as mqtt
 
 # Bump when adding shared code consumers must have; each verifies it at import,
 # so a stale copy fails loudly.
-MQTTCOMMON_API = (1, 2)
+MQTTCOMMON_API = (1, 3)
 
 API_V1 = 'v1'
 API_V2_MQTT3 = 'v2-mqtt3'
@@ -510,6 +510,22 @@ class MessageThrottle:  # pylint: disable=too-few-public-methods
             self.log_summary(msg_text)
 
 
+def wait_for_inflight(tracker, timeout):
+    """ Wait up to timeout seconds for paho to confirm tracked publishes. """
+    if not timeout or timeout <= 0 or not tracker.inflight:
+        return
+    deadline = time.time() + timeout
+    for mqtt_message_info in list(tracker.inflight.values()):
+        remaining = deadline - time.time()
+        if remaining <= 0:
+            break
+        try:
+            mqtt_message_info.wait_for_publish(remaining)
+        except (ValueError, RuntimeError):
+            pass
+    tracker.inflight.clear()
+
+
 def has_v2_api():
     """ Determine if paho mqtt's v2 callback api is available. """
     return hasattr(mqtt, 'CallbackAPIVersion')
@@ -608,6 +624,17 @@ def configure_reconnect_delay(client, *, min_delay, max_delay):
         The delays are the same for all api variants, so no api variant is needed.
     """
     client.reconnect_delay_set(min_delay=min_delay, max_delay=max_delay)
+
+
+def log_direct(name, log_type, msg_text):
+    """ Log an entry without the queue, for a message that must not be lost.
+
+        A queued entry is written by the logger thread, so when that thread is stuck the entry
+        is never written. This writes from the calling thread instead. Only 'INFO' and 'ERROR'
+        are used. """
+    entry = Logger.create_entry(name, log_type, None, msg_text)
+    args = (f"{entry['name']}-{entry['thread_id']}", entry['msg_text'])
+    getattr(logging.getLogger(__name__), log_type.lower())(Logger.LOG_FORMAT, *args)
 
 
 class PublishTracker:  # pylint: disable=too-few-public-methods
